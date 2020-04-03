@@ -122,7 +122,6 @@ class SDFilesystem:
 
         path = normalize_sd_path(path)
         real_path = self._get_real_path(path, id1)
-        print(path, real_path)
 
         # since we're forcing opening in binary mode, we can assume this will be BinaryIO
         # noinspection PyTypeChecker
