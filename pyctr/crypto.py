@@ -310,6 +310,8 @@ class CryptoEngine:
     def sd_path_to_iv(path: str) -> int:
         # ensure the path is lowercase
         path = path.lower()
+        # allow Windows-style paths to be passed in
+        path.replace('\\', '/')
 
         # SD Save Data Backup does a copy of the raw, encrypted file from the game's data directory
         # so we need to handle this and fake the path
