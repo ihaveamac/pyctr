@@ -11,3 +11,6 @@ This was recently separated out to its own repository. This will be a better REA
 * Executable Filesystem (".exefs", "exefs.bin")
 * NCCH (".cxi", ".cfa", ".ncch", ".app")
 * Read-only Filesystem (".romfs", "romfs.bin")
+
+## License
+`pyctr` is under the MIT license.
