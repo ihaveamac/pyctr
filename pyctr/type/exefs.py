@@ -5,6 +5,7 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from hashlib import sha256
+from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -180,8 +181,8 @@ class ExeFSReader:
     _code_dec = None
     icon: 'SMDH' = None
 
-    def __init__(self, fp: 'Union[str, BinaryIO]', *, closefd: bool = True, _load_icon: bool = True):
-        if isinstance(fp, str):
+    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = True, _load_icon: bool = True):
+        if isinstance(fp, (PathLike, str, bytes)):
             fp = open(fp, 'rb')
 
         # storing the starting offset lets it work from anywhere in the file

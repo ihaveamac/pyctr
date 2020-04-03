@@ -5,6 +5,7 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from enum import IntEnum
+from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -53,9 +54,9 @@ class CCIReader:
 
     closed = False
 
-    def __init__(self, fp: 'Union[str, BinaryIO]', *, case_insensitive: bool = True, dev: bool = False,
+    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, case_insensitive: bool = True, dev: bool = False,
                  load_contents: bool = True, assume_decrypted: bool = False):
-        if isinstance(fp, str):
+        if isinstance(fp, (PathLike, str, bytes)):
             fp = open(fp, 'rb')
 
         # store the starting offset so the CCI can be read from any point in the base file

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from ..common import PyCTRError
 
 if TYPE_CHECKING:
+    from os import PathLike
     from typing import BinaryIO, Dict, Mapping, Optional, Tuple, Union
 
 SMDH_SIZE = 0x36C0
@@ -106,6 +107,6 @@ class SMDH:
         return cls(names)
 
     @classmethod
-    def from_file(cls, fn: str) -> 'SMDH':
+    def from_file(cls, fn: 'Union[PathLike, str, bytes]') -> 'SMDH':
         with open(fn, 'rb') as f:
             return cls.load(f)

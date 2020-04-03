@@ -21,6 +21,7 @@ from .common import PyCTRError, _raise_if_closed
 from .util import config_dirs, readbe, readle
 
 if TYPE_CHECKING:
+    from os import PathLike
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_cbc import CbcMode
     # noinspection PyProtectedMember
@@ -465,7 +466,7 @@ class CryptoEngine:
 
         self._copy_global_keys()
 
-    def setup_keys_from_boot9_file(self, path: str = None):
+    def setup_keys_from_boot9_file(self, path: 'Union[PathLike, str, bytes]' = None):
         """Set up certain keys from an ARM9 bootROM file."""
         global _b9_path
         if self.b9_keys_set:
@@ -611,7 +612,7 @@ class CryptoEngine:
         hash_parts = unpack('<IIII', key_hash)
         self._id0 = pack('>IIII', *hash_parts)
 
-    def setup_sd_key_from_file(self, path: str):
+    def setup_sd_key_from_file(self, path: 'Union[PathLike, str, bytes]'):
         """Set up the SD key from a movable.sed file."""
         with open(path, 'rb') as f:
             self.setup_sd_key(f.read(0x140))

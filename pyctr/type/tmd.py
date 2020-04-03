@@ -12,7 +12,8 @@ from ..common import PyCTRError
 from ..util import readbe, readle
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Iterable
+    from os import PathLike
+    from typing import BinaryIO, Iterable, Union
 
 __all__ = ['CHUNK_RECORD_SIZE', 'TitleMetadataError', 'InvalidSignatureTypeError', 'InvalidHashError',
            'ContentInfoRecord', 'ContentChunkRecord', 'ContentTypeFlags', 'TitleVersion', 'TitleMetadataReader']
@@ -311,6 +312,6 @@ class TitleMetadataReader:
                    _u_access_rights=u_access_rights, _u_boot_count=u_boot_count, _u_padding=u_padding)
 
     @classmethod
-    def from_file(cls, fn: str, *, verify_hashes: bool = True) -> 'TitleMetadataReader':
+    def from_file(cls, fn: 'Union[PathLike, str, bytes]', *, verify_hashes: bool = True) -> 'TitleMetadataReader':
         with open(fn, 'rb') as f:
             return cls.load(f, verify_hashes=verify_hashes)

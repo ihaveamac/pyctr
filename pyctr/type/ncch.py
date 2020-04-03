@@ -20,6 +20,7 @@ from ..fileio import SubsectionIO
 from ..util import config_dirs, readle, roundup
 
 if TYPE_CHECKING:
+    from os import PathLike
     from typing import BinaryIO, Dict, List, Optional, Tuple, Union
 
 __all__ = ['NCCH_MEDIA_UNIT', 'NO_ENCRYPTION', 'EXEFS_NORMAL_CRYPTO_FILES', 'FIXED_SYSTEM_KEY', 'NCCHError',
@@ -150,9 +151,10 @@ class NCCHReader:
     exefs: 'Optional[ExeFSReader]' = None
     romfs: 'Optional[RomFSReader]' = None
 
-    def __init__(self, fp: 'Union[str, BinaryIO]', *, case_insensitive: bool = True, crypto: CryptoEngine = None,
-                 dev: bool = False, seeddb: str = None, load_sections: bool = True, assume_decrypted: bool = False):
-        if isinstance(fp, str):
+    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, case_insensitive: bool = True,
+                 crypto: CryptoEngine = None, dev: bool = False, seeddb: str = None, load_sections: bool = True,
+                 assume_decrypted: bool = False):
+        if isinstance(fp, (PathLike, str, bytes)):
             fp = open(fp, 'rb')
 
         if crypto:

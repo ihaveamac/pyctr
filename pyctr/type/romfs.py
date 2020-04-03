@@ -13,6 +13,7 @@ from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:
+    from os import PathLike
     from typing import BinaryIO, Optional, Tuple, Union
 
 __all__ = ['IVFC_HEADER_SIZE', 'IVFC_ROMFS_MAGIC_NUM', 'ROMFS_LV3_HEADER_SIZE', 'RomFSError', 'InvalidIVFCError',
@@ -76,8 +77,8 @@ class RomFSReader:
     lv3_offset = 0
     data_offset = 0
 
-    def __init__(self, fp: 'Union[str, BinaryIO]', case_insensitive: bool = False):
-        if isinstance(fp, str):
+    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', case_insensitive: bool = False):
+        if isinstance(fp, (PathLike, str, bytes)):
             fp = open(fp, 'rb')
 
         self._start = fp.tell()

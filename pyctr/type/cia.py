@@ -6,6 +6,7 @@
 
 from enum import IntEnum
 from io import BytesIO
+from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -54,9 +55,9 @@ class CIAReader:
 
     closed = False
 
-    def __init__(self, fp: 'Union[str, BinaryIO]', *, case_insensitive: bool = True, crypto: CryptoEngine = None,
-                 dev: bool = False, seeddb: str = None, load_contents: bool = True):
-        if isinstance(fp, str):
+    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, case_insensitive: bool = True,
+                 crypto: CryptoEngine = None, dev: bool = False, seeddb: str = None, load_contents: bool = True):
+        if isinstance(fp, (PathLike, str, bytes)):
             fp = open(fp, 'rb')
 
         if crypto:
