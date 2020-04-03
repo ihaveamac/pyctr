@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from Cryptodome.Cipher._mode_ctr import CtrMode
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
-    from Cryptodome.Hash.CMAC import CMAC as CMACObject
+    from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
     from typing import BinaryIO, Dict, List, Optional, Union
 
 __all__ = ['CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError', 'TicketLengthError',
@@ -195,7 +195,13 @@ class _TWLCryptoWrapper:
 
 
 class CryptoEngine:
-    """Class for 3DS crypto operations, including encryption and key generation."""
+    """
+    Emulates the AES engine of the Nintendo 3DS, including keyslots and the key scrambler.
+
+    :param boot9: Path to a dump of the protected region of the ARM9 BootROM. Defaults to None, which causes it to search a predefined list of paths.
+    :param dev: Whether or not to use devunit keys.
+    :param setup_b9_keys: Whether or not to automatically load keys from boot9.
+    """
 
     b9_keys_set: bool = False
     b9_path: str = None
@@ -209,7 +215,7 @@ class CryptoEngine:
 
     _id0: bytes = None
 
-    def __init__(self, boot9: str = None, dev: int = 0, setup_b9_keys: bool = True):
+    def __init__(self, boot9: str = None, dev: bool = False, setup_b9_keys: bool = True):
         self.key_x: Dict[int, int] = {}
         self.key_y: Dict[int, int] = {0x03: 0xE1A00005202DDD1DBD4DC4D30AB9DC76,
                                       0x05: 0x4D804F4E9990194613A204AC584460BE}
@@ -255,7 +261,14 @@ class CryptoEngine:
         return self._id0
 
     def create_cbc_cipher(self, keyslot: Keyslot, iv: bytes) -> 'CbcMode':
-        """Create AES-CBC cipher with the given keyslot."""
+        """
+        Create AES-CBC cipher with the given keyslot.
+
+        :param keyslot: :class:`Keyslot` to use.
+        :param iv: Initialization vector.
+        :return: An AES-CBC cipher object from PyCryptodome.
+        :rtype: CbcMode
+        """
         try:
             key = self.key_normal[keyslot]
         except KeyError:
@@ -268,6 +281,11 @@ class CryptoEngine:
         Create an AES-CTR cipher with the given keyslot.
 
         Normal and DSi crypto will be automatically chosen depending on keyslot.
+
+        :param keyslot: :class:`Keyslot` to use.
+        :param ctr: Counter to start with.
+        :return: An AES-CTR cipher object from PyCryptodome, or a wrapper for DSi keyslots.
+        :rtype: CtrMode | _TWLCryptoWrapper
         """
         try:
             key = self.key_normal[keyslot]
@@ -282,7 +300,13 @@ class CryptoEngine:
             return cipher
 
     def create_ecb_cipher(self, keyslot: Keyslot) -> 'EcbMode':
-        """Create an AES-ECB cipher with the given keyslot."""
+        """
+        Create an AES-ECB cipher with the given keyslot.
+
+        :param keyslot: :class:`Keyslot` to use.
+        :return: An AES-ECB cipher object from PyCryptodome.
+        :rtype: EcbMode
+        """
         try:
             key = self.key_normal[keyslot]
         except KeyError:
@@ -290,8 +314,14 @@ class CryptoEngine:
 
         return AES.new(key, AES.MODE_ECB)
 
-    def create_cmac_object(self, keyslot: Keyslot) -> 'CMACObject':
-        """Create a CMAC object with the given keyslot."""
+    def create_cmac_object(self, keyslot: Keyslot) -> 'CMAC_CLASS':
+        """
+        Create a CMAC object with the given keyslot.
+
+        :param keyslot: :class:`Keyslot` to use.
+        :return: A CMAC object from PyCryptodome.
+        :rtype: CMAC
+        """
         try:
             key = self.key_normal[keyslot]
         except KeyError:
@@ -300,11 +330,27 @@ class CryptoEngine:
         return CMAC.new(key, ciphermod=AES)
 
     def create_ctr_io(self, keyslot: Keyslot, fh: 'BinaryIO', ctr: int):
-        """Create an AES-CTR read-write file object with the given keyslot."""
+        """
+        Create an AES-CTR read-write file object with the given keyslot.
+
+        :param keyslot: :class:`Keyslot` to use.
+        :param fh: File-like object to wrap.
+        :param ctr: Counter to start with.
+        :return: A file-like object that does decryption and encryption on the fly.
+        :rtype: CTRFileIO
+        """
         return CTRFileIO(fh, self, keyslot, ctr)
 
     def create_cbc_io(self, keyslot: Keyslot, fh: 'BinaryIO', iv: bytes):
-        """Create an AES-CBC read-only file object with the given keyslot."""
+        """
+        Create an AES-CBC read-only file object with the given keyslot.
+
+        :param keyslot: :class:`Keyslot` to use.
+        :param fh: File-like object to wrap.
+        :param iv: Initialization vector.
+        :return: A file-like object that does decryption on the fly.
+        :rtype: CBCFileIO
+        """
         return CBCFileIO(fh, self, keyslot, iv)
 
     @staticmethod
@@ -343,7 +389,7 @@ class CryptoEngine:
         else:
             self.set_keyslot('y', 0x3D, common_key_y[common_key_index])
 
-        cipher = self.create_cbc_cipher(0x3D, title_id + (b'\0' * 8))
+        cipher = self.create_cbc_cipher(Keyslot.CommonKey, title_id + (b'\0' * 8))
         self.set_normal_key(0x40, cipher.decrypt(titlekey_enc))
 
     def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]'):
@@ -375,12 +421,12 @@ class CryptoEngine:
 
     @staticmethod
     def keygen_manual(key_x: int, key_y: int) -> bytes:
-        """Generate a normal key using the 3DS AES keyscrambler."""
+        """Generate a normal key using the 3DS AES key scrambler."""
         return rol((rol(key_x, 2, 128) ^ key_y) + 0x1FF9E9AAC5FE0408024591DC5D52768A, 87, 128).to_bytes(0x10, 'big')
 
     @staticmethod
     def keygen_twl_manual(key_x: int, key_y: int) -> bytes:
-        """Generate a normal key using the DSi AES keyscrambler."""
+        """Generate a normal key using the DSi AES key scrambler."""
         # usually would convert to LE bytes in the end then flip with [::-1], but those just cancel out
         return rol((key_x ^ key_y) + 0xFFFEFB4E295902582A680F5F1A4F3E79, 42, 128).to_bytes(0x10, 'big')
 
@@ -590,7 +636,7 @@ class CryptoEngine:
             off += 16
 
     @_requires_bootrom
-    def setup_keys_from_otp_file(self, path: str):
+    def setup_keys_from_otp_file(self, path: 'Union[PathLike, str, bytes]'):
         """Set up console-unique keys from an OTP file. Encrypted and decrypted are supported."""
         with open(path, 'rb') as f:
             self.setup_keys_from_otp(f.read(0x100))
