@@ -1,3 +1,6 @@
+## v0.2.1 - April 3, 2020
+* Remove debug print in `SDFilesystem.open`
+
 ## v0.2.0 - April 3, 2020
 * Add the module `pyctr.type.sd` with the class `SDFilesystem`
 * Add docstrings to `pyctr.crypto`
