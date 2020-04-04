@@ -5,15 +5,15 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from io import TextIOWrapper
+from os import PathLike
 from threading import Lock
 from typing import overload, TYPE_CHECKING, NamedTuple
 
-from ..common import PyCTRError, _ReaderOpenFileBase
+from ..common import PyCTRError
 from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:
-    from os import PathLike
     from typing import BinaryIO, Optional, Tuple, Union
 
 __all__ = ['IVFC_HEADER_SIZE', 'IVFC_ROMFS_MAGIC_NUM', 'ROMFS_LV3_HEADER_SIZE', 'RomFSError', 'InvalidIVFCError',
