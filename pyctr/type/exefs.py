@@ -172,9 +172,20 @@ class _ExeFSOpenFile(_ReaderOpenFileBase):
 
 class ExeFSReader:
     """
-    Class to read the 3DS ExeFS container.
+    Reads the contents of the Executable Filesystem, found inside NCCH containers.
 
-    http://3dbrew.org/wiki/ExeFS
+    The contents typically include .code, icon, and banner. For titles released before System Menu 5.0.0-11, logo can
+    also one of the contents, otherwise logo has a dedicated NCCH section.
+
+    .code can sometimes be compressed which is indicated in the NCCH Extended Header. When decompressed, a new entry
+    called .code-decompressed is added.
+
+    If icon is found, it is loaded into an :class:`type.smdh.SMDH` object.
+
+    :param fp: A file path or a file-like object with the CCI data.
+    :param closefd: Close the underlying file object when closed.
+    :ivar entries: A `dict` with each entry in the ExeFS.
+    :ivar icon: An :class:`type.smdh.SMDH` object for the icon entry.
     """
 
     closed = False
@@ -256,7 +267,13 @@ class ExeFSReader:
         self.close()
 
     def open(self, path: str, *, normalize: bool = True):
-        """Open a file in the ExeFS for reading."""
+        """
+        Open an entry in the ExeFS for reading.
+
+        :param path: Name of the entry. Can start with / or end in .bin.
+        :param normalize: Remove / and .bin from the path.
+        :return: A file-like object that reads from the entry.
+        """
         if normalize:
             # remove beginning "/" and ending ".bin"
             path = _normalize_path(path)
@@ -286,7 +303,7 @@ class ExeFSReader:
         """
         Decompress '.code' in the container. The result will be available as '.code-decompressed'.
 
-        The return value is if '.code' was actually decompressed.
+        :return: If '.code' was actually decompressed.
         """
         with self.open('.code') as f:
             code = f.read()
