@@ -7,6 +7,9 @@ from .common import _raise_if_closed
 
 if TYPE_CHECKING:
     from typing import BinaryIO
+    # this is to trick type checkers into accepting SubsectionIO as a BinaryIO object
+    # if you know a better way, let me know
+    BufferedIOBase = BinaryIO
 
 # this prevents two SubsectionIO instances on the same file object from interfering with eachother
 _lock_objects = WeakValueDictionary()
