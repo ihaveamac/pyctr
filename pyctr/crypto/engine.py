@@ -17,8 +17,8 @@ from Cryptodome.Cipher import AES
 from Cryptodome.Hash import CMAC
 from Cryptodome.Util import Counter
 
-from .common import PyCTRError, _raise_if_closed
-from .util import config_dirs, readbe, readle
+from common import PyCTRError, _raise_if_closed
+from util import config_dirs, readbe, readle
 
 if TYPE_CHECKING:
     from os import PathLike
