@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from typing import BinaryIO, Dict, List, Optional, Union
 
 __all__ = ['CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError', 'TicketLengthError',
-           'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine']
+           'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO', 'CBCFileIO']
 
 
 class CryptoError(PyCTRError):
