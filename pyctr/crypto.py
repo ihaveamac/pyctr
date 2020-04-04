@@ -198,7 +198,8 @@ class CryptoEngine:
     """
     Emulates the AES engine of the Nintendo 3DS, including keyslots and the key scrambler.
 
-    :param boot9: Path to a dump of the protected region of the ARM9 BootROM. Defaults to None, which causes it to search a predefined list of paths.
+    :param boot9: Path to a dump of the protected region of the ARM9 BootROM. Defaults to None, which causes it to
+        search a predefined list of paths.
     :param dev: Whether or not to use devunit keys.
     :param setup_b9_keys: Whether or not to automatically load keys from boot9.
     """
@@ -694,6 +695,10 @@ class _CryptoFileBase(BufferedIOBase):
     @_raise_if_closed
     def seekable(self) -> bool:
         return self._reader.seekable()
+
+    @_raise_if_closed
+    def fileno(self) -> int:
+        return self._reader.fileno()
 
 
 class CTRFileIO(_CryptoFileBase):
