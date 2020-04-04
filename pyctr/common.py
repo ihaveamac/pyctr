@@ -19,6 +19,12 @@ class PyCTRError(Exception):
 
 
 def _raise_if_closed(method):
+    """
+    Wraps a method that raises an exception if the reader file object is closed.
+
+    :param method: The method to call if the file is not closed.
+    :return: The wrapper method.
+    """
     @wraps(method)
     def decorator(self: '_ReaderOpenFileBase', *args, **kwargs):
         if self._reader.closed:
