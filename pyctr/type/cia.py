@@ -51,7 +51,47 @@ class CIARegion(NamedTuple):
 
 
 class CIAReader:
-    """Class for the 3DS CIA container."""
+    """
+    Reads the contents of CTR Importable Archive files. The sources of these are usually dumps from digital titles from
+    Nintendo eShop or the update CDN, gamecard update partitions, or Download Play children.
+
+    Only NCCH contents are supported. SRL (DSiWare) contents are currently ignored.
+
+    CIA files contain:
+
+    - a 0x20-byte header with sizes for all the following sections
+    - an archive header where each bit is an enabled content
+    - a Certificate chain to verify the signatures in all the following sections
+    - a Ticket with a titlekey to decrypt the contents
+    - a Title Metadata (TMD) that contains information about all the possible contents
+    - the contents themselves
+    - an optional Meta region
+
+    In executable titles, the first content is the CTR Executable Image (CXI), second is a manual in a CTR File Archive
+    (CFA), and third is a Download Play child container in a CFA. In DLC titles (tid-high is 0004008c),
+    the first content has meta information about each content, then the rest contain the DLC content. All contents are
+    CFAs. In system archives, the first (and only) content is a CFA.
+
+    CIA files do not always contain all the contents in the TMD, especially in dumped DLC titles. Which contents are in
+    the archive is indicated in the archive header.
+
+    Note that a custom :class:`crypto.CryptoEngine` object is only used for encryption on the CIA contents. Each
+    :class:`type.ncch.NCCHReader` must use their own object, as it can only store keys for a single NCCH container. To
+    use a custom one, set `load_contents` to `False`, then load each section manually with `open_raw_section`.
+
+    :param fp: A file path or a file-like object with the CIA data.
+    :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
+    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+        be created. This is only used to decrypt the CIA, not the NCCH contents.
+    :param dev: Use devunit keys.
+    :param seeddb: Path to a SeedDB file.
+    :param load_contents: Load each partition with :class:`type.ncch.NCCHReader`.
+    :ivar contents: A `dict` of :class:`type.ncch.NCCHReader` objects for each active NCCH content.
+    :ivar content_info: A list of :class:`type.tmd.ContentChunkRecord` objects for each active content.
+    :ivar tmd: The :class:`type.tmd.TitleMetadataReader` object with information from the TMD section.
+    :ivar sections: A list of :class:`CIARegion` objects containing the offset and size of each section.
+    :ivar total_size: Expected size of the CIA file in bytes.
+    """
 
     closed = False
 
@@ -199,7 +239,13 @@ class CIAReader:
         return f'<{type(self).__name__} {info_final}>'
 
     def open_raw_section(self, section: 'CIASection'):
-        """Open a raw CIA section for reading."""
+        """
+        Open a raw CIA section for reading with on-the-fly decryption.
+
+        :param section: The section to open.
+        :return: A file-like object that reads from the section.
+        :rtype: SubsectionIO
+        """
         region = self.sections[section]
         fh = SubsectionIO(self._fp, self._start + region.offset, region.size)
         if region.iv:
