@@ -5,3 +5,4 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from .engine import *
+from .seeddb import *
