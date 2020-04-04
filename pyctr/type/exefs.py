@@ -177,6 +177,9 @@ class ExeFSReader:
     The contents typically include .code, icon, and banner. For titles released before System Menu 5.0.0-11, logo can
     also one of the contents, otherwise logo has a dedicated NCCH section.
 
+    The other notable use of an ExeFS is GodMode9's essentials backup, which can include the files frndseed, hwcal0,
+    hwcal1, movable, nand_cid, nand_hdr, otp, and secinfo.
+
     .code can sometimes be compressed which is indicated in the NCCH Extended Header. When decompressed, a new entry
     called .code-decompressed is added.
 
