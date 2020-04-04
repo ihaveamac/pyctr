@@ -130,7 +130,21 @@ class NCCHFlags(NamedTuple):
 
 
 class _NCCHSectionFile(_ReaderOpenFileBase):
-    """Provides a raw, decrypted NCCH section as a file-like object."""
+    """
+    Provides a raw, decrypted NCCH section as a file-like object.
+
+    This is only used in two cases:
+
+    - An ExeFS when an extra keyslot is used. Parts of the ExeFS are decrypted using Original NCCH (the header, icon,
+      and banner), while the rest uses the extra keyslot. This is done to retain compatibility with Nintendo 3DS
+      systems that don't support the extra keyslot. The .code would never be loaded on these old systems, since an
+      update prompt on the HOME Menu would prevent the title from starting.
+    - The simulated fully-decrypted NCCH. Since this loads from multiple sections with varying encryption, complex
+      handling is required. This is done in `get_data` of :class:`NCCHReader`.
+
+    In all other cases a :class:`crypto.CTRFileIO` object is used for encrypted sections, or
+    :class:`fileio.SubsectionIO` for decrypted.
+    """
 
     def __init__(self, reader: 'NCCHReader', path: 'NCCHSection'):
         super().__init__(reader, path)
@@ -138,7 +152,47 @@ class _NCCHSectionFile(_ReaderOpenFileBase):
 
 
 class NCCHReader:
-    """Class for 3DS NCCH container."""
+    """
+    Reads the contents of NCCH containers.
+
+    The NCCH header contains information such as Title ID, Product Code, flags, and section info.
+
+    NCCH containers can be classified as a CTR Executable Image (CXI) if it has executable code, or a CTR File Archive
+    (CFA) if it doesn't.
+
+    A CXI can contain:
+
+    - an Extended Header (extheader) with executable info and access permissions
+    - a logo region (for titles released before System Menu 5.0.0-11, this is in the ExeFS)
+    - a plain region with SDK library strings
+    - an Executable Filesystem (ExeFS) with .code, icon, and banner
+    - a Read-only Filesystem (RomFS)
+
+    A CFA can contain:
+
+    - an ExeFS with icon and banner
+    - a RomFS
+
+    :param fp: A file path or a file-like object with the NCCH data.
+    :param case_insensitive: Use case-insensitive paths for the RomFS.
+    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+        be created.
+    :param dev: Use devunit keys.
+    :param seeddb: Path to a SeedDB file.
+    :param load_sections: Load the ExeFS and RomFS as :class:`type.exefs.ExeFSReader` and
+        :class:`type.romfs.RomFSReader` objects.
+    :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
+        the NCCH flags.
+    :ivar exefs: An :class:`type.exefs.ExeFSReader` object, if the NCCH has an ExeFS.
+    :ivar romfs: A :class:`type.romfs.RomFSReader` object, if the NCCH has a RomFS.
+    :ivar program_id: Program ID. This is usually the Title ID of the entire application.
+    :ivar partition_id: Partition ID. This is usually different for each content in a title, except for DLC.
+    :ivar content_size: Expected size of the NCCH container in bytes.
+    :ivar sections: A `dict` containing each available section.
+    :ivar flags: An :class:`NCCHFlags` object containing the flags of the container.
+    :ivar product_code: Product code of the content.
+    :ivar version: NCCH version. Not to be confused with the title version.
+    """
 
     seed_set_up = False
     seed: 'Optional[bytes]' = None
@@ -288,7 +342,8 @@ class NCCHReader:
             #   if that is what you want. or you can fix the empty space yourself with a hex editor.
             self._exefs_keyslot_normal_range = [(0, 0x200)]
             exefs_fp = self.open_raw_section(NCCHSection.ExeFS)
-            # load the RomFS reader
+            # load the ExeFS reader
+            # icon is not loaded since we need to figure out its section offset and size first
             self.exefs = ExeFSReader(exefs_fp, _load_icon=False)
 
             for entry in self.exefs.entries.values():
@@ -313,7 +368,12 @@ class NCCHReader:
                 self.romfs = RomFSReader(romfs_fp, case_insensitive=self._case_insensitive)
 
     def open_raw_section(self, section: 'NCCHSection'):
-        """Open a raw NCCH section for reading."""
+        """
+        Open a raw NCCH section for reading with on-the-fly decryption.
+
+        :param section: The section to open.
+        :return: A file-like object that reads from the section.
+        """
         # check if the region is ExeFS and uses a newer keyslot, or is fulldec, and use a specific file class
         if (section == NCCHSection.ExeFS and self.extra_keyslot) or (section == NCCHSection.FullDecrypted):
             return _NCCHSectionFile(self, section)
@@ -373,6 +433,14 @@ class NCCHReader:
         raise InvalidNCCHError(paths)
 
     def get_data(self, section: 'Union[NCCHRegion, NCCHSection]', offset: int, size: int) -> bytes:
+        """
+        Get data from an NCCH section.
+
+        :param section: A region or section to read from.
+        :param offset: Offset from the section start.
+        :param size: Data size.
+        :return: Decrypted data from the region.
+        """
         try:
             region = self._all_sections[section]
         except KeyError:
