@@ -7,7 +7,7 @@
 from hashlib import sha256
 from enum import IntEnum
 from math import ceil
-from os import environ
+from os import environ, PathLike
 from os.path import join as pjoin
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
@@ -20,7 +20,6 @@ from ..fileio import SubsectionIO
 from ..util import config_dirs, readle, roundup
 
 if TYPE_CHECKING:
-    from os import PathLike
     from typing import BinaryIO, Dict, List, Optional, Tuple, Union
 
 __all__ = ['NCCH_MEDIA_UNIT', 'NO_ENCRYPTION', 'EXEFS_NORMAL_CRYPTO_FILES', 'FIXED_SYSTEM_KEY', 'NCCHError',
