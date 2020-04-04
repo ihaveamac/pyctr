@@ -50,7 +50,25 @@ class CCIRegion(NamedTuple):
 
 
 class CCIReader:
-    """Class for the 3DS CCI container."""
+    """
+    Reads the contents of CTR Cart Image files, usually dumps from Nintendo 3DS game cards.
+
+    A CCI file can contain 8 partitions; in practice, only 0, 1, 2, 6 and 7 seem to be used.
+
+    Note that a custom :class:`crypto.CryptoEngine` object cannot be given, as it can only store keys for a single
+    :class:`type.ncch.NCCHReader`. To use a custom one, set `load_contents` to `False`, then load each section manually
+    with `open_raw_section`.
+
+    :param fp: A file path or a file-like object with the CCI data.
+    :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
+    :param dev: Use devunit keys.
+    :param load_contents: Load each partition with :class:`type.ncch.NCCHReader`.
+    :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
+        the NCCH flags.
+    :ivar contents: A list of :class:`type.ncch.NCCHReader` objects for each partition.
+    :ivar image_size: Image size in bytes. This does not always match the file size on disk.
+    :ivar sections: A list of :class:`CCIRegion` objects containing the offset and size of each partition.
+    """
 
     closed = False
 
@@ -141,6 +159,12 @@ class CCIReader:
         return f'<{type(self).__name__} {info_final}>'
 
     def open_raw_section(self, section: 'CCISection'):
-        """Open a raw CCI section for reading."""
+        """
+        Open a raw CCI section for reading.
+
+        :param section: The section to open.
+        :return: A file-like object that reads from the section.
+        :rtype: SubsectionIO
+        """
         region = self.sections[section]
         return SubsectionIO(self._fp, self._start + region.offset, region.size)
