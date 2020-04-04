@@ -42,11 +42,13 @@ class SDFilesystem:
     Allows access to encrypted SD card contents under the "Nintendo 3DS" directory.
 
     :param path: Path to the Nintendo 3DS folder.
-    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to be created.
+    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+        be created.
     :param sd_key_file: Path to a movable.sed file to load the SD KeyY from.
     :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
     :ivar id1s: A list of ID1 directories found in the ID0 directory.
-    :ivar current_id1: The ID1 directory used as the default when none is specified, initially set to the first value in id1s.
+    :ivar current_id1: The ID1 directory used as the default when none is specified, initially set to the first value
+        in id1s.
     """
 
     def __init__(self, path: 'Union[PathLike, str, bytes]', *, crypto: CryptoEngine = None,
@@ -101,6 +103,8 @@ class SDFilesystem:
     def open(self, path: str, mode: str = 'rb', *, id1: str = None) -> 'CTRFileIO':
         """
         Opens a file in the SD filesystem, allowing decrypted access.
+
+        Currently, files under "Nintendo DSiWare" cannot be opened.
 
         :param path: Path relative to the ID1 directory.
         :param mode: Mode to open the file with. Binary mode is always used.
