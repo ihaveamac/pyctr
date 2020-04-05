@@ -3,7 +3,7 @@ from threading import Lock
 from weakref import WeakValueDictionary
 from typing import TYPE_CHECKING
 
-from .common import _raise_if_closed
+from .common import _raise_if_file_closed
 
 if TYPE_CHECKING:
     from typing import BinaryIO
@@ -47,7 +47,7 @@ class SubsectionIO(BufferedIOBase):
 
     __del__ = close
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
         if size == -1:
             size = self._size - self._seek
@@ -64,7 +64,7 @@ class SubsectionIO(BufferedIOBase):
         self._seek += len(data)
         return data
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0) -> int:
         if whence == 0:
             if seek < 0:
@@ -80,7 +80,7 @@ class SubsectionIO(BufferedIOBase):
             raise ValueError(f'invalid whence ({seek}, should be 0, 1 or 2)')
         return self._seek
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def write(self, data: bytes) -> int:
         if self._seek > self._size:
             # attempting to write past subsection
@@ -97,14 +97,14 @@ class SubsectionIO(BufferedIOBase):
         self._seek += data_written
         return data_written
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def readable(self) -> bool:
         return self._reader.readable()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def writable(self) -> bool:
         return self._reader.writable()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seekable(self) -> bool:
         return self._reader.seekable()

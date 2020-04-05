@@ -18,7 +18,7 @@ class PyCTRError(Exception):
     """Common base class for all PyCTR errors."""
 
 
-def _raise_if_closed(method):
+def _raise_if_file_closed(method):
     """
     Wraps a method that raises an exception if the reader file object is closed.
 
@@ -49,7 +49,7 @@ class _ReaderOpenFileBase(BufferedIOBase):
     def __repr__(self):
         return f'<{type(self).__name__} path={self._path!r} info={self._info!r} reader={self._reader!r}>'
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
         if size == -1:
             size = self._info.size - self._seek
@@ -59,7 +59,7 @@ class _ReaderOpenFileBase(BufferedIOBase):
 
     read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0) -> int:
         if whence == 0:
             if seek < 0:
@@ -71,18 +71,18 @@ class _ReaderOpenFileBase(BufferedIOBase):
             self._seek = max(self._info.size + seek, 0)
         return self._seek
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def tell(self) -> int:
         return self._seek
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def readable(self) -> bool:
         return True
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def writable(self) -> bool:
         return False
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seekable(self) -> bool:
         return True

@@ -17,7 +17,7 @@ from Cryptodome.Cipher import AES
 from Cryptodome.Hash import CMAC
 from Cryptodome.Util import Counter
 
-from ..common import PyCTRError, _raise_if_closed
+from ..common import PyCTRError, _raise_if_file_closed
 from ..util import config_dirs, readbe, readle
 
 if TYPE_CHECKING:
@@ -676,27 +676,27 @@ class _CryptoFileBase(BufferedIOBase):
 
     __del__ = close
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def flush(self):
         self._reader.flush()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def tell(self) -> int:
         return self._reader.tell()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def readable(self) -> bool:
         return self._reader.readable()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def writable(self) -> bool:
         return self._reader.writable()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seekable(self) -> bool:
         return self._reader.seekable()
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def fileno(self) -> int:
         return self._reader.fileno()
 
@@ -713,7 +713,7 @@ class CTRFileIO(_CryptoFileBase):
     def __repr__(self):
         return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot:#04x}, counter={self._counter!r})'
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
         cur_offset = self.tell()
         data = self._reader.read(size)
@@ -725,7 +725,7 @@ class CTRFileIO(_CryptoFileBase):
 
     read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def write(self, data: bytes) -> int:
         cur_offset = self.tell()
         counter = self._counter + (cur_offset >> 4)
@@ -734,7 +734,7 @@ class CTRFileIO(_CryptoFileBase):
         cipher.encrypt(b'\0' * (cur_offset % 0x10))
         return self._reader.write(cipher.encrypt(data))
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0) -> int:
         # TODO: if the seek goes past the file, the data between the former EOF and seek point should also be encrypted.
         return self._reader.seek(seek, whence)
@@ -755,7 +755,7 @@ class CBCFileIO(_CryptoFileBase):
     def __repr__(self):
         return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot:#04x}, iv={self._iv!r})'
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def read(self, size: int = -1):
         offset = self._reader.tell()
 
@@ -791,11 +791,11 @@ class CBCFileIO(_CryptoFileBase):
 
     read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0):
         # even though read re-seeks to read required data, this allows the underlying object to handle seek how it wants
         return self._reader.seek(seek, whence)
 
-    @_raise_if_closed
+    @_raise_if_file_closed
     def writable(self) -> bool:
         return False
