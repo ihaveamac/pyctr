@@ -51,12 +51,12 @@ class SDFilesystem:
         in id1s.
     """
 
-    def __init__(self, path: 'Union[PathLike, str, bytes]', *, crypto: CryptoEngine = None,
+    def __init__(self, path: 'Union[PathLike, str, bytes]', *, crypto: CryptoEngine = None, dev: bool = False,
                  sd_key_file: 'Union[PathLike, str, bytes]' = None, sd_key: bytes = None):
         if crypto:
             self._crypto = crypto
         else:
-            self._crypto = CryptoEngine()
+            self._crypto = CryptoEngine(dev=dev)
 
         if sd_key:
             self._crypto.setup_sd_key(sd_key)
