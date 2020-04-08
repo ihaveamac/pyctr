@@ -279,6 +279,9 @@ class NCCHReader(TypeReaderCryptoBase):
         # load the original (non-seeded) KeyY into the Original NCCH slot
         self._crypto.set_keyslot('y', Keyslot.NCCH, self.get_key_y(original=True))
 
+        # tells if the right seed has been set up
+        self._seed_set_up = False
+
         # load the seed if needed
         if self.flags.uses_seed:
             self.setup_seed(get_seed(self.program_id))
@@ -357,7 +360,7 @@ class NCCHReader(TypeReaderCryptoBase):
     def get_key_y(self, original: bool = False) -> bytes:
         if original or not self.flags.uses_seed:
             return self._key_y
-        if self.flags.uses_seed and not self.seed_set_up:
+        if self.flags.uses_seed and not self._seed_set_up:
             raise MissingSeedError('NCCH uses seed crypto, but seed is not set up')
         else:
             return self._seeded_key_y
@@ -375,9 +378,8 @@ class NCCHReader(TypeReaderCryptoBase):
         seed_verify_hash = sha256(seed + bytes.fromhex(self.program_id)[::-1]).digest()
         if seed_verify_hash[0x0:0x4] != self._seed_verify:
             raise NCCHSeedError('given seed does not match with seed verify hash in header')
-        self.seed = seed
         self._seeded_key_y = sha256(self._key_y + seed).digest()[0:16]
-        self.seed_set_up = True
+        self._seed_set_up = True
 
     def get_data(self, section: 'Union[NCCHRegion, NCCHSection]', offset: int, size: int) -> bytes:
         """
