@@ -7,24 +7,24 @@
 from hashlib import sha256
 from enum import IntEnum
 from math import ceil
-from os import environ, PathLike
-from os.path import join as pjoin
+from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
+from ..common import PyCTRError, _ReaderOpenFileBase
+from ..crypto import CryptoEngine, Keyslot, get_seed
+from ..fileio import SubsectionIO
+from ..util import readle, roundup
+from .base import TypeReaderCryptoBase
 from .exefs import ExeFSReader, EXEFS_HEADER_SIZE
 from .romfs import RomFSReader
-from ..common import PyCTRError, _ReaderOpenFileBase
-from ..crypto import CryptoEngine, Keyslot
-from ..fileio import SubsectionIO
-from ..util import config_dirs, readle, roundup
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, List, Optional, Tuple, Union
 
 __all__ = ['NCCH_MEDIA_UNIT', 'NO_ENCRYPTION', 'EXEFS_NORMAL_CRYPTO_FILES', 'FIXED_SYSTEM_KEY', 'NCCHError',
-           'InvalidNCCHError', 'NCCHSeedError', 'MissingSeedError', 'SeedDBNotFoundError', 'get_seed',
-           'extra_cryptoflags', 'NCCHSection', 'NCCHRegion', 'NCCHFlags', 'NCCHReader']
+           'InvalidNCCHError', 'NCCHSeedError', 'MissingSeedError', 'extra_cryptoflags', 'NCCHSection', 'NCCHRegion',
+           'NCCHFlags', 'NCCHReader']
 
 
 class NCCHError(PyCTRError):
@@ -42,32 +42,6 @@ class NCCHSeedError(NCCHError):
 class MissingSeedError(NCCHSeedError):
     """Seed could not be found."""
 
-
-class SeedDBNotFoundError(NCCHSeedError):
-    """SeedDB was not found. Main argument is a tuple of checked paths."""
-
-
-def get_seed(f: 'BinaryIO', program_id: int) -> bytes:
-    """Get a seed in a seeddb.bin from an I/O stream."""
-    # convert the Program ID to little-endian bytes, as the TID is stored in seeddb.bin this way
-    tid_bytes = program_id.to_bytes(0x8, 'little')
-    f.seek(0)
-    # get the amount of seeds
-    seed_count = readle(f.read(4))
-    f.seek(0x10)
-    for _ in range(seed_count):
-        entry = f.read(0x20)
-        if entry[0:8] == tid_bytes:
-            return entry[0x8:0x18]
-    raise NCCHSeedError(f'missing seed for {program_id:016X} from seeddb.bin')
-
-
-seeddb_paths = [pjoin(x, 'seeddb.bin') for x in config_dirs]
-try:
-    # try to insert the path in the SEEDDB_PATH environment variable
-    seeddb_paths.insert(0, environ['SEEDDB_PATH'])
-except KeyError:
-    pass
 
 # NCCH sections are stored in media units
 # for example, ExeFS may be stored in 13 media units, which is 0x1A00 bytes (13 * 0x200)
@@ -150,7 +124,7 @@ class _NCCHSectionFile(_ReaderOpenFileBase):
         self._info = reader.sections[path]
 
 
-class NCCHReader:
+class NCCHReader(TypeReaderCryptoBase):
     """
     Reads the contents of NCCH containers.
 
@@ -172,61 +146,69 @@ class NCCHReader:
     - an ExeFS with icon and banner
     - a RomFS
 
-    :param fp: A file path or a file-like object with the NCCH data.
+    :param file: A file path or a file-like object with the NCCH data.
     :param case_insensitive: Use case-insensitive paths for the RomFS.
     :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created.
     :param dev: Use devunit keys.
-    :param seeddb: Path to a SeedDB file.
     :param load_sections: Load the ExeFS and RomFS as :class:`type.exefs.ExeFSReader` and
         :class:`type.romfs.RomFSReader` objects.
     :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
         the NCCH flags.
-    :ivar exefs: An :class:`type.exefs.ExeFSReader` object, if the NCCH has an ExeFS.
-    :ivar romfs: A :class:`type.romfs.RomFSReader` object, if the NCCH has a RomFS.
-    :ivar program_id: Program ID. This is usually the Title ID of the entire application.
-    :ivar partition_id: Partition ID. This is usually different for each content in a title, except for DLC.
-    :ivar content_size: Expected size of the NCCH container in bytes.
-    :ivar sections: A `dict` containing each available section.
-    :ivar flags: An :class:`NCCHFlags` object containing the flags of the container.
-    :ivar product_code: Product code of the content.
-    :ivar version: NCCH version. Not to be confused with the title version.
     """
 
-    seed_set_up = False
-    seed: 'Optional[bytes]' = None
     # this is the KeyY when generated using the seed
     _seeded_key_y = None
+
     closed = False
+    """`True` if the reader is closed."""
+
+    sections: 'Dict[NCCHSection, NCCHRegion]'
+    """Contains all the sections the NCCH has."""
 
     # this lists the ranges of the ExeFS to decrypt with Original NCCH (see load_sections)
     _exefs_keyslot_normal_range: 'List[Tuple[int, int]]'
+
     exefs: 'Optional[ExeFSReader]' = None
+    """The :class:`~.ExeFSReader` of the NCCH, if it has one."""
+
     romfs: 'Optional[RomFSReader]' = None
+    """The :class:`~.RomFSReader` of the NCCH, if it has one."""
 
-    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, case_insensitive: bool = True,
-                 crypto: CryptoEngine = None, dev: bool = False, seeddb: str = None, load_sections: bool = True,
-                 assume_decrypted: bool = False):
-        if isinstance(fp, (PathLike, str, bytes)):
-            fp = open(fp, 'rb')
+    program_id: str
+    """Title ID of the application"""
 
-        if crypto:
-            self._crypto = crypto
-        else:
-            self._crypto = CryptoEngine(dev=dev)
+    partition_id: str
+    """Partition ID as an integer. Usually this is different for NCCH in a title, except for DLC."""
 
-        # old decryption methods did not fix the flags, so sometimes we have to assume it is decrypted
-        self.assume_decrypted = assume_decrypted
+    product_code: str
+    """Product code of the content."""
 
-        # store the starting offset so the NCCH can be read from any point in the base file
-        self._start = fp.tell()
-        self._fp = fp
-        # store case-insensitivity for RomFSReader
-        self._case_insensitive = case_insensitive
-        # threaing lock
+    content_size: int
+    """Expected size of the NCCH container in bytes."""
+
+    flags: NCCHFlags
+    """NCCH flags of the container."""
+
+    version: int
+    """NCCH version. Not to be confused with the title version."""
+
+    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False,
+                 load_sections: bool = True, assume_decrypted: bool = False):
+
+        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
+
+        # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()
 
-        header = fp.read(0x200)
+        # old decryption methods did not fix the flags, so sometimes we have to assume it is decrypted
+        self._assume_decrypted = assume_decrypted
+
+        # store case-insensitivity for RomFSReader
+        self._case_insensitive = case_insensitive
+
+        header = self._file.read(0x200)
 
         # load the Key Y from the first 0x10 of the signature
         self._key_y = header[0x0:0x10]
@@ -236,22 +218,24 @@ class NCCHReader:
         self.content_size = readle(header[0x104:0x108]) * NCCH_MEDIA_UNIT
         # get the Partition ID, which is used in the encryption
         # this is generally different for each content in a title, except for DLC
-        self.partition_id = readle(header[0x108:0x110])
+        # the int is used to generate the IV for each section
+        partition_id_int = readle(header[0x108:0x110])
+        self.partition_id = f'{partition_id_int:016x}'
         # load the seed verify field, which is part of an sha256 hash to verify if
         #   a seed is correct for this title
         self._seed_verify = header[0x114:0x118]
         # load the Product Code store it as a unicode string
         self.product_code = header[0x150:0x160].decode('ascii').strip('\0')
         # load the Program ID
-        # this is the Title ID, and
-        self.program_id = readle(header[0x118:0x120])
+        # this is the Title ID, and is usually the same for each section
+        self.program_id = header[0x118:0x120][::-1].hex()
         # load the extheader size, but this code only uses it to determine if it exists
         extheader_size = readle(header[0x180:0x184])
 
         # each section is stored with the section ID, then the region information (offset, size, IV)
-        self.sections: 'Dict[NCCHSection, NCCHRegion]' = {}
-        # same as above, but includes non-existant regions too, for the full-decrypted handler
-        self._all_sections: 'Dict[NCCHSection, NCCHRegion]' = {}
+        self.sections = {}
+        # same as above, but includes non-existent regions too, for the full-decrypted handler
+        self._all_sections = {}
 
         def add_region(section: 'NCCHSection', starting_unit: int, units: int):
             offset = starting_unit * NCCH_MEDIA_UNIT
@@ -260,7 +244,7 @@ class NCCHReader:
                                 offset=offset,
                                 size=size,
                                 end=offset + size,
-                                iv=self.partition_id << 64 | (section << 56))
+                                iv=partition_id_int << 64 | (section << 56))
             self._all_sections[section] = region
             if units != 0:  # only add existing regions
                 self.sections[section] = region
@@ -297,7 +281,7 @@ class NCCHReader:
 
         # load the seed if needed
         if self.flags.uses_seed:
-            self.load_seed_from_seeddb(seeddb)
+            self.setup_seed(get_seed(self.program_id))
 
         # load the (seeded, if needed) key into the extra keyslot
         self._crypto.set_keyslot('y', self.extra_keyslot, self.get_key_y())
@@ -306,27 +290,12 @@ class NCCHReader:
         if load_sections:
             self.load_sections()
 
-    def close(self):
-        self.closed = True
-        try:
-            self._fp.close()
-        except AttributeError:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    __del__ = close
-
     def load_sections(self):
         """Load the sections of the NCCH (Extended Header, ExeFS, and RomFS)."""
 
         # try to load the ExeFS
         try:
-            self._fp.seek(self._start + self.sections[NCCHSection.ExeFS].offset)
+            self._file.seek(self._start + self.sections[NCCHSection.ExeFS].offset)
         except KeyError:
             pass  # no ExeFS
         else:
@@ -358,7 +327,7 @@ class NCCHReader:
         # try to load RomFS
         if not self.flags.no_romfs:
             try:
-                self._fp.seek(self._start + self.sections[NCCHSection.RomFS].offset)
+                self._file.seek(self._start + self.sections[NCCHSection.RomFS].offset)
             except KeyError:
                 pass  # no RomFS
             else:
@@ -378,9 +347,9 @@ class NCCHReader:
             return _NCCHSectionFile(self, section)
         else:
             region = self.sections[section]
-            fh = SubsectionIO(self._fp, self._start + region.offset, region.size)
+            fh = SubsectionIO(self._file, self._start + region.offset, region.size)
         # if the region is encrypted (not ExeFS if an extra keyslot is in use), wrap it in CTRFileIO
-        if not (self.assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
+        if not (self._assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
             keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else Keyslot.NCCH
             fh = self._crypto.create_ctr_io(keyslot, fh, region.iv)
         return fh
@@ -403,33 +372,12 @@ class NCCHReader:
     def setup_seed(self, seed: bytes):
         if not self.flags.uses_seed:
             raise NCCHSeedError('NCCH does not use seed crypto')
-        seed_verify_hash = sha256(seed + self.program_id.to_bytes(0x8, 'little')).digest()
+        seed_verify_hash = sha256(seed + bytes.fromhex(self.program_id)[::-1]).digest()
         if seed_verify_hash[0x0:0x4] != self._seed_verify:
             raise NCCHSeedError('given seed does not match with seed verify hash in header')
         self.seed = seed
         self._seeded_key_y = sha256(self._key_y + seed).digest()[0:16]
         self.seed_set_up = True
-
-    def load_seed_from_seeddb(self, path: str = None):
-        if not self.flags.uses_seed:
-            raise NCCHSeedError('NCCH does not use seed crypto')
-        if path:
-            # if a path was provided, use only that
-            paths = (path,)
-        else:
-            # use the fixed set of paths
-            paths = seeddb_paths
-        for fn in paths:
-            try:
-                with open(fn, 'rb') as f:
-                    # try to load the seed from the file
-                    self.setup_seed(get_seed(f, self.program_id))
-                    return
-            except FileNotFoundError:
-                continue
-
-        # if keys are not set...
-        raise InvalidNCCHError(paths)
 
     def get_data(self, section: 'Union[NCCHRegion, NCCHSection]', offset: int, size: int) -> bytes:
         """
@@ -530,10 +478,10 @@ class NCCHReader:
 
         with self._lock:
             # check if decryption is really needed
-            if self.assume_decrypted or self.flags.no_crypto or region.section in NO_ENCRYPTION:
+            if self._assume_decrypted or self.flags.no_crypto or region.section in NO_ENCRYPTION:
                 # this is currently used to support FullDecrypted. other sections use SubsectionIO + CTRFileIO.
-                self._fp.seek(self._start + region.offset + offset)
-                return self._fp.read(size)
+                self._file.seek(self._start + region.offset + offset)
+                return self._file.read(size)
 
             # thanks Stary2001 for help with random-access crypto
 
@@ -551,7 +499,7 @@ class NCCHReader:
 
                 # get the aligned total size of the requested size
                 aligned_size = size + before
-                self._fp.seek(aligned_real_offset)
+                self._file.seek(aligned_real_offset)
 
                 def do_thing(al_offset: int, al_size: int, cut_start: int, cut_end: int):
                     # get the offset of the end of the last chunk
@@ -569,13 +517,13 @@ class NCCHReader:
                         keyslot = self.extra_keyslot
 
                         for r in self._exefs_keyslot_normal_range:
-                            if r[0] <= self._fp.tell() - region.offset < r[1]:
+                            if r[0] <= self._file.tell() - region.offset < r[1]:
                                 # if the chunk is within the "normal keyslot" ranges,
                                 #   use the Original NCCH keyslot instead
                                 keyslot = Keyslot.NCCH
 
                         # decrypt the data
-                        out = self._crypto.create_ctr_cipher(keyslot, iv).decrypt(self._fp.read(0x200))
+                        out = self._crypto.create_ctr_cipher(keyslot, iv).decrypt(self._file.read(0x200))
                         if chunk == al_offset:
                             # cut off the beginning if it's the first chunk
                             out = out[cut_start:]
@@ -590,8 +538,8 @@ class NCCHReader:
                 # this is currently used to support FullDecrypted. other sections use SubsectionIO + CTRFileIO.
 
                 # seek to the real offset of the section + the requested offset
-                self._fp.seek(self._start + region.offset + offset)
-                data = self._fp.read(size)
+                self._file.seek(self._start + region.offset + offset)
+                data = self._file.read(size)
 
                 # choose the extra keyslot only for RomFS here
                 # ExeFS needs special handling if a newer keyslot is used, therefore it's not checked here
