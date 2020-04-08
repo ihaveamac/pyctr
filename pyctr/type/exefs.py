@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, NamedTuple
 from ..common import PyCTRError, _ReaderOpenFileBase
 from ..fileio import SubsectionIO
 from ..util import readle
-from ..type.smdh import SMDH, InvalidSMDHError
+from .base import TypeReaderBase
+from .smdh import SMDH, InvalidSMDHError
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, Union
@@ -144,9 +145,13 @@ def decompress_code(code: bytes) -> bytes:
 
 class ExeFSEntry(NamedTuple):
     name: str
+    """Name of the entry."""
     offset: int
+    """Offset of the entry, relative to the end of the header."""
     size: int
+    """Size of the entry data."""
     hash: bytes
+    """SHA-256 of the entry data."""
 
 
 def _normalize_path(p: str):
@@ -170,7 +175,7 @@ class _ExeFSOpenFile(_ReaderOpenFileBase):
         self._info = reader.entries[self._path]
 
 
-class ExeFSReader:
+class ExeFSReader(TypeReaderBase):
     """
     Reads the contents of the Executable Filesystem, found inside NCCH containers.
 
@@ -183,27 +188,23 @@ class ExeFSReader:
     .code can sometimes be compressed which is indicated in the NCCH Extended Header. When decompressed, a new entry
     called .code-decompressed is added.
 
-    If icon is found, it is loaded into an :class:`type.smdh.SMDH` object.
+    If icon is found, it is loaded into an :class:`~.SMDH` object.
 
     :param fp: A file path or a file-like object with the CCI data.
-    :param closefd: Close the underlying file object when closed.
+    :param closefd: Close the underlying file object when closed. Defaults to `True` for file paths, and `False` for
+        file-like objects.
     :ivar entries: A `dict` with each entry in the ExeFS.
-    :ivar icon: An :class:`type.smdh.SMDH` object for the icon entry.
+    :ivar icon: An :class:`~.SMDH` object for the icon entry.
     """
 
-    closed = False
     _code_dec = None
     icon: 'SMDH' = None
 
     def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = True, _load_icon: bool = True):
-        if isinstance(fp, (PathLike, str, bytes)):
-            fp = open(fp, 'rb')
+        super().__init__(fp, closefd=closefd)
 
-        # storing the starting offset lets it work from anywhere in the file
-        self._start = fp.tell()
-        self._fp = fp
+        # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()
-        self._closefd = closefd
 
         self.entries: 'Dict[str, ExeFSEntry]' = {}
 
@@ -253,22 +254,6 @@ class ExeFSReader:
         """Return the amount of entries in the ExeFS."""
         return len(self.entries)
 
-    def close(self):
-        self.closed = True
-        if self._closefd:
-            try:
-                self._fp.close()
-            except AttributeError:
-                pass
-
-    __del__ = close
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
     def open(self, path: str, *, normalize: bool = True):
         """
         Open an entry in the ExeFS for reading.
@@ -288,7 +273,7 @@ class ExeFSReader:
             # this would be the decompressed .code, if the original .code was compressed
             return _ExeFSOpenFile(self, path)
         else:
-            return SubsectionIO(self._fp, self._start + EXEFS_HEADER_SIZE + entry.offset, entry.size)
+            return SubsectionIO(self._file, self._start + EXEFS_HEADER_SIZE + entry.offset, entry.size)
 
     def get_data(self, info: ExeFSEntry, offset: int, size: int) -> bytes:
         if offset + size > info.size:
@@ -299,14 +284,15 @@ class ExeFSReader:
                 return self._code_dec[offset:offset + size]
             else:
                 # data for ExeFS entries start relative to the end of the header
-                self._fp.seek(self._start + EXEFS_HEADER_SIZE + info.offset + offset)
-                return self._fp.read(size)
+                self._file.seek(self._start + EXEFS_HEADER_SIZE + info.offset + offset)
+                return self._file.read(size)
 
     def decompress_code(self) -> bool:
         """
         Decompress '.code' in the container. The result will be available as '.code-decompressed'.
 
         :return: If '.code' was actually decompressed.
+        :rtype: bool
         """
         with self.open('.code') as f:
             code = f.read()
