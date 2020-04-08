@@ -6,12 +6,12 @@
 
 from io import TextIOWrapper
 from os import PathLike
-from threading import Lock
 from typing import overload, TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
 from ..fileio import SubsectionIO
 from ..util import readle, roundup
+from .base import TypeReaderBase
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Optional, Tuple, Union
@@ -66,32 +66,34 @@ class RomFSFileEntry(NamedTuple):
     size: int
 
 
-class RomFSReader:
+class RomFSReader(TypeReaderBase):
     """
-    Class for 3DS RomFS Level 3 partition.
+    Reads the contents of the Read-only Filesystem, found inside NCCH containers.
 
-    https://www.3dbrew.org/wiki/RomFS
+    The RomFS found inside an NCCH is wrapped in an IVFC hash-tree container. This class only supports Level 3, which
+    contains the actual files.
+
+    :param file: A file path or a file-like object with the RomFS data.
+    :param case_insensitive: Use case-insensitive paths.
+    :param closefd: Close the underlying file object when closed. Defaults to `True` for file paths, and `False` for
+        file-like objects.
     """
 
-    closed = False
     lv3_offset = 0
     data_offset = 0
 
-    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', case_insensitive: bool = False):
-        if isinstance(fp, (PathLike, str, bytes)):
-            fp = open(fp, 'rb')
+    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', case_insensitive: bool = False, *,
+                 closefd: bool = None):
+        super().__init__(file, closefd=closefd)
 
-        self._start = fp.tell()
-        self._fp = fp
         self.case_insensitive = case_insensitive
-        self._lock = Lock()
 
-        lv3_offset = fp.tell()
-        magic = fp.read(4)
+        lv3_offset = self._file.tell()
+        magic = self._file.read(4)
 
         # detect ivfc and get the lv3 offset
         if magic == b'IVFC':
-            ivfc = magic + fp.read(0x54)  # IVFC_HEADER_SIZE - 4
+            ivfc = magic + self._file.read(0x54)  # IVFC_HEADER_SIZE - 4
             ivfc_magic_num = readle(ivfc[0x4:0x8])
             if ivfc_magic_num != IVFC_ROMFS_MAGIC_NUM:
                 raise InvalidIVFCError(f'IVFC magic number is invalid '
@@ -100,11 +102,11 @@ class RomFSReader:
             lv3_block_size = readle(ivfc[0x4C:0x50])
             lv3_hash_block_size = 1 << lv3_block_size
             lv3_offset += roundup(0x60 + master_hash_size, lv3_hash_block_size)
-            fp.seek(self._start + lv3_offset)
-            magic = fp.read(4)
+            self._file.seek(self._start + lv3_offset)
+            magic = self._file.read(4)
         self.lv3_offset = lv3_offset
 
-        lv3_header = magic + fp.read(0x24)  # ROMFS_LV3_HEADER_SIZE - 4
+        lv3_header = magic + self._file.read(0x24)  # ROMFS_LV3_HEADER_SIZE - 4
 
         # get offsets and sizes from lv3 header
         lv3_header_size = readle(magic)
@@ -139,11 +141,11 @@ class RomFSReader:
 
             # iterate through all child directories
             if first_child_dir != 0xFFFFFFFF:
-                fp.seek(self._start + lv3_offset + lv3_dirmeta.offset + first_child_dir)
+                file.seek(self._start + lv3_offset + lv3_dirmeta.offset + first_child_dir)
                 while True:
-                    child_dir_meta = fp.read(0x18)
+                    child_dir_meta = self._file.read(0x18)
                     next_sibling_dir = readle(child_dir_meta[0x4:0x8])
-                    child_dir_name = fp.read(readle(child_dir_meta[0x14:0x18])).decode('utf-16le')
+                    child_dir_name = self._file.read(readle(child_dir_meta[0x14:0x18])).decode('utf-16le')
                     child_dir_name_meta = child_dir_name.lower() if case_insensitive else child_dir_name
                     if child_dir_name_meta in out['contents']:
                         print(f'WARNING: Dirname collision! {current_path}{child_dir_name}')
@@ -153,16 +155,16 @@ class RomFSReader:
                                 f'{current_path}{child_dir_name}/')
                     if next_sibling_dir == 0xFFFFFFFF:
                         break
-                    fp.seek(self._start + lv3_offset + lv3_dirmeta.offset + next_sibling_dir)
+                    self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset + next_sibling_dir)
 
             if first_file != 0xFFFFFFFF:
-                fp.seek(self._start + lv3_offset + lv3_filemeta.offset + first_file)
+                self._file.seek(self._start + lv3_offset + lv3_filemeta.offset + first_file)
                 while True:
-                    child_file_meta = fp.read(0x20)
+                    child_file_meta = self._file.read(0x20)
                     next_sibling_file = readle(child_file_meta[0x4:0x8])
                     child_file_offset = readle(child_file_meta[0x8:0x10])
                     child_file_size = readle(child_file_meta[0x10:0x18])
-                    child_file_name = fp.read(readle(child_file_meta[0x1C:0x20])).decode('utf-16le')
+                    child_file_name = self._file.read(readle(child_file_meta[0x1C:0x20])).decode('utf-16le')
                     child_file_name_meta = child_file_name.lower() if self.case_insensitive else child_file_name
                     if child_file_name_meta in out['contents']:
                         print(f'WARNING: Filename collision! {current_path}{child_file_name}')
@@ -172,25 +174,12 @@ class RomFSReader:
                     self.total_size += child_file_size
                     if next_sibling_file == 0xFFFFFFFF:
                         break
-                    fp.seek(self._start + lv3_offset + lv3_filemeta.offset + next_sibling_file)
+                    file.seek(self._start + lv3_offset + lv3_filemeta.offset + next_sibling_file)
 
         self._tree_root = {'name': 'ROOT'}
         self.total_size = 0
-        fp.seek(self._start + lv3_offset + lv3_dirmeta.offset)
-        iterate_dir(self._tree_root, fp.read(0x18), '/')
-
-    def close(self):
-        self.closed = True
-        try:
-            self._fp.close()
-        except AttributeError:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset)
+        iterate_dir(self._tree_root, self._file.read(0x18), '/')
 
     @overload
     def open(self, path: str, encoding: str, errors: 'Optional[str]' = None,
@@ -201,19 +190,34 @@ class RomFSReader:
              newline: 'Optional[str]' = None) -> SubsectionIO: ...
 
     def open(self, path, encoding=None, errors=None, newline=None):
-        """Open a file in the RomFS for reading."""
+        """
+        Open a file in the RomFS for reading.
+
+        The file opens in binary mode by default, unless `encoding` is specified.
+
+        :param path: Path to a file within the RomFS.
+        :param encoding: The name of the encoding used to decode. Specifying this opens the file in text mode.
+        :param errors: The error setting of the decoder.
+        :param newline: Controls how newlines are handled in text mode. This is passed to :class:`io.TextIOWrapper`.
+        :return: A :class:`~.SubsectionIO` object for bytes, or :class:`io.TextIOWrapper` for text.
+        :raises RomFSIsADirectoryError: If the item is a directory.
+        """
         file_info = self.get_info_from_path(path)
         if not isinstance(file_info, RomFSFileEntry):
             raise RomFSIsADirectoryError(path)
-        f = SubsectionIO(self._fp, self._start + self.data_offset + file_info.offset, file_info.size)
+        f = SubsectionIO(self._file, self._start + self.data_offset + file_info.offset, file_info.size)
         if encoding is not None:
             f = TextIOWrapper(f, encoding, errors, newline)
         return f
 
-    __del__ = close
-
     def get_info_from_path(self, path: str) -> 'Union[RomFSDirectoryEntry, RomFSFileEntry]':
-        """Get a directory or file entry"""
+        """
+        Get a directory or file entry.
+
+        :param path: Path to a file or directory within the RomFS.
+        :return: A :class:`RomFSFileEntry` or :class:`RomFSDirectoryEntry`.
+        :raises RomFSFileNotFoundError: If the item doesn't exist.
+        """
         curr = self._tree_root
         if self.case_insensitive:
             path = path.lower()
