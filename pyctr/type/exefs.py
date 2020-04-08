@@ -193,12 +193,15 @@ class ExeFSReader(TypeReaderBase):
     :param fp: A file path or a file-like object with the CCI data.
     :param closefd: Close the underlying file object when closed. Defaults to `True` for file paths, and `False` for
         file-like objects.
-    :ivar entries: A `dict` with each entry in the ExeFS.
-    :ivar icon: An :class:`~.SMDH` object for the icon entry.
     """
 
     _code_dec = None
+
+    entries: 'Dict[str, ExeFSEntry]'
+    """Entries in the ExeFS."""
+
     icon: 'SMDH' = None
+    """The icon info, if one is in the ExeFS."""
 
     def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = True, _load_icon: bool = True):
         super().__init__(fp, closefd=closefd)
@@ -206,7 +209,7 @@ class ExeFSReader(TypeReaderBase):
         # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()
 
-        self.entries: 'Dict[str, ExeFSEntry]' = {}
+        self.entries = {}
 
         header = fp.read(EXEFS_HEADER_SIZE)
 
