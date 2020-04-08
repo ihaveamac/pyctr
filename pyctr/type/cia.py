@@ -4,6 +4,8 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Module for interacting with CTR Importable Archive (CIA) files."""
+
 from enum import IntEnum
 from io import BytesIO
 from os import PathLike
@@ -16,9 +18,11 @@ from ..fileio import SubsectionIO
 from ..type.ncch import NCCHReader
 from ..type.tmd import TitleMetadataReader
 from ..util import readle, roundup
+from .base import TypeReaderCryptoBase
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Optional, Union
+    from .tmd import ContentChunkRecord
+    from typing import BinaryIO, Dict, List, Optional, Union
 
 ALIGN_SIZE = 64
 
@@ -32,28 +36,46 @@ class InvalidCIAError(CIAError):
 
 
 class CIASection(IntEnum):
+    """Sections of a CIA file. Values 0 and above are only for the most common types, and do not apply to DLC titles."""
     # these values as negative, as positive ones are used for contents
     ArchiveHeader = -4
+    """Contains the sizes of all the other sections."""
     CertificateChain = -3
+    """Contains signatures used to verify the Ticket and Title Metadata."""
     Ticket = -2
+    """
+    Contains the title key used to decrypt the contents, as well as a content index describing which contents are 
+    enabled (mostly used for DLC).
+    """
     TitleMetadata = -1
+    """Contains information about all the possible contents."""
     Application = 0
+    """Main application CXI."""
     Manual = 1
+    """Manual CFA. It has a RomFS with a single "Manual.bcma" file inside."""
     DownloadPlayChild = 2
+    """
+    Download Play Child CFA. It has a RomFS with CIA files that are sent to other Nintendo 3DS systems using
+    Download Play. Most games only contain one.
+    """
     Meta = -5
 
 
 class CIARegion(NamedTuple):
     section: 'Union[int, CIASection]'
+    """Index of the section."""
     offset: int
+    """Offset of the entry, relative to the end of the header."""
     size: int
-    iv: bytes  # only used for encrypted sections
+    """Size of the entry data."""
+    iv: bytes
+    """Initialization vector. Only used for encrypted contents."""
 
 
-class CIAReader:
+class CIAReader(TypeReaderCryptoBase):
     """
-    Reads the contents of CTR Importable Archive files. The sources of these are usually dumps from digital titles from
-    Nintendo eShop or the update CDN, gamecard update partitions, or Download Play children.
+    Reads the contents of CIA files. The sources of these are usually dumps from digital titles from Nintendo eShop or
+    the update CDN, gamecard update partitions, or Download Play children.
 
     Only NCCH contents are supported. SRL (DSiWare) contents are currently ignored.
 
@@ -75,45 +97,46 @@ class CIAReader:
     CIA files do not always contain all the contents in the TMD, especially in dumped DLC titles. Which contents are in
     the archive is indicated in the archive header.
 
-    Note that a custom :class:`crypto.CryptoEngine` object is only used for encryption on the CIA contents. Each
-    :class:`type.ncch.NCCHReader` must use their own object, as it can only store keys for a single NCCH container. To
+    Note that a custom :class:`~.CryptoEngine` object is only used for encryption on the CIA contents. Each
+    :class:`~.NCCHReader` must use their own object, as it can only store keys for a single NCCH container. To
     use a custom one, set `load_contents` to `False`, then load each section manually with `open_raw_section`.
 
-    :param fp: A file path or a file-like object with the CIA data.
+    :param file: A file path or a file-like object with the CIA data.
     :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
-    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+    :param crypto: A custom :class:`~.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created. This is only used to decrypt the CIA, not the NCCH contents.
     :param dev: Use devunit keys.
     :param seeddb: Path to a SeedDB file.
-    :param load_contents: Load each partition with :class:`type.ncch.NCCHReader`.
-    :ivar contents: A `dict` of :class:`type.ncch.NCCHReader` objects for each active NCCH content.
-    :ivar content_info: A list of :class:`type.tmd.ContentChunkRecord` objects for each active content.
-    :ivar tmd: The :class:`type.tmd.TitleMetadataReader` object with information from the TMD section.
-    :ivar sections: A list of :class:`CIARegion` objects containing the offset and size of each section.
-    :ivar total_size: Expected size of the CIA file in bytes.
+    :param load_contents: Load each partition with :class:`~.NCCHReader`.
     """
 
-    closed = False
+    contents: 'Dict[int, NCCHReader]'
+    """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
-    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, case_insensitive: bool = True,
-                 crypto: CryptoEngine = None, dev: bool = False, seeddb: str = None, load_contents: bool = True):
-        if isinstance(fp, (PathLike, str, bytes)):
-            fp = open(fp, 'rb')
+    content_info: 'List[ContentChunkRecord]'
+    """A list of :class:`~.ContentChunkRecord` objects for each active content."""
 
-        if crypto:
-            self._crypto = crypto
-        else:
-            self._crypto = CryptoEngine(dev=dev)
+    sections: 'Dict[Union[int, CIASection], CIARegion]'
+    """A list of :class:`CIARegion` objects containing the offset and size of each section."""
 
-        # store the starting offset so the CIA can be read from any point in the base file
-        self._start = fp.tell()
-        self._fp = fp
-        # store case-insensitivity for RomFSReader
-        self._case_insensitive = case_insensitive
-        # threading lock
+    tmd: TitleMetadataReader
+    """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
+
+    total_size: int
+    """Expected size of the CIA file in bytes."""
+
+    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False,
+                 load_contents: bool = True):
+        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
+
+        # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()
 
-        header = fp.read(0x20)
+        # store case-insensitivity for RomFSReader
+        self._case_insensitive = case_insensitive
+
+        header = self._file.read(0x20)
 
         archive_header_size = readle(header[0x0:0x4])
         if archive_header_size != 0x2020:
@@ -132,7 +155,7 @@ class CIAReader:
         content_size = readle(header[0x18:0x20])
         # the content index determines what contents are in the CIA
         # this is not stored as int, so it's faster to parse(?)
-        content_index = fp.read(archive_header_size - 0x20)
+        content_index = self._file.read(archive_header_size - 0x20)
 
         active_contents = set()
         for idx, b in enumerate(content_index):
@@ -156,7 +179,7 @@ class CIAReader:
         self.total_size = meta_offset + meta_size
 
         # this contains the location of each section, as well as the IV of encrypted ones
-        self.sections: Dict[Union[int, CIASection], CIARegion] = {}
+        self.sections = {}
 
         def add_region(section: 'Union[int, CIASection]', offset: int, size: int, iv: 'Optional[bytes]'):
             region = CIARegion(section=section, offset=offset, size=size, iv=iv)
@@ -171,13 +194,13 @@ class CIAReader:
             add_region(CIASection.Meta, meta_offset, meta_size, None)
 
         # this will load the titlekey to decrypt the contents
-        self._fp.seek(self._start + ticket_offset)
-        ticket = self._fp.read(ticket_size)
+        self._file.seek(self._start + ticket_offset)
+        ticket = self._file.read(ticket_size)
         self._crypto.load_from_ticket(ticket)
 
         # the tmd describes the contents: ID, index, size, and hash
-        self._fp.seek(self._start + tmd_offset)
-        tmd_data = self._fp.read(tmd_size)
+        self._file.seek(self._start + tmd_offset)
+        tmd_data = self._file.read(tmd_size)
         self.tmd = TitleMetadataReader.load(BytesIO(tmd_data))
 
         active_contents_tmd = set()
@@ -209,24 +232,9 @@ class CIAReader:
                 if not is_srl:
                     content_fp = self.open_raw_section(record.cindex)
                     self.contents[record.cindex] = NCCHReader(content_fp, case_insensitive=case_insensitive,
-                                                              dev=dev, seeddb=seeddb)
+                                                              dev=dev)
 
             curr_offset += record.size
-
-    def close(self):
-        self.closed = True
-        try:
-            self._fp.close()
-        except AttributeError:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    __del__ = close
 
     def __repr__(self):
         info = [('title_id', self.tmd.title_id)]
@@ -238,7 +246,7 @@ class CIAReader:
         info_final = " ".join(x + ": " + str(y) for x, y in info)
         return f'<{type(self).__name__} {info_final}>'
 
-    def open_raw_section(self, section: 'CIASection'):
+    def open_raw_section(self, section: 'Union[int, CIASection]'):
         """
         Open a raw CIA section for reading with on-the-fly decryption.
 
@@ -247,7 +255,7 @@ class CIAReader:
         :rtype: SubsectionIO
         """
         region = self.sections[section]
-        fh = SubsectionIO(self._fp, self._start + region.offset, region.size)
+        fh = SubsectionIO(self._file, self._start + region.offset, region.size)
         if region.iv:
             fh = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, fh, region.iv)
         return fh
