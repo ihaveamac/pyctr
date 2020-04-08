@@ -4,15 +4,17 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Module for interacting with CTR Cart Image (CCI) files."""
+
 from enum import IntEnum
 from os import PathLike
-from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
 from ..fileio import SubsectionIO
 from ..type.ncch import NCCHReader
 from ..util import readle
+from .base import TypeReaderBase
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, Union
@@ -29,80 +31,109 @@ class InvalidCCIError(CCIError):
 
 
 class CCISection(IntEnum):
+    """Partition indexes in a CCI."""
     Header = -3
+    """Header of the CCI file."""
     CardInfo = -2
+    """Card Info Header. https://www.3dbrew.org/wiki/NCSD#Card_Info_Header"""
     DevInfo = -1
-
+    """
+    Development Card Info Header. Some flashcarts use this for "private headers" which are unique to each produced
+    game card.
+    """
     Application = 0
+    """Main application CXI."""
     Manual = 1
+    """Manual CFA. It has a RomFS with a single "Manual.bcma" file inside."""
     DownloadPlayChild = 2
+    """
+    Download Play Child CFA. It has a RomFS with CIA files that are sent to other Nintendo 3DS systems using
+    Download Play. Most games only contain one.
+    """
     Unk3 = 3
+    """Never seems to be used in practice."""
     Unk4 = 4
+    """Never seems to be used in practice."""
     Unk5 = 5
-    UpdateOld3DS = 6
-    UpdateNew3DS = 7
+    """Never seems to be used in practice."""
+    UpdateNew3DS = 6
+    """
+    Update CFA for New Nintendo 3DS systems. It has a RomFS with a "SNAKE" directory, then contains the same as
+    :attr:`UpdateOld3DS`. Any Title IDs in "cup_list" that are not in this partition are loaded from 
+    :attr:`UpdateOld3DS`.
+    """
+    UpdateOld3DS = 7
+    """
+    Update CFA for Old Nintendo 3DS systems. It has a RomFS with a "cup_list" file that is 0x800 bytes and is a list of
+    Title IDs in the update. The rest are CIA files with matching Title ID filenames.
+    """
 
 
 class CCIRegion(NamedTuple):
-    section: 'Union[int, CCISection]'
+    section: 'CCISection'
     offset: int
     size: int
 
 
-class CCIReader:
+class CCIReader(TypeReaderBase):
     """
-    Reads the contents of CTR Cart Image files, usually dumps from Nintendo 3DS game cards.
+    Reads the contents of CCI files, usually dumps from Nintendo 3DS game cards.
 
     A CCI file can contain 8 partitions; in practice, only 0, 1, 2, 6 and 7 seem to be used.
 
-    Note that a custom :class:`crypto.CryptoEngine` object cannot be given, as it can only store keys for a single
-    :class:`type.ncch.NCCHReader`. To use a custom one, set `load_contents` to `False`, then load each section manually
+    Note that a custom :class:`~.CryptoEngine` object cannot be given, as it can only store keys for a single
+    :class:`~.NCCHReader`. To use a custom one, set `load_contents` to `False`, then load each section manually
     with `open_raw_section`.
 
-    :param fp: A file path or a file-like object with the CCI data.
+    :param file: A file path or a file-like object with the CCI data.
     :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
     :param dev: Use devunit keys.
-    :param load_contents: Load each partition with :class:`type.ncch.NCCHReader`.
+    :param load_contents: Load each partition with :class:`~.NCCHReader`.
     :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
         the NCCH flags.
-    :ivar contents: A list of :class:`type.ncch.NCCHReader` objects for each partition.
-    :ivar image_size: Image size in bytes. This does not always match the file size on disk.
-    :ivar sections: A list of :class:`CCIRegion` objects containing the offset and size of each partition.
     """
 
     closed = False
+    """`True` if the reader is closed."""
 
-    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, case_insensitive: bool = True, dev: bool = False,
-                 load_contents: bool = True, assume_decrypted: bool = False):
-        if isinstance(fp, (PathLike, str, bytes)):
-            fp = open(fp, 'rb')
+    image_size: int
+    """Image size in bytes. This does not always match the file size on disk."""
 
-        # store the starting offset so the CCI can be read from any point in the base file
-        self._start = fp.tell()
-        self._fp = fp
+    sections: 'Dict[CCISection, CCIRegion]'
+    """A list of :class:`CCIRegion` objects containing the offset and size of each partition."""
+
+    contents: 'Dict[CCISection, NCCHReader]'
+    """A list of :class:`~.NCCHReader` objects for each partition."""
+
+    media_id: str
+    """Same as the Title ID of the application."""
+
+    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+                 case_insensitive: bool = True, dev: bool = False, load_contents: bool = True,
+                 assume_decrypted: bool = False):
+        super().__init__(file, closefd=closefd)
+
         # store case-insensitivity for RomFSReader
         self._case_insensitive = case_insensitive
-        # threading lock
-        self._lock = Lock()
 
         # ignore the signature, we don't need it
-        self._fp.seek(0x100, 1)
-        header = fp.read(0x100)
+        self._file.seek(0x100, 1)
+        header = self._file.read(0x100)
         if header[0:4] != b'NCSD':
             raise InvalidCCIError('NCSD magic not found')
 
         # make sure the Media ID is not 00, which is used for the NAND header
         self.media_id = header[0x8:0x10][::-1].hex()
         if self.media_id == '00' * 8:
-            raise InvalidCCIError('Media ID is ' + self.media_id)
+            raise InvalidCCIError('Not a CCI, this is a NAND')
 
         self.image_size = readle(header[4:8]) * CCI_MEDIA_UNIT
 
         # this contains the location of each section
-        self.sections: Dict[CCISection, CCIRegion] = {}
+        self.sections = {}
 
         # this contains loaded sections
-        self.contents: Dict[CCISection, NCCHReader] = {}
+        self.contents = {}
 
         def add_region(section: 'CCISection', offset: int, size: int):
             region = CCIRegion(section=section, offset=offset, size=size)
@@ -121,8 +152,8 @@ class CCIReader:
         # the first content always starts at 0x4000 but this code makes no assumptions about it
         for idx, info_offset in enumerate(range(0, 0x40, 0x8)):
             part_info = part_raw[info_offset:info_offset + 8]
-            part_offset = int.from_bytes(part_info[0:4], 'little') * CCI_MEDIA_UNIT
-            part_size = int.from_bytes(part_info[4:8], 'little') * CCI_MEDIA_UNIT
+            part_offset = readle(part_info[0:4]) * CCI_MEDIA_UNIT
+            part_size = readle(part_info[4:8]) * CCI_MEDIA_UNIT
             if part_offset:
                 section_id = partition_sections[idx]
                 add_region(section_id, part_offset, part_size)
@@ -131,21 +162,6 @@ class CCIReader:
                     content_fp = self.open_raw_section(section_id)
                     self.contents[section_id] = NCCHReader(content_fp, case_insensitive=case_insensitive, dev=dev,
                                                            assume_decrypted=assume_decrypted)
-
-    def close(self):
-        self.closed = True
-        try:
-            self._fp.close()
-        except AttributeError:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    __del__ = close
 
     def __repr__(self):
         info = [('media_id', self.media_id)]
@@ -167,4 +183,4 @@ class CCIReader:
         :rtype: SubsectionIO
         """
         region = self.sections[section]
-        return SubsectionIO(self._fp, self._start + region.offset, region.size)
+        return SubsectionIO(self._file, self._start + region.offset, region.size)
