@@ -38,6 +38,7 @@ class MissingSeedError(SeedDBError):
 
 
 _seeds: 'Dict[int, bytes]' = {}
+_loaded_from_default_paths = False
 
 
 def _load_seeds_from_file_object(fh: 'BinaryIO'):
@@ -67,11 +68,12 @@ def load_seeddb(fp: 'Union[PathLike, str, bytes, BinaryIO]' = None):
 
     :param fp: A file path or file-like object with the seeddb data.
     """
+    global _loaded_from_default_paths
     if fp:
         if isinstance(fp, (PathLike, str, bytes)):
             fp = open(fp, 'rb')
         _load_seeds_from_file_object(fp)
-    else:
+    elif not _loaded_from_default_paths:
         seeddb_paths = [join(x, 'seeddb.bin') for x in config_dirs]
         try:
             # try to insert the path in the SEEDDB_PATH environment variable
@@ -80,26 +82,34 @@ def load_seeddb(fp: 'Union[PathLike, str, bytes, BinaryIO]' = None):
             pass
 
         for path in seeddb_paths:
-            print('Trying '+path)
             try:
                 with open(path, 'rb') as fh:
                     _load_seeds_from_file_object(fh)
             except FileNotFoundError:
                 pass
 
+        _loaded_from_default_paths = True
 
-def get_seed(program_id: 'Union[int, str, bytes]'):
+
+def get_seed(program_id: 'Union[int, str, bytes]', *, load_if_required: bool = True):
     """
     Get a seed for a Program ID.
 
     :param program_id: The Program ID to search for. If `bytes` is provided, the value must be little-endian.
+    :param load_if_required: Automatically load using :func:`load_seeddb` if the requested Program ID is not already
+        available.
     """
     program_id = _normalize_program_id(program_id)
 
     try:
         return _seeds[program_id]
     except KeyError:
-        raise MissingSeedError(f'{program_id:016x}')
+        if _loaded_from_default_paths or not load_if_required:
+            raise MissingSeedError(f'{program_id:016x}')
+        else:
+            if load_if_required:
+                load_seeddb()
+                return get_seed(program_id, load_if_required=False)
 
 
 def add_seed(program_id: 'Union[int, str, bytes]', seed: 'Union[bytes, str]'):
