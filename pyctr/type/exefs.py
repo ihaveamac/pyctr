@@ -4,6 +4,8 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Module for interacting with Executable Filesystem (ExeFS) files."""
+
 from hashlib import sha256
 from os import PathLike
 from threading import Lock
@@ -177,7 +179,7 @@ class _ExeFSOpenFile(_ReaderOpenFileBase):
 
 class ExeFSReader(TypeReaderBase):
     """
-    Reads the contents of the Executable Filesystem, found inside NCCH containers.
+    Reads the contents of the ExeFS, found inside NCCH containers.
 
     The contents typically include .code, icon, and banner. For titles released before System Menu 5.0.0-11, logo can
     also one of the contents, otherwise logo has a dedicated NCCH section.
