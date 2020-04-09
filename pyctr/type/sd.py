@@ -4,6 +4,8 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory."""
+
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING
