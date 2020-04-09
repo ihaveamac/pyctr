@@ -4,6 +4,8 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Module for interacting with NCCH files."""
+
 from hashlib import sha256
 from enum import IntEnum
 from math import ceil
