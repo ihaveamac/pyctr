@@ -4,6 +4,8 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Module for interacting with Read-only Filesystem (RomFS) files."""
+
 from io import TextIOWrapper
 from os import PathLike
 from typing import overload, TYPE_CHECKING, NamedTuple
@@ -68,7 +70,7 @@ class RomFSFileEntry(NamedTuple):
 
 class RomFSReader(TypeReaderBase):
     """
-    Reads the contents of the Read-only Filesystem, found inside NCCH containers.
+    Reads the contents of the RomFS, found inside NCCH containers.
 
     The RomFS found inside an NCCH is wrapped in an IVFC hash-tree container. This class only supports Level 3, which
     contains the actual files.
