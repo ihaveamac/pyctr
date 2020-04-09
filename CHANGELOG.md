@@ -1,3 +1,6 @@
+## v0.3.1 - April 8, 2020
+* Fix `setup.py` not including subpackages
+
 ## v0.3.0 - April 8, 2020
 * Document more classes, methods, and attributes
 * Add a `pyctr.crypto.seeddb` module for central SeedDB management
