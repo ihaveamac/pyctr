@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
 with open('README.md', 'r', encoding='utf-8') as f:
     readme = f.read()
@@ -6,7 +6,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 setup(
     name='pyctr',
     version='0.3.0',
-    packages=['pyctr', 'pyctr.type'],
+    packages=find_packages(),
     install_requires=['pycryptodomex'],
     python_requires='>=3.6',
     url='https://git.ianburgwin.net/ianburgwin/pyctr',
