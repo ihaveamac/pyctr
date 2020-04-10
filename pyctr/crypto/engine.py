@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
     from typing import BinaryIO, Dict, List, Optional, Union
 
+    # trick type checkers
+    BufferedIOBase = BinaryIO
+
 __all__ = ['MIN_TICKET_SIZE', 'CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError',
            'TicketLengthError', 'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO',
            'CBCFileIO']
