@@ -13,7 +13,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
-from ..crypto import CryptoEngine, Keyslot
+from ..crypto import CryptoEngine, Keyslot, add_seed
 from ..fileio import SubsectionIO
 from ..type.ncch import NCCHReader
 from ..type.tmd import TitleMetadataReader
@@ -21,8 +21,8 @@ from ..util import readle, roundup
 from .base import TypeReaderCryptoBase
 
 if TYPE_CHECKING:
-    from .tmd import ContentChunkRecord
     from typing import BinaryIO, Dict, List, Optional, Union
+    from .tmd import ContentChunkRecord
 
 ALIGN_SIZE = 64
 
@@ -106,7 +106,7 @@ class CIAReader(TypeReaderCryptoBase):
     :param crypto: A custom :class:`~.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created. This is only used to decrypt the CIA, not the NCCH contents.
     :param dev: Use devunit keys.
-    :param seeddb: Path to a SeedDB file.
+    :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
     :param load_contents: Load each partition with :class:`~.NCCHReader`.
     """
 
@@ -126,7 +126,7 @@ class CIAReader(TypeReaderCryptoBase):
     """Expected size of the CIA file in bytes."""
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
-                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False,
+                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = False,
                  load_contents: bool = True):
         super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
 
@@ -202,6 +202,9 @@ class CIAReader(TypeReaderCryptoBase):
         self._file.seek(self._start + tmd_offset)
         tmd_data = self._file.read(tmd_size)
         self.tmd = TitleMetadataReader.load(BytesIO(tmd_data))
+
+        if seed:
+            add_seed(self.tmd.title_id, seed)
 
         active_contents_tmd = set()
         self.content_info = []
