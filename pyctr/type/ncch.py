@@ -14,7 +14,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError, _ReaderOpenFileBase
-from ..crypto import CryptoEngine, Keyslot, get_seed
+from ..crypto import CryptoEngine, Keyslot, add_seed, get_seed
 from ..fileio import SubsectionIO
 from ..util import readle, roundup
 from .base import TypeReaderCryptoBase
@@ -153,6 +153,7 @@ class NCCHReader(TypeReaderCryptoBase):
     :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created.
     :param dev: Use devunit keys.
+    :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
     :param load_sections: Load the ExeFS and RomFS as :class:`type.exefs.ExeFSReader` and
         :class:`type.romfs.RomFSReader` objects.
     :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
@@ -196,7 +197,7 @@ class NCCHReader(TypeReaderCryptoBase):
     """NCCH version. Not to be confused with the title version."""
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
-                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False,
+                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
                  load_sections: bool = True, assume_decrypted: bool = False):
 
         super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
@@ -283,6 +284,9 @@ class NCCHReader(TypeReaderCryptoBase):
 
         # tells if the right seed has been set up
         self._seed_set_up = False
+
+        if seed:
+            add_seed(self.program_id, seed)
 
         # load the seed if needed
         if self.flags.uses_seed:
