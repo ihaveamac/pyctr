@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
-from ..crypto import CryptoEngine, Keyslot
+from ..crypto import CryptoEngine, Keyslot, add_seed
 from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
@@ -67,6 +67,7 @@ class CDNReader:
     :param crypto: A custom :class:`~.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created. This is only used to decrypt the CIA, not the NCCH contents.
     :param dev: Use devunit keys.
+    :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
     :param titlekey: Encrypted titlekey to use. Used over the ticket file if specified.
     :param common_key_index: Common key index to decrypt the titlekey with. Only used if `titlekey` is specified.
         Defaults to 0 for an eShop application.
@@ -92,8 +93,8 @@ class CDNReader:
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
     def __init__(self, file: 'Union[PathLike, str, bytes]', *, case_insensitive: bool = False,
-                 crypto: 'CryptoEngine' = None, dev: bool = False, titlekey: bytes = None, common_key_index: int = 0,
-                 load_contents: bool = True):
+                 crypto: 'CryptoEngine' = None, dev: bool = False, seed: bytes = None, titlekey: bytes = None,
+                 common_key_index: int = 0, load_contents: bool = True):
         if crypto:
             self._crypto = crypto
         else:
@@ -112,6 +113,9 @@ class CDNReader:
         tmd_file_open.seek(0)
 
         self._base_files[CDNSection.TitleMetadata] = (tmd_file_open, None)
+
+        if seed:
+            add_seed(self.tmd.title_id, seed)
 
         if titlekey:
             self._crypto.load_encrypted_titlekey(titlekey, common_key_index, self.tmd.title_id)
