@@ -31,8 +31,15 @@ if TYPE_CHECKING:
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
     from typing import BinaryIO, Dict, List, Optional, Union
 
-__all__ = ['CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError', 'TicketLengthError',
-           'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO', 'CBCFileIO']
+__all__ = ['MIN_TICKET_SIZE', 'CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError',
+           'TicketLengthError', 'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO',
+           'CBCFileIO']
+
+BOOT9_PROT_HASH = '7331f7edece3dd33f2ab4bd0b3a5d607229fd19212c10b734cedcaf78c1a7b98'
+
+DEV_COMMON_KEY_0 = bytes.fromhex('55A3F872BDC80C555A654381139E153B')
+
+MIN_TICKET_SIZE = 0x2AC
 
 
 class CryptoError(PyCTRError):
@@ -110,10 +117,6 @@ class Keyslot(IntEnum):
     # anything after 0x3F is custom to PyCTR
     DecryptedTitlekey = 0x40
 
-
-BOOT9_PROT_HASH = '7331f7edece3dd33f2ab4bd0b3a5d607229fd19212c10b734cedcaf78c1a7b98'
-
-DEV_COMMON_KEY_0 = bytes.fromhex('55A3F872BDC80C555A654381139E153B')
 
 common_key_y = (
     # eShop
@@ -215,6 +218,9 @@ class CryptoEngine:
     Path that the ARM9 BootROM was loaded from. Set when :meth:`setup_keys_from_boot9_file` is called, which is
     automatically called on object creation if `setup_b9_keys` was `True`.
     """
+
+    dev: bool
+    """Uses devunit keys."""
 
     def __init__(self, boot9: str = None, dev: bool = False, setup_b9_keys: bool = True):
         self.key_x: Dict[int, int] = {}
@@ -385,6 +391,18 @@ class CryptoEngine:
         hash_p2 = readbe(path_hash[16:32])
         return hash_p1 ^ hash_p2
 
+    def load_encrypted_titlekey(self, titlekey: bytes, common_key_index: int, title_id: 'Union[str, bytes]'):
+        if isinstance(title_id, str):
+            title_id = bytes.fromhex(title_id)
+
+        if self.dev and common_key_index == 0:
+            self.set_normal_key(0x3D, DEV_COMMON_KEY_0)
+        else:
+            self.set_keyslot('y', 0x3D, common_key_y[common_key_index])
+
+        cipher = self.create_cbc_cipher(Keyslot.CommonKey, title_id + (b'\0' * 8))
+        self.set_normal_key(0x40, cipher.decrypt(titlekey))
+
     def load_from_ticket(self, ticket: bytes):
         """Load a titlekey from a ticket and set keyslot 0x40 to the decrypted titlekey."""
         ticket_len = len(ticket)
@@ -397,13 +415,7 @@ class CryptoEngine:
         title_id = ticket[0x1DC:0x1E4]
         common_key_index = ticket[0x1F1]
 
-        if self.dev and common_key_index == 0:
-            self.set_normal_key(0x3D, DEV_COMMON_KEY_0)
-        else:
-            self.set_keyslot('y', 0x3D, common_key_y[common_key_index])
-
-        cipher = self.create_cbc_cipher(Keyslot.CommonKey, title_id + (b'\0' * 8))
-        self.set_normal_key(0x40, cipher.decrypt(titlekey_enc))
+        self.load_encrypted_titlekey(titlekey_enc, common_key_index, title_id)
 
     def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]'):
         """Sets a keyslot to the specified key."""
