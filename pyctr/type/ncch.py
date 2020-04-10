@@ -299,6 +299,15 @@ class NCCHReader(TypeReaderCryptoBase):
         if load_sections:
             self.load_sections()
 
+    def __repr__(self):
+        info = [('program_id', self.program_id), ('product_code', self.product_code)]
+        try:
+            info.append(('title_name', repr(self.exefs.icon.get_app_title().short_desc)))
+        except (KeyError, AttributeError):
+            info.append(('title_name', 'unknown'))
+        info_final = " ".join(x + ": " + str(y) for x, y in info)
+        return f'<{type(self).__name__} {info_final}>'
+
     def load_sections(self):
         """Load the sections of the NCCH (Extended Header, ExeFS, and RomFS)."""
 
