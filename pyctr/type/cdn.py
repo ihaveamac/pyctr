@@ -173,6 +173,16 @@ class CDNReader:
 
     __del__ = close
 
+    def __repr__(self):
+        info = [('title_id', self.tmd.title_id)]
+        try:
+            info.append(('title_name', repr(self.contents[0].exefs.icon.get_app_title().short_desc)))
+        except KeyError:
+            info.append(('title_name', 'unknown'))
+        info.append(('content_count', len(self.contents)))
+        info_final = " ".join(x + ": " + str(y) for x, y in info)
+        return f'<{type(self).__name__} {info_final}>'
+
     def open_raw_section(self, section: 'Union[int, CDNSection]') -> 'BinaryIO':
         """
         Open a raw CDN content for reading with on-the-fly decryption.
