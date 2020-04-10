@@ -11,6 +11,7 @@ from io import BufferedIOBase
 from os import environ
 from os.path import getsize, join as pjoin
 from struct import pack, unpack
+from threading import Lock
 from typing import TYPE_CHECKING
 
 from Cryptodome.Cipher import AES
@@ -736,30 +737,33 @@ class CTRFileIO(_CryptoFileBase):
         self._crypto = crypto
         self._keyslot = keyslot
         self._counter = counter
+        self._lock = Lock()
 
     def __repr__(self):
         return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot:#04x}, counter={self._counter!r})'
 
     @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
-        cur_offset = self.tell()
-        data = self._reader.read(size)
-        counter = self._counter + (cur_offset >> 4)
-        cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
-        # beginning padding
-        cipher.decrypt(b'\0' * (cur_offset % 0x10))
-        return cipher.decrypt(data)
+        with self._lock:
+            cur_offset = self.tell()
+            data = self._reader.read(size)
+            counter = self._counter + (cur_offset >> 4)
+            cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
+            # beginning padding
+            cipher.decrypt(b'\0' * (cur_offset % 0x10))
+            return cipher.decrypt(data)
 
     read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
 
     @_raise_if_file_closed
     def write(self, data: bytes) -> int:
-        cur_offset = self.tell()
-        counter = self._counter + (cur_offset >> 4)
-        cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
-        # beginning padding
-        cipher.encrypt(b'\0' * (cur_offset % 0x10))
-        return self._reader.write(cipher.encrypt(data))
+        with self._lock:
+            cur_offset = self.tell()
+            counter = self._counter + (cur_offset >> 4)
+            cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
+            # beginning padding
+            cipher.encrypt(b'\0' * (cur_offset % 0x10))
+            return self._reader.write(cipher.encrypt(data))
 
     @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0) -> int:
@@ -778,50 +782,53 @@ class CBCFileIO(_CryptoFileBase):
         self._crypto = crypto
         self._keyslot = keyslot
         self._iv = iv
+        self._lock = Lock()
 
     def __repr__(self):
         return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot:#04x}, iv={self._iv!r})'
 
     @_raise_if_file_closed
     def read(self, size: int = -1):
-        offset = self._reader.tell()
+        with self._lock:
+            offset = self._reader.tell()
 
-        # if encrypted, the block needs to be decrypted first
-        # CBC requires a full block (0x10 in this case). and the previous
-        #   block is used as the IV. so that's quite a bit to read if the
-        #   application requires just a few bytes.
-        # thanks Stary2001 for help with random-access crypto
+            # if encrypted, the block needs to be decrypted first
+            # CBC requires a full block (0x10 in this case). and the previous
+            #   block is used as the IV. so that's quite a bit to read if the
+            #   application requires just a few bytes.
+            # thanks Stary2001 for help with random-access crypto
 
-        before = offset % 16
-        if offset - before == 0:
-            iv = self._iv
-        else:
-            # seek back one block to read it as iv
-            self._reader.seek(-0x10 - before, 1)
-            iv = self._reader.read(0x10)
-        # this is done since we may not know the original size of the file
-        # and the caller may have requested -1 to read all the remaining data
-        data_before = self._reader.read(before)
-        data_requested = self._reader.read(size)
-        data_requested_len = len(data_requested)
-        data_total_len = len(data_before) + data_requested_len
-        if data_total_len % 16:
-            data_after = self._reader.read(16 - (data_total_len % 16))
-            self._reader.seek(-len(data_after), 1)
-        else:
-            data_after = b''
-        cipher = self._crypto.create_cbc_cipher(self._keyslot, iv)
-        # decrypt data, and cut off extra bytes
-        return cipher.decrypt(
-            b''.join((data_before, data_requested, data_after))
-        )[before:data_requested_len + before]
+            before = offset % 16
+            if offset - before == 0:
+                iv = self._iv
+            else:
+                # seek back one block to read it as iv
+                self._reader.seek(-0x10 - before, 1)
+                iv = self._reader.read(0x10)
+            # this is done since we may not know the original size of the file
+            # and the caller may have requested -1 to read all the remaining data
+            data_before = self._reader.read(before)
+            data_requested = self._reader.read(size)
+            data_requested_len = len(data_requested)
+            data_total_len = len(data_before) + data_requested_len
+            if data_total_len % 16:
+                data_after = self._reader.read(16 - (data_total_len % 16))
+                self._reader.seek(-len(data_after), 1)
+            else:
+                data_after = b''
+            cipher = self._crypto.create_cbc_cipher(self._keyslot, iv)
+            # decrypt data, and cut off extra bytes
+            return cipher.decrypt(
+                b''.join((data_before, data_requested, data_after))
+            )[before:data_requested_len + before]
 
     read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
 
     @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0):
         # even though read re-seeks to read required data, this allows the underlying object to handle seek how it wants
-        return self._reader.seek(seek, whence)
+        with self._lock:
+            return self._reader.seek(seek, whence)
 
     @_raise_if_file_closed
     def writable(self) -> bool:
