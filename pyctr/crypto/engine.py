@@ -204,17 +204,17 @@ class CryptoEngine:
     :param setup_b9_keys: Whether or not to automatically load keys from boot9.
     """
 
-    b9_keys_set: bool = False
-    b9_path: str = None
+    __slots__ = ['key_x', 'key_y', 'key_normal', 'dev', 'b9_keys_set', 'b9_path', '_b9_extdata_otp',
+                 '_b9_extdata_keygen', '_otp_device_id', '_otp_key', '_otp_iv', '_id0']
 
-    _b9_extdata_otp: bytes = None
-    _b9_extdata_keygen: bytes = None
+    b9_keys_set: bool
+    """Keys have been set from the ARM9 BootROM."""
 
-    _otp_device_id: int = None
-    _otp_key: bytes = None
-    _otp_iv: bytes = None
-
-    _id0: bytes = None
+    b9_path: 'Optional[str]'
+    """
+    Path that the ARM9 BootROM was loaded from. Set when :meth:`setup_keys_from_boot9_file` is called, which is
+    automatically called on object creation if `setup_b9_keys` was `True`.
+    """
 
     def __init__(self, boot9: str = None, dev: bool = False, setup_b9_keys: bool = True):
         self.key_x: Dict[int, int] = {}
@@ -223,6 +223,18 @@ class CryptoEngine:
         self.key_normal: Dict[int, bytes] = {}
 
         self.dev = dev
+
+        self.b9_keys_set = False
+        self.b9_path = None
+
+        self._b9_extdata_otp: Optional[bytes] = None
+        self._b9_extdata_keygen: Optional[bytes] = None
+
+        self._otp_device_id: Optional[int] = None
+        self._otp_key: Optional[bytes] = None
+        self._otp_iv: Optional[bytes] = None
+
+        self._id0: Optional[bytes] = None
 
         for keyslot, keys in base_key_x.items():
             self.key_x[keyslot] = keys[dev]
