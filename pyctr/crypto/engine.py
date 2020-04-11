@@ -85,30 +85,49 @@ class CorruptBootromError(CryptoError):
 
 
 class Keyslot(IntEnum):
+    """
+    AES engine keyslots used by the Nintendo 3DS. Values above 0x3F (63) are used by PyCTR, and do not exist on the
+    actual hardware. Each value explains what the keyslot is used to decrypt or encrypt.
+    """
+
     TWLNAND = 0x03
+    """Entire TWL region, including twln, twlp, and the header."""
+
     CTRNANDOld = 0x04
+    """CTRNAND for Old Nintendo 3DS."""
     CTRNANDNew = 0x05
+    """CTRNAND for New Nintendo 3DS."""
     FIRM = 0x06
+    """FIRM partitions."""
     AGB = 0x07
+    """AGBSAVE partition if a GBA VC title was played."""
 
     CMACNANDDB = 0x0B
+    """CMAC for NAND dbs."""
 
     NCCH93 = 0x18
+    """NCCH extra keyslot for titles exclusive to New Nintendo 3DS released after System Menu 9.3.0-21."""
     CMACCardSaveNew = 0x19
     CardSaveNew = 0x1A
     NCCH96 = 0x1B
+    """NCCH extra keyslot for titles exclusive to New Nintendo 3DS released after System Menu 9.6.0-24."""
 
     CMACAGB = 0x24
+    """CMAC for the AGBSAVE partition contents."""
     NCCH70 = 0x25
+    """NCCH extra keyslot for titles released after System Menu 7.0.0-13."""
 
     NCCH = 0x2C
+    """NCCH original keyslot."""
     UDSLocalWAN = 0x2D
     StreetPass = 0x2E
     Save60 = 0x2F
+    """Save key for retail games released after System Menu 6.0.0-11."""
     CMACSDNAND = 0x30
 
     CMACCardSave = 0x33
     SD = 0x34
+    """SD card contents under "Nintendo 3DS"."""
 
     CardSave = 0x37
     BOSS = 0x38
@@ -117,9 +136,11 @@ class Keyslot(IntEnum):
     DSiWareExport = 0x3A
 
     CommonKey = 0x3D
+    """Titlekeys in tickets."""
 
     # anything after 0x3F is custom to PyCTR
     DecryptedTitlekey = 0x40
+    """CIA and CDN contents."""
 
 
 common_key_y = (
