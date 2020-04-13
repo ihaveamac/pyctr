@@ -49,16 +49,19 @@ class TypeReaderBase:
     :param file: A file path or a file-like object with the type's data.
     :param closefd: Close the underlying file object when closed. Defaults to `True` for file paths, and `False` for
         file-like objects.
+    :param mode: Mode to open the file with, passed to `open`. This is set by type readers internally. Only used if
+        a file path was given.
     """
 
     closed = False
     """`True` if the reader is closed."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: 'Optional[bool]' = None):
+    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: 'Optional[bool]' = None,
+                 mode: str = 'rb'):
         # Determine whether or not fp is a path or not.
         default_closefd = False
         if isinstance(file, (PathLike, str, bytes)):
-            file = open(file, 'rb')
+            file = open(file, mode)
             default_closefd = True
 
         if closefd is None:
@@ -67,7 +70,7 @@ class TypeReaderBase:
         self._closefd = closefd
 
         # Store the file in a private attribute.
-        self._file = file
+        self._file: BinaryIO = file
 
         # Store the starting offset of the file.
         self._start = file.tell()
