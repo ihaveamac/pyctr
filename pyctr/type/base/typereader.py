@@ -58,11 +58,12 @@ class TypeReaderBase:
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: 'Optional[bool]' = None,
                  mode: str = 'rb'):
-        # Determine whether or not fp is a path or not.
         default_closefd = False
+
+        # Determine whether or not fp is a path or not.
         if isinstance(file, (PathLike, str, bytes)):
-            file = open(file, mode)
             default_closefd = True
+            file = open(file, mode)
 
         if closefd is None:
             closefd = default_closefd
@@ -85,13 +86,21 @@ class TypeReaderBase:
         """Close the reader. If closefd is `True`, the underlying file is also closed."""
         if not self.closed:
             self.closed = True
-            if self._closefd:
-                try:
-                    self._file.close()
-                except AttributeError:
-                    pass
+            try:
+                if self._closefd:
+                    try:
+                        self._file.close()
+                    except AttributeError:
+                        pass
+            except AttributeError:
+                # closefd may not have been set yet
+                pass
 
     __del__ = close
+
+    def _seek(self, offset: int = 0, whence: int = 0):
+        """Seek to an offset in the underlying file, relative to the starting offset."""
+        return self._file.seek(self._start + offset, whence)
 
 
 class TypeReaderCryptoBase(TypeReaderBase):
@@ -101,12 +110,17 @@ class TypeReaderCryptoBase(TypeReaderBase):
     :param file: A file path or a file-like object with the type's data.
     :param closefd: Close the underlying file object when closed. Defaults to `True` for file paths, and `False` for
         file-like objects.
+    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+        be created. This typically only works directly on the type, not any subtypes that might be created (e.g.
+        :class:`~.CIAReader` creates :class:`~.NCCHReader`).
     :param dev: Use devunit keys.
+    :param mode: Mode to open the file with, passed to `open`. This is set by type readers internally. Only used if
+        a file path was given.
     """
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):
-        super().__init__(file, closefd=closefd)
+        super().__init__(file, closefd=closefd, mode=mode)
 
         if crypto:
             self._crypto = crypto
