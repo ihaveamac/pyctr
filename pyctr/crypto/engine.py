@@ -774,8 +774,6 @@ class CTRFileIO(_CryptoFileBase):
             cipher.decrypt(b'\0' * (cur_offset % 0x10))
             return cipher.decrypt(data)
 
-    read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
-
     @_raise_if_file_closed
     def write(self, data: bytes) -> int:
         with self._lock:
@@ -842,8 +840,6 @@ class CBCFileIO(_CryptoFileBase):
             return cipher.decrypt(
                 b''.join((data_before, data_requested, data_after))
             )[before:data_requested_len + before]
-
-    read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
 
     @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0):
