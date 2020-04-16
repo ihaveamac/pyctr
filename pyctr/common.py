@@ -57,8 +57,6 @@ class _ReaderOpenFileBase(BufferedIOBase):
         self._seek += len(data)
         return data
 
-    read1 = read  # probably make this act like read1 should, but this for now enables some other things to work
-
     @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0) -> int:
         if whence == 0:
