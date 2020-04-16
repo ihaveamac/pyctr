@@ -119,7 +119,7 @@ class Keyslot(IntEnum):
 
     NCCH = 0x2C
     """NCCH original keyslot."""
-    UDSLocalWAN = 0x2D
+    UDSLocalWLAN = 0x2D
     StreetPass = 0x2E
     Save60 = 0x2F
     """Save key for retail games released after System Menu 6.0.0-11."""
