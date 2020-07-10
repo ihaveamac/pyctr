@@ -1,4 +1,10 @@
-from io import BufferedIOBase
+# This file is a part of pyctr.
+#
+# Copyright (c) 2017-2020 Ian Burgwin
+# This file is licensed under The MIT License (MIT).
+# You can find the full license text in LICENSE in the root of this project.
+
+from io import RawIOBase
 from threading import Lock
 from weakref import WeakValueDictionary
 from typing import TYPE_CHECKING
@@ -9,13 +15,13 @@ if TYPE_CHECKING:
     from typing import BinaryIO
     # this is to trick type checkers into accepting SubsectionIO as a BinaryIO object
     # if you know a better way, let me know
-    BufferedIOBase = BinaryIO
+    RawIOBase = BinaryIO
 
 # this prevents two SubsectionIO instances on the same file object from interfering with eachother
 _lock_objects = WeakValueDictionary()
 
 
-class SubsectionIO(BufferedIOBase):
+class SubsectionIO(RawIOBase):
     """Provides read-write access to a subsection of a file."""
 
     closed = False

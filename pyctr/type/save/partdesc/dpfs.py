@@ -4,7 +4,7 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
-from io import BufferedIOBase
+from io import RawIOBase
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from typing import BinaryIO, List
 
     # trick type checkers
-    BufferedIOBase = BinaryIO
+    RawIOBase = BinaryIO
 
 
 class DPFSReadOnlyError(PartitionDescriptorError):
@@ -128,7 +128,7 @@ class DPFSLevel2(DPFSLevelChunkBase):
                 self.u32_list.append(u32)
 
 
-class DPFSLevel3FileIO(BufferedIOBase):
+class DPFSLevel3FileIO(RawIOBase):
     def __init__(self, lv3: 'DPFSLevel3'):
         self._lv3 = lv3
         self._seek = 0

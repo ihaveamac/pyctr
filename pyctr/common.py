@@ -5,13 +5,13 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from functools import wraps
-from io import BufferedIOBase
+from io import RawIOBase
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
     from typing import BinaryIO
-    BufferedIOBase = BinaryIO
+    RawIOBase = BinaryIO
 
 
 class PyCTRError(Exception):
@@ -35,7 +35,7 @@ def _raise_if_file_closed(method):
     return decorator
 
 
-class _ReaderOpenFileBase(BufferedIOBase):
+class _ReaderOpenFileBase(RawIOBase):
     """Base class for all open files for Reader classes."""
 
     _seek = 0

@@ -5,7 +5,7 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from hashlib import sha256
-from io import BufferedIOBase
+from io import RawIOBase
 from threading import Lock, RLock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from typing import BinaryIO, Callable, List, Optional, Tuple
 
     # trick type checkers
-    BufferedIOBase = BinaryIO
+    RawIOBase = BinaryIO
 
 EMPTY_HASH = b'\0' * 0x20
 
@@ -75,7 +75,7 @@ class IVFC(NamedTuple):
         return b''.join(parts)
 
 
-class IVFCLevel4Reader(BufferedIOBase):
+class IVFCLevel4Reader(RawIOBase):
     def __init__(self, tree: 'IVFCHashTree', verify: bool = True, deep_verify: bool = True):
         self._tree = tree
         self._verify = verify

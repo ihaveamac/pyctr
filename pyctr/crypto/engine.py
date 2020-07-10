@@ -7,7 +7,7 @@
 from enum import IntEnum
 from functools import wraps
 from hashlib import sha256
-from io import BufferedIOBase
+from io import RawIOBase
 from os import environ
 from os.path import getsize, join as pjoin
 from struct import pack, unpack
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from typing import BinaryIO, Dict, List, Optional, Union
 
     # trick type checkers
-    BufferedIOBase = BinaryIO
+    RawIOBase = BinaryIO
 
 __all__ = ['MIN_TICKET_SIZE', 'CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError',
            'TicketLengthError', 'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO',
@@ -714,7 +714,7 @@ class CryptoEngine:
             self.setup_sd_key(f.read(0x140))
 
 
-class _CryptoFileBase(BufferedIOBase):
+class _CryptoFileBase(RawIOBase):
     """Base class for CTR and CBC IO classes."""
 
     closed = False
