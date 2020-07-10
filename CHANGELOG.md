@@ -1,3 +1,7 @@
+## Next
+* Support NCCH contents with fixed crypto key (zerokey and fixed system key)
+  * CryptoEngine adds these to fake keyslots 0x41 and 0x42 respectively.
+
 ## v0.4.0 - July 10, 2020
 * Add DISA/DIFF reading and writing under `pyctr.type.save`
   * This does NOT include Inner FAT support yet.
