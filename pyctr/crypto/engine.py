@@ -626,7 +626,7 @@ class CryptoEngine:
         otp_keysect_hash: bytes = sha256(otp_enc[0:0x90]).digest()
 
         self.set_keyslot('x', 0x11, otp_keysect_hash[0:0x10])
-        self.set_keyslot('y', 0x11, otp_keysect_hash[0:0x10])
+        self.set_keyslot('y', 0x11, otp_keysect_hash[0x10:0x20])
 
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
