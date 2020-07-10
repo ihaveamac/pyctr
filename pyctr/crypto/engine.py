@@ -72,7 +72,7 @@ class TicketLengthError(CryptoError):
         super().__init__(length)
 
     def __str__(self):
-        return f'0x350 expected, {self.args[0]:#x} given'
+        return f'0x350 expected, {hex(self.args[0])} given'
 
 
 # wonder if I'm doing this right...
