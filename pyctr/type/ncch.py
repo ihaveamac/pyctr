@@ -179,10 +179,14 @@ class NCCHReader(TypeReaderCryptoBase):
     """The :class:`~.RomFSReader` of the NCCH, if it has one."""
 
     program_id: str
-    """Title ID of the application"""
+    """Title ID of the application."""
 
     partition_id: str
-    """Partition ID as an integer. Usually this is different for NCCH in a title, except for DLC."""
+    """
+    Partition ID as an integer. Usually this is different for NCCH in a title, incrementing the platform section
+    (e.g. 0004 for Application, 0005 for Manual, 0006 for Download Play Child). DLC does not follow this, all contents
+    use 0004 for the platform.
+    """
 
     product_code: str
     """Product code of the content."""
@@ -195,6 +199,19 @@ class NCCHReader(TypeReaderCryptoBase):
 
     version: int
     """NCCH version. Not to be confused with the title version."""
+
+    main_keyslot: Keyslot
+    """
+    Keyslot to use for decrypting the Extended Header and ExeFS header. In most cases this is Original NCCH (0x2C).
+    Some titles may use a fixed crypto key though, either all zeros, or a special key for system titles. PyCTR uses the
+    fake keyslots 0x41 and 0x42 for these respectively.
+    """
+
+    extra_keyslot: Keyslot
+    """
+    Second keyslot to use for the ExeFS contents and RomFS. This is determined by the crypto method in the NCCH flags.
+    This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
+    """
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
@@ -278,6 +295,13 @@ class NCCHReader(TypeReaderCryptoBase):
         self.flags = NCCHFlags(crypto_method=flags_raw[3], executable=bool(flags_raw[5] & 0x2),
                                fixed_crypto_key=bool(flags_raw[7] & 0x1), no_romfs=bool(flags_raw[7] & 0x2),
                                no_crypto=bool(flags_raw[7] & 0x4), uses_seed=bool(flags_raw[7] & 0x20))
+
+        if self.flags.fixed_crypto_key:
+            self.main_keyslot = Keyslot.FixedSystemKey if int(self.program_id, 16) & (0x10 << 32) else Keyslot.ZeroKey
+            self.extra_keyslot = self.main_keyslot
+        else:
+            self.main_keyslot = Keyslot.NCCH
+            self.extra_keyslot = extra_cryptoflags[self.flags.crypto_method]
 
         # load the original (non-seeded) KeyY into the Original NCCH slot
         self._crypto.set_keyslot('y', Keyslot.NCCH, self.get_key_y(original=True))
@@ -368,7 +392,7 @@ class NCCHReader(TypeReaderCryptoBase):
             fh = SubsectionIO(self._file, self._start + region.offset, region.size)
         # if the region is encrypted (not ExeFS if an extra keyslot is in use), wrap it in CTRFileIO
         if not (self._assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
-            keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else Keyslot.NCCH
+            keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else self.main_keyslot
             fh = self._crypto.create_ctr_io(keyslot, fh, region.iv)
         return fh
 
@@ -379,10 +403,6 @@ class NCCHReader(TypeReaderCryptoBase):
             raise MissingSeedError('NCCH uses seed crypto, but seed is not set up')
         else:
             return self._seeded_key_y
-
-    @property
-    def extra_keyslot(self) -> int:
-        return extra_cryptoflags[self.flags.crypto_method]
 
     def check_for_extheader(self) -> bool:
         return NCCHSection.ExtendedHeader in self.sections
@@ -537,7 +557,7 @@ class NCCHReader(TypeReaderCryptoBase):
                             if r[0] <= self._file.tell() - region.offset < r[1]:
                                 # if the chunk is within the "normal keyslot" ranges,
                                 #   use the Original NCCH keyslot instead
-                                keyslot = Keyslot.NCCH
+                                keyslot = self.main_keyslot
 
                         # decrypt the data
                         out = self._crypto.create_ctr_cipher(keyslot, iv).decrypt(self._file.read(0x200))
@@ -560,7 +580,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
                 # choose the extra keyslot only for RomFS here
                 # ExeFS needs special handling if a newer keyslot is used, therefore it's not checked here
-                keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else Keyslot.NCCH
+                keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else self.main_keyslot
 
                 # get the amount of padding required at the beginning
                 before = offset % 16
