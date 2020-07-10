@@ -142,6 +142,12 @@ class Keyslot(IntEnum):
     DecryptedTitlekey = 0x40
     """CIA and CDN contents."""
 
+    ZeroKey = 0x41
+    """All zero key for NCCH titles using fixed crypto."""
+
+    FixedSystemKey = 0x42
+    """Special key for NCCH system titles using fixed crypto."""
+
 
 common_key_y = (
     # eShop
@@ -249,9 +255,10 @@ class CryptoEngine:
 
     def __init__(self, boot9: str = None, dev: bool = False, setup_b9_keys: bool = True):
         self.key_x: Dict[int, int] = {}
-        self.key_y: Dict[int, int] = {0x03: 0xE1A00005202DDD1DBD4DC4D30AB9DC76,
-                                      0x05: 0x4D804F4E9990194613A204AC584460BE}
-        self.key_normal: Dict[int, bytes] = {}
+        self.key_y: Dict[int, int] = {Keyslot.TWLNAND: 0xE1A00005202DDD1DBD4DC4D30AB9DC76,
+                                      Keyslot.CTRNANDNew: 0x4D804F4E9990194613A204AC584460BE}
+        self.key_normal: Dict[int, bytes] = {Keyslot.ZeroKey: b'\0' * 16,
+                                             Keyslot.FixedSystemKey: bytes.fromhex('527CE630A9CA305F3696F3CDE954194B')}
 
         self.dev = dev
 
