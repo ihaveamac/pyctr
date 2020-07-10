@@ -1,5 +1,5 @@
 # PyCTR
-Python library to parse several Nintendo 3DS files.
+Python library to interact with Nintendo 3DS files.
 
 The API is not yet stable. If you decide to use this, you should stick to a specific version on pypi, or store a copy locally, until it is stable.
 
