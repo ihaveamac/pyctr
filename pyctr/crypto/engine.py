@@ -705,7 +705,7 @@ class CryptoEngine:
         elif len(data) in {0x120, 0x140}:
             key = data[0x110:0x120]
         else:
-            raise BadMovableSedError(f'invalid length ({len(data):#x}')
+            raise BadMovableSedError(f'invalid length ({hex(len(data))}')
 
         self.set_keyslot('y', Keyslot.SD, key)
         self.set_keyslot('y', Keyslot.CMACSDNAND, key)
@@ -768,7 +768,7 @@ class CTRFileIO(_CryptoFileBase):
         self._lock = Lock()
 
     def __repr__(self):
-        return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot:#04x}, counter={self._counter!r})'
+        return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, counter={self._counter!r})'
 
     @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
@@ -811,7 +811,7 @@ class CBCFileIO(_CryptoFileBase):
         self._lock = Lock()
 
     def __repr__(self):
-        return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot:#04x}, iv={self._iv!r})'
+        return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, iv={self._iv!r})'
 
     @_raise_if_file_closed
     def read(self, size: int = -1):
