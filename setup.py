@@ -5,11 +5,11 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='pyctr',
-    version='0.3.1',
+    version='0.4.0',
     packages=find_packages(),
     install_requires=['pycryptodomex'],
     python_requires='>=3.6',
-    url='https://git.ianburgwin.net/ianburgwin/pyctr',
+    url='https://github.com/ihaveamac/pyctr',
     license='MIT',
     author='Ian Burgwin',
     author_email='ian@ianburgwin.net',

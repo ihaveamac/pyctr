@@ -1,3 +1,13 @@
+## v0.4.0 - July 10, 2020
+* Add DISA/DIFF reading and writing under `pyctr.type.save`
+  * This does NOT include Inner FAT support yet.
+  * This can read and write to IVFC level 4. For now, external tools can be used to read or write to the Inner FAT.
+* Add CDN reading under `pyctr.type.cdn`
+* Add more docstrings to various modules
+* Add seed parameters to ncch, cia, and cdn
+* Rename `Keyslot.UDSLocalWAN` to `Keyslot.UDSLocalWLAN`
+* Many other internal changes done months ago
+
 ## v0.3.1 - April 8, 2020
 * Fix `setup.py` not including subpackages
 
