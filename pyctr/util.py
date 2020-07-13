@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 __all__ = ['windows', 'macos', 'readle', 'readbe', 'roundup', 'config_dirs']
 
-windows = platform in {'win32', 'cygwin'}
+windows = platform == 'win32'
 macos = platform == 'darwin'
 
 
