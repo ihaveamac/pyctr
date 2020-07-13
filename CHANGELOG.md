@@ -1,3 +1,6 @@
+## Next
+* Don't assume a Cygwin environment is Windows
+
 ## v0.4.1 - July 11, 2020
 * Support NCCH contents with fixed crypto key (zerokey and fixed system key)
   * CryptoEngine adds these to fake keyslots 0x41 and 0x42 respectively.
