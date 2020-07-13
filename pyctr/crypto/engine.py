@@ -4,6 +4,8 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+"""Provides various tools to perform cryptographic operations with Nintendo 3DS data."""
+
 from enum import IntEnum
 from functools import wraps
 from hashlib import sha256
@@ -137,6 +139,12 @@ class Keyslot(IntEnum):
 
     CommonKey = 0x3D
     """Titlekeys in tickets."""
+
+    Boot9Internal = 0x3F
+    """
+    Used for internal operations in the ARM9 BootROM, including decrypting OTP, FIRM sections from non-NAND sources,
+    and generating console-unique keys.
+    """
 
     # anything after 0x3F is custom to PyCTR
     DecryptedTitlekey = 0x40
@@ -409,6 +417,13 @@ class CryptoEngine:
 
     @staticmethod
     def sd_path_to_iv(path: str) -> int:
+        """
+        Generate an IV from an SD file path relevant to the root of an ID1 directory (e.g.
+        `/title/00040000/0f70c600/content/00000000.app`). Both Unix- and Windows-style paths are accepted.
+
+        :param path: SD file path.
+        :return: IV as an integer.
+        """
         # ensure the path is lowercase
         path = path.lower()
         # allow Windows-style paths to be passed in
@@ -427,6 +442,13 @@ class CryptoEngine:
         return hash_p1 ^ hash_p2
 
     def load_encrypted_titlekey(self, titlekey: bytes, common_key_index: int, title_id: 'Union[str, bytes]'):
+        """
+        Decrypt an encrypted titlekey and store in keyslot 0x40 (:attr:`Keyslot.DecryptedTitlekey`).
+
+        :param titlekey: Encrypted titlekey
+        :param common_key_index: Common key Y to use. 0 for eShop, 1 for System.
+        :param title_id: Title ID.
+        """
         if isinstance(title_id, str):
             title_id = bytes.fromhex(title_id)
 
@@ -436,7 +458,7 @@ class CryptoEngine:
             self.set_keyslot('y', 0x3D, common_key_y[common_key_index])
 
         cipher = self.create_cbc_cipher(Keyslot.CommonKey, title_id + (b'\0' * 8))
-        self.set_normal_key(0x40, cipher.decrypt(titlekey))
+        self.set_normal_key(Keyslot.DecryptedTitlekey, cipher.decrypt(titlekey))
 
     def load_from_ticket(self, ticket: bytes):
         """Load a titlekey from a ticket and set keyslot 0x40 to the decrypted titlekey."""
@@ -468,10 +490,22 @@ class CryptoEngine:
             pass
 
     def set_normal_key(self, keyslot: int, key: bytes):
+        """
+        Set the normal key for a keyslot.
+
+        :param keyslot: Keyslot to set normal key of.
+        :param key: 128-bit AES key in bytes.
+        """
         self.key_normal[keyslot] = key
 
     def keygen(self, keyslot: int) -> bytes:
-        """Generate a normal key based on the keyslot."""
+        """
+        Generate a normal key based on the KeyX and KeyY for the keyslot.
+
+        :param keyslot: Keyslot to load KeyX and KeyY from.
+        :return: Generated normal key.
+        :rtype: bytes
+        """
         if keyslot < 0x04:
             # DSi
             return self.keygen_twl_manual(self.key_x[keyslot], self.key_y[keyslot])
@@ -604,7 +638,11 @@ class CryptoEngine:
 
     @_requires_bootrom
     def setup_keys_from_otp(self, otp: bytes):
-        """Set up console-unique keys from an OTP dump. Encrypted and decrypted are supported."""
+        """
+        Set up console-unique keys from an OTP dump. Encrypted and decrypted are supported.
+
+        :param otp: OTP data, encrypted or decrypted.
+        """
         otp_len = len(otp)
         if otp_len != 0x100:
             raise OTPLengthError(otp_len)
@@ -642,8 +680,8 @@ class CryptoEngine:
         self.set_keyslot('x', 0x03, twl_cid_lo + b'NINTENDO' + twl_cid_hi)
 
         console_key_xy: bytes = sha256(otp_dec[0x90:0xAC] + self.b9_extdata_otp).digest()
-        self.set_keyslot('x', 0x3F, console_key_xy[0:0x10])
-        self.set_keyslot('y', 0x3F, console_key_xy[0x10:0x20])
+        self.set_keyslot('x', Keyslot.Boot9Internal, console_key_xy[0:0x10])
+        self.set_keyslot('y', Keyslot.Boot9Internal, console_key_xy[0x10:0x20])
 
         extdata_off = 0
 
@@ -653,7 +691,7 @@ class CryptoEngine:
             iv = self.b9_extdata_keygen[extdata_off:extdata_off+16]
             extdata_off += 16
 
-            data = self.create_cbc_cipher(0x3F, iv).encrypt(self.b9_extdata_keygen[extdata_off:extdata_off + 64])
+            data = self.create_cbc_cipher(Keyslot.Boot9Internal, iv).encrypt(self.b9_extdata_keygen[extdata_off:extdata_off + 64])
 
             extdata_off += n
             return data
@@ -686,7 +724,7 @@ class CryptoEngine:
         for i in range(0x20, 0x24):
             self.set_keyslot('x', i, c[32:48])
 
-        self.set_keyslot('x', 0x24, c[48:64])
+        self.set_keyslot('x', Keyslot.CMACAGB, c[48:64])
 
         d = gen(16)
         off = 0
