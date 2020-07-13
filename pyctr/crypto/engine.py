@@ -148,6 +148,9 @@ class Keyslot(IntEnum):
     FixedSystemKey = 0x42
     """Special key for NCCH system titles using fixed crypto."""
 
+    New3DSKeySector = 0x43
+    """Used to decrypt the secret key sector (sector 0x96) for the New Nintendo 3DS."""
+
 
 common_key_y = (
     # eShop
@@ -625,8 +628,8 @@ class CryptoEngine:
 
         otp_keysect_hash: bytes = sha256(otp_enc[0:0x90]).digest()
 
-        self.set_keyslot('x', 0x11, otp_keysect_hash[0:0x10])
-        self.set_keyslot('y', 0x11, otp_keysect_hash[0x10:0x20])
+        self.set_keyslot('x', Keyslot.New3DSKeySector, otp_keysect_hash[0:0x10])
+        self.set_keyslot('y', Keyslot.New3DSKeySector, otp_keysect_hash[0x10:0x20])
 
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
