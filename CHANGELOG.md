@@ -1,5 +1,8 @@
 ## Next
 * Don't assume a Cygwin environment is Windows
+* Change keyslot for New 3DS key sector keys from 0x11 to 0x43
+  * This adds a new Keyslot enum item: `Keyslot.New3DSKeySector`
+* Document more methods in pyctr.crypto.engine
 
 ## v0.4.1 - July 11, 2020
 * Support NCCH contents with fixed crypto key (zerokey and fixed system key)
