@@ -1,4 +1,4 @@
-## Next
+## v0.4.3 - July 28, 2020
 * Fix endianness issue when converting a `TitleMetadataReader` object to `bytes`
 
 ## v0.4.2 - July 28, 2020
