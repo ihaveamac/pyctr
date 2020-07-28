@@ -1,4 +1,4 @@
-## Next
+## v0.4.2 - July 28, 2020
 * Don't assume a Cygwin environment is Windows
 * Change keyslot for New 3DS key sector keys from 0x11 to 0x43
   * This adds a new Keyslot enum item: `Keyslot.New3DSKeySector`
