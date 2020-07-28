@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, Keyslot, add_seed
+from ..fileio import CloseWrapper
 from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
@@ -192,6 +193,6 @@ class CDNReader:
         :rtype: io.BufferedIOBase | CBCFileIO
         """
         if section >= 0:
-            return self._base_files[section][1]
+            return CloseWrapper(self._base_files[section][1])
         else:
-            return self._base_files[section][0]
+            return CloseWrapper(self._base_files[section][0])

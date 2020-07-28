@@ -4,6 +4,7 @@
   * This adds a new Keyslot enum item: `Keyslot.New3DSKeySector`
 * Document more methods in pyctr.crypto.engine
 * Add new `fileio.CloseWrapper` class to provide access to a file object while preventing closing it directly
+* Use `CloseWrapper` in `CDNReader.open_raw_section`
 
 ## v0.4.1 - July 11, 2020
 * Support NCCH contents with fixed crypto key (zerokey and fixed system key)
