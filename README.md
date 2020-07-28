@@ -5,6 +5,8 @@ The API is not yet stable. If you decide to use this, you should stick to a spec
 
 This was recently separated out to its own repository. This will be a better README at some point.
 
+Support can be found on Discord: https://discord.gg/YVuFUrs
+
 ## Supported types
 * CDN contents ("tmd" next to other contents)
 * CTR Cart Image (".3ds", ".cci")
