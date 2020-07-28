@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from .common import _raise_if_file_closed
 
 if TYPE_CHECKING:
-    from typing import BinaryIO
+    from typing import BinaryIO, IO
     # this is to trick type checkers into accepting SubsectionIO as a BinaryIO object
     # if you know a better way, let me know
     RawIOBase = BinaryIO
@@ -114,3 +114,49 @@ class SubsectionIO(RawIOBase):
     @_raise_if_file_closed
     def seekable(self) -> bool:
         return self._reader.seekable()
+
+
+class CloseWrapper(RawIOBase):
+    """
+    Wrapper around a file object that prevents closing the original object.
+
+    For example, in :class:`~.CDNReader`, one :class:`~.CBCFileIO` object is used per content. If this is closed, it
+    affects future uses of the same content.
+    """
+
+    closed = False
+
+    def __init__(self, file: 'BinaryIO'):
+        self._reader = file
+
+    def __repr__(self):
+        return f'{type(self).__name__}({self._reader!r})'
+
+    def close(self) -> None:
+        self.closed = True
+
+    __del__ = close
+
+    @_raise_if_file_closed
+    def read(self, n: int = -1) -> bytes:
+        return self._reader.read(n)
+
+    @_raise_if_file_closed
+    def write(self, s: bytes) -> int:
+        return self._reader.write(s)
+
+    @_raise_if_file_closed
+    def seek(self, offset: int, whence: int = 0) -> int:
+        return self._reader.seek(offset, whence)
+
+    @_raise_if_file_closed
+    def readable(self) -> bool:
+        return self.readable()
+
+    @_raise_if_file_closed
+    def writable(self) -> bool:
+        return self.writable()
+
+    @_raise_if_file_closed
+    def seekable(self) -> bool:
+        return self.seekable()
