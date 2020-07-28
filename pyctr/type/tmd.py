@@ -204,12 +204,31 @@ class TitleMetadataReader:
 
         info_records = b''.join(bytes(x) for x in self.info_records).ljust(0x900, b'\0')
 
-        header = pack('>64s b b b b 8s 8s 4s 2s I I 4s b 49s 4s H H 2s 2s 32s', self._u_issuer.encode('ascii'),
-                      self._u_version, self._u_ca_crl_version, self._u_signer_crl_version, self._u_reserved1,
-                      self._u_system_version, bytes.fromhex(self.title_id), self._u_title_type, self._u_group_id,
-                      self.save_size, self.srl_save_size, self._u_reserved2, self._u_srl_flag, self._u_reserved3,
-                      self._u_access_rights, self.title_version, self.content_count, self._u_boot_count,
-                      self._u_padding, sha256(info_records).digest())
+        # despite the rest of the tmd using BE numbers, this is LE (?!?)
+        save_size_le = self.save_size.to_bytes(4, 'little')
+        srl_save_size_le = self.srl_save_size.to_bytes(4, 'little')
+
+        header = pack('>64s b b b b 8s 8s 4s 2s 4s 4s 4s b 49s 4s H H 2s 2s 32s',
+                      self._u_issuer.encode('ascii'),
+                      self._u_version,
+                      self._u_ca_crl_version,
+                      self._u_signer_crl_version,
+                      self._u_reserved1,
+                      self._u_system_version,
+                      bytes.fromhex(self.title_id),
+                      self._u_title_type,
+                      self._u_group_id,
+                      save_size_le,
+                      srl_save_size_le,
+                      self._u_reserved2,
+                      self._u_srl_flag,
+                      self._u_reserved3,
+                      self._u_access_rights,
+                      self.title_version,
+                      self.content_count,
+                      self._u_boot_count,
+                      self._u_padding,
+                      sha256(info_records).digest())
 
         chunk_records = b''.join(bytes(x) for x in self.chunk_records)
 
