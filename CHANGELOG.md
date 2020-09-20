@@ -1,3 +1,6 @@
+## Next
+* Fix loading RomFS from a filename in `RomFSReader`
+
 ## v0.4.4 - September 20, 2020
 * Support loading a decrypted titlekey for `CDNReader`
 * Remove unused `sections` attribute from `CDNReader`

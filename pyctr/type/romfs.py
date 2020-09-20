@@ -143,7 +143,7 @@ class RomFSReader(TypeReaderBase):
 
             # iterate through all child directories
             if first_child_dir != 0xFFFFFFFF:
-                file.seek(self._start + lv3_offset + lv3_dirmeta.offset + first_child_dir)
+                self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset + first_child_dir)
                 while True:
                     child_dir_meta = self._file.read(0x18)
                     next_sibling_dir = readle(child_dir_meta[0x4:0x8])
@@ -176,7 +176,7 @@ class RomFSReader(TypeReaderBase):
                     self.total_size += child_file_size
                     if next_sibling_file == 0xFFFFFFFF:
                         break
-                    file.seek(self._start + lv3_offset + lv3_filemeta.offset + next_sibling_file)
+                    self._file.seek(self._start + lv3_offset + lv3_filemeta.offset + next_sibling_file)
 
         self._tree_root = {'name': 'ROOT'}
         self.total_size = 0
