@@ -70,6 +70,7 @@ class CDNReader:
     :param dev: Use devunit keys.
     :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
     :param titlekey: Encrypted titlekey to use. Used over the ticket file if specified.
+    :param decrypted_titlekey: Decrypted titlekey to use. Used over the encrypted titlekey or ticket if specified.
     :param common_key_index: Common key index to decrypt the titlekey with. Only used if `titlekey` is specified.
         Defaults to 0 for an eShop application.
     :param load_contents: Load each partition with :class:`~.NCCHReader`.
@@ -95,7 +96,7 @@ class CDNReader:
 
     def __init__(self, file: 'Union[PathLike, str, bytes]', *, case_insensitive: bool = False,
                  crypto: 'CryptoEngine' = None, dev: bool = False, seed: bytes = None, titlekey: bytes = None,
-                 common_key_index: int = 0, load_contents: bool = True):
+                 decrypted_titlekey: bytes = None, common_key_index: int = 0, load_contents: bool = True):
         if crypto:
             self._crypto = crypto
         else:
@@ -118,7 +119,9 @@ class CDNReader:
         if seed:
             add_seed(self.tmd.title_id, seed)
 
-        if titlekey:
+        if decrypted_titlekey:
+            self._crypto.set_normal_key(Keyslot.DecryptedTitlekey, decrypted_titlekey)
+        elif titlekey:
             self._crypto.load_encrypted_titlekey(titlekey, common_key_index, self.tmd.title_id)
         else:
             ticket_file = title_root / 'cetk'

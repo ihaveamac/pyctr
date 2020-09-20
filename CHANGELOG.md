@@ -1,3 +1,6 @@
+## Next
+* Support loading a decrypted titlekey for `CDNReader`
+
 ## v0.4.3 - July 28, 2020
 * Fix endianness issue when converting a `TitleMetadataReader` object to `bytes`
 
