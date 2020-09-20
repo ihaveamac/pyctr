@@ -2,6 +2,7 @@
 * Support loading a decrypted titlekey for `CDNReader`
 * Remove unused `sections` attribute from `CDNReader`
 * Add `available_sections` to `CDNReader` to provide a list of sections available in the title
+* Add `__author__`, `__copyright__`, `__license__`, `__version__`, and `version_info` to `pyctr.__init__`
 
 ## v0.4.3 - July 28, 2020
 * Fix endianness issue when converting a `TitleMetadataReader` object to `bytes`
