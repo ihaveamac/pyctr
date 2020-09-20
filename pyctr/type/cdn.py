@@ -76,6 +76,9 @@ class CDNReader:
     :param load_contents: Load each partition with :class:`~.NCCHReader`.
     """
 
+    available_sections: 'List[Union[CDNSection, int]]'
+    """A list of sections available, including contents, ticket, and title metadata."""
+
     closed = False
     """`True` if the reader is closed."""
 
@@ -102,16 +105,21 @@ class CDNReader:
         # store the original open file to be closed later
         self._base_files = {}
 
+        # public method to see what sections can be accessed
+        self.available_sections = []
+
+        def add_file(section: 'Union[CDNSection, int]', base, enc):
+            self._base_files[section] = (base, enc)
+            self.available_sections.append(section)
+
         tmd_file = Path(file)
         tmd_file_open = tmd_file.open('rb')
         title_root = tmd_file.parent
-        self._base_files[CDNSection.TitleMetadata] = (tmd_file_open, None)
+        add_file(CDNSection.TitleMetadata, tmd_file_open, None)
 
         # this is kinda eh
         self.tmd = TitleMetadataReader.load(tmd_file_open)
         tmd_file_open.seek(0)
-
-        self._base_files[CDNSection.TitleMetadata] = (tmd_file_open, None)
 
         if seed:
             add_seed(self.tmd.title_id, seed)
@@ -124,7 +132,7 @@ class CDNReader:
             ticket_file = title_root / 'cetk'
             ticket_file_open = ticket_file.open('rb')
             self._crypto.load_from_ticket(ticket_file_open.read(0x2AC))
-            self._base_files[CDNSection.Ticket] = (ticket_file_open, None)
+            add_file(CDNSection.Ticket, ticket_file_open, None)
             ticket_file_open.seek(0)
 
         self.contents = {}
@@ -154,7 +162,7 @@ class CDNReader:
             if load_contents and not is_srl:
                 base_file = to_read.open('rb')
                 crypto_file = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, base_file, iv)
-                self._base_files[record.cindex] = (base_file, crypto_file)
+                add_file(record.cindex, base_file, crypto_file)
                 self.contents[record.cindex] = NCCHReader(crypto_file, case_insensitive=case_insensitive, dev=dev)
 
     def __enter__(self):

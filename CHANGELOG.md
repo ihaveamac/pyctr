@@ -1,6 +1,7 @@
 ## Next
 * Support loading a decrypted titlekey for `CDNReader`
 * Remove unused `sections` attribute from `CDNReader`
+* Add `available_sections` to `CDNReader` to provide a list of sections available in the title
 
 ## v0.4.3 - July 28, 2020
 * Fix endianness issue when converting a `TitleMetadataReader` object to `bytes`
