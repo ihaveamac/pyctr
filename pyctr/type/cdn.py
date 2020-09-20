@@ -88,9 +88,6 @@ class CDNReader:
     initialization.
     """
 
-    sections: 'Dict[Union[int, CDNSection], CDNRegion]'
-    """A list of :class:`CIARegion` objects containing the offset and size of each section."""
-
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
