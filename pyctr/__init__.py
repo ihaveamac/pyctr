@@ -11,6 +11,5 @@ __copyright__ = 'Copyright (c) 2017-2020 Ian Burgwin'
 __license__ = 'MIT'
 
 VersionInfo = namedtuple('VersionInfo', 'major minor micro releaselevel serial')
-version_info = VersionInfo(major=0, minor=4, micro=0, releaselevel='final', serial=0)
-
-__version__ = '.'.join(str(x) for x in version_info)
+version_info = VersionInfo(major=0, minor=4, micro=4, releaselevel='final', serial=0)
+__version__ = '0.4.4'
