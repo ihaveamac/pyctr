@@ -213,7 +213,7 @@ class ExeFSReader(TypeReaderBase):
 
         self.entries = {}
 
-        header = fp.read(EXEFS_HEADER_SIZE)
+        header = self._file.read(EXEFS_HEADER_SIZE)
 
         # ExeFS entries can fit up to 10 names. hashes are stored in reverse order
         #   (e.g. the first entry would have the hash at the very end - 0x1E0)
