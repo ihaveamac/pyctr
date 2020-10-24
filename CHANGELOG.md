@@ -1,5 +1,6 @@
-## Next
+## v0.4.5 - October 24, 2020
 * Fix loading RomFS from a filename in `RomFSReader`
+* Fix loading ExeFS from a filename in `RomFSReader`
 
 ## v0.4.4 - September 20, 2020
 * Support loading a decrypted titlekey for `CDNReader`
