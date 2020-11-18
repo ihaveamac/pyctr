@@ -8,7 +8,6 @@
 
 from enum import IntEnum
 from io import BytesIO
-from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -21,6 +20,7 @@ from ..util import readle, roundup
 from .base import TypeReaderCryptoBase
 
 if TYPE_CHECKING:
+    from os import PathLike
     from typing import BinaryIO, Dict, List, Optional, Union
     from .tmd import ContentChunkRecord
 
