@@ -207,7 +207,7 @@ class CDNReader:
         filepath, iv = self._base_files[section]
         f = open(filepath, 'rb')
         if iv:  # if encrypted
-            f = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, f, iv)
+            f = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, f, iv, closefd=True)
         self._open_files.add(f)
         return f
 
