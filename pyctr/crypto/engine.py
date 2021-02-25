@@ -391,29 +391,39 @@ class CryptoEngine:
 
         return CMAC.new(key, ciphermod=AES)
 
-    def create_ctr_io(self, keyslot: Keyslot, fh: 'BinaryIO', ctr: int):
+    def create_ctr_io(self, keyslot: Keyslot, fh: 'BinaryIO', ctr: int, close_fh: bool = False):
         """
         Create an AES-CTR read-write file object with the given keyslot.
 
         :param keyslot: :class:`Keyslot` to use.
         :param fh: File-like object to wrap.
         :param ctr: Counter to start with.
+        :param close_fh Close underlying file object when closed.
         :return: A file-like object that does decryption and encryption on the fly.
         :rtype: CTRFileIO
         """
-        return CTRFileIO(fh, self, keyslot, ctr)
+        return CTRFileIO(file=fh,
+                         crypto=self,
+                         keyslot=keyslot,
+                         counter=ctr,
+                         close_fh=close_fh)
 
-    def create_cbc_io(self, keyslot: Keyslot, fh: 'BinaryIO', iv: bytes):
+    def create_cbc_io(self, keyslot: Keyslot, fh: 'BinaryIO', iv: bytes, close_fh: bool = False):
         """
         Create an AES-CBC read-only file object with the given keyslot.
 
         :param keyslot: :class:`Keyslot` to use.
         :param fh: File-like object to wrap.
         :param iv: Initialization vector.
+        :param close_fh Close underlying file object when closed.
         :return: A file-like object that does decryption on the fly.
         :rtype: CBCFileIO
         """
-        return CBCFileIO(fh, self, keyslot, iv)
+        return CBCFileIO(file=fh,
+                         crypto=self,
+                         keyslot=keyslot,
+                         iv=iv,
+                         close_fh=close_fh)
 
     @staticmethod
     def sd_path_to_iv(path: str) -> int:
@@ -767,9 +777,12 @@ class _CryptoFileBase(RawIOBase):
 
     closed = False
     _reader: 'BinaryIO'
+    _close_fh: bool
 
     def close(self):
         self.closed = True
+        if self._close_fh:
+            self._reader.close()
 
     __del__ = close
 
@@ -801,15 +814,18 @@ class _CryptoFileBase(RawIOBase):
 class CTRFileIO(_CryptoFileBase):
     """Provides transparent read-write AES-CTR encryption as a file-like object."""
 
-    def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, counter: int):
+    def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, counter: int,
+                 close_fh: bool = False):
         self._reader = file
         self._crypto = crypto
         self._keyslot = keyslot
         self._counter = counter
+        self._close_fh = close_fh
         self._lock = Lock()
 
     def __repr__(self):
-        return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, counter={self._counter!r})'
+        return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, counter={self._counter!r}, '
+                f'close_fh={self._close_fh!r})')
 
     @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
@@ -844,15 +860,17 @@ class CTRFileIO(_CryptoFileBase):
 class CBCFileIO(_CryptoFileBase):
     """Provides transparent read-only AES-CBC encryption as a file-like object."""
 
-    def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, iv: bytes):
+    def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, iv: bytes, close_fh: bool = False):
         self._reader = file
         self._crypto = crypto
         self._keyslot = keyslot
         self._iv = iv
+        self._close_fh = close_fh
         self._lock = Lock()
 
     def __repr__(self):
-        return f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, iv={self._iv!r})'
+        return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, iv={self._iv!r}), '
+                f'close_fh={self._close_fh!r}')
 
     @_raise_if_file_closed
     def read(self, size: int = -1):
