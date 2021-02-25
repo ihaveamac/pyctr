@@ -827,6 +827,9 @@ class CTRFileIO(_CryptoFileBase):
         return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, counter={self._counter!r}, '
                 f'close_fh={self._close_fh!r})')
 
+    def __hash__(self):
+        return hash((self._reader, self._keyslot, self._counter))
+
     @_raise_if_file_closed
     def read(self, size: int = -1) -> bytes:
         with self._lock:
@@ -871,6 +874,9 @@ class CBCFileIO(_CryptoFileBase):
     def __repr__(self):
         return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, iv={self._iv!r}), '
                 f'close_fh={self._close_fh!r}')
+
+    def __hash__(self):
+        return hash((self._reader, self._keyslot, self._iv))
 
     @_raise_if_file_closed
     def read(self, size: int = -1):

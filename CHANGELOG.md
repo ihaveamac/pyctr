@@ -2,6 +2,7 @@
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)
 * Fix using bytes file paths for `CDNReader` and `SDFilesystem`
 * Support auto-closing underlying file for `CTRFileIO` and `CBCFileIO`
+* Make `CTRFileIO` and `CBCFileIO` objects hashable (if the underlying file object is)
 
 ## v0.4.5 - October 24, 2020
 * Fix loading RomFS from a filename in `RomFSReader`
