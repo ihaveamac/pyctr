@@ -335,13 +335,13 @@ class CryptoEngine:
     def otp_device_id(self) -> int:
         return self._otp_device_id
 
-    @_requires_otp
     @property
+    @_requires_otp
     def otp_dec(self) -> bytes:
         return self._otp_dec
 
-    @_requires_otp
     @property
+    @_requires_otp
     def otp_enc(self) -> bytes:
         return self._otp_enc
 
