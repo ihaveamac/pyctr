@@ -47,6 +47,8 @@ DEV_COMMON_KEY_0 = bytes.fromhex('55A3F872BDC80C555A654381139E153B')
 
 MIN_TICKET_SIZE = 0x2AC
 
+OTP_MAGIC = b'\x0f\xb0\xad\xde'
+
 
 class CryptoError(PyCTRError):
     """Generic exception for cryptography operations."""
@@ -217,7 +219,7 @@ def _requires_otp(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         if not self.b9_keys_set:
-            raise KeyslotMissingError('bootrom is required to set up keys, see setup_keys_from_boot9')
+            raise KeyslotMissingError('an OTP dump is required, see setup_keys_from_otp')
         return method(self, *args, **kwargs)
     return wrapper
 
@@ -683,7 +685,7 @@ class CryptoEngine:
             raise OTPLengthError(otp_len)
 
         cipher_otp = AES.new(self.otp_key, AES.MODE_CBC, self.otp_iv)
-        if otp[0:4] == b'\x0f\xb0\xad\xde':
+        if otp[0:4] == OTP_MAGIC:
             # decrypted otp
             self._otp_enc: bytes = cipher_otp.encrypt(otp)
             self._otp_dec = otp
@@ -691,6 +693,9 @@ class CryptoEngine:
             # encrypted otp
             self._otp_enc = otp
             self._otp_dec: bytes = cipher_otp.decrypt(otp)
+        
+        if self._otp_dec[0:4] != OTP_MAGIC:
+            raise CorruptOTPError('OTP magic not found, corrupt or not an OTP')
 
         self._otp_device_id = int.from_bytes(self.otp_dec[4:8], 'little')
 
