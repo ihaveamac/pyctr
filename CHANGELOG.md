@@ -6,6 +6,7 @@
 * Update `CDNReader` to re-open files instead of using shared file objects, and internally open all files through `CDNReader.open_raw_section` (fixes #6)
 * Store encrypted and decrypted OTP in `CryptoEngine` as `otp_enc` and `otp_dec`, and add `otp_keys_set` to check if an OTP was set
 * Verify OTP magic after decryption in `CryptoEngine.setup_keys_from_otp`
+* Make `CryptoEngine.otp_device_id` require OTP (raising an exception instead of returning None)
 
 ## v0.4.5 - October 24, 2020
 * Fix loading RomFS from a filename in `RomFSReader`

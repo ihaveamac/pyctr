@@ -320,11 +320,6 @@ class CryptoEngine:
 
     @property
     @_requires_bootrom
-    def otp_device_id(self) -> int:
-        return self._otp_device_id
-
-    @property
-    @_requires_bootrom
     def otp_key(self) -> bytes:
         return self._otp_key
 
@@ -332,6 +327,11 @@ class CryptoEngine:
     @_requires_bootrom
     def otp_iv(self) -> bytes:
         return self._otp_iv
+
+    @property
+    @_requires_otp
+    def otp_device_id(self) -> int:
+        return self._otp_device_id
 
     @_requires_otp
     @property
