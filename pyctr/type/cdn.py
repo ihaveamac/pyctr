@@ -7,7 +7,7 @@
 """Module for interacting with contents in CDN layout."""
 
 from enum import IntEnum
-from os import PathLike
+from os import PathLike, fsdecode
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -112,7 +112,7 @@ class CDNReader:
             self._base_files[section] = (base, enc)
             self.available_sections.append(section)
 
-        tmd_file = Path(file)
+        tmd_file = Path(fsdecode(file))
         tmd_file_open = tmd_file.open('rb')
         title_root = tmd_file.parent
         add_file(CDNSection.TitleMetadata, tmd_file_open, None)

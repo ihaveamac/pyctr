@@ -6,7 +6,7 @@
 
 """Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory."""
 
-from os import PathLike
+from os import PathLike, fsdecode
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -65,7 +65,7 @@ class SDFilesystem:
         elif sd_key_file:
             self._crypto.setup_sd_key_from_file(sd_key_file)
 
-        self._base_path = Path(path)
+        self._base_path = Path(fsdecode(path))
 
         try:
             self._id0_path = self._base_path / self._crypto.id0.hex()
