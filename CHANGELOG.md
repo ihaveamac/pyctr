@@ -4,6 +4,7 @@
 * Support auto-closing underlying file for `CTRFileIO` and `CBCFileIO`
 * Make `CTRFileIO` and `CBCFileIO` objects hashable (if the underlying file object is)
 * Update `CDNReader` to re-open files instead of using shared file objects, and internally open all files through `CDNReader.open_raw_section` (fixes #6)
+* Store encrypted and decrypted OTP in `CryptoEngine` as `otp_enc` and `otp_dec`, and add `otp_keys_set` to check if an OTP was set
 
 ## v0.4.5 - October 24, 2020
 * Fix loading RomFS from a filename in `RomFSReader`

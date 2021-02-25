@@ -213,6 +213,15 @@ def _requires_bootrom(method):
     return wrapper
 
 
+def _requires_otp(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        if not self.b9_keys_set:
+            raise KeyslotMissingError('bootrom is required to set up keys, see setup_keys_from_boot9')
+        return method(self, *args, **kwargs)
+    return wrapper
+
+
 # used from http://www.falatic.com/index.php/108/python-and-bitwise-rotation
 # converted to def because pycodestyle complained to me
 def rol(val: int, r_bits: int, max_bits: int) -> int:
@@ -249,11 +258,14 @@ class CryptoEngine:
     :param setup_b9_keys: Whether or not to automatically load keys from boot9.
     """
 
-    __slots__ = ['key_x', 'key_y', 'key_normal', 'dev', 'b9_keys_set', 'b9_path', '_b9_extdata_otp',
-                 '_b9_extdata_keygen', '_otp_device_id', '_otp_key', '_otp_iv', '_id0']
+    __slots__ = ['key_x', 'key_y', 'key_normal', 'dev', 'b9_keys_set', 'b9_path', 'otp_keys_set', '_otp_enc',
+                 '_otp_dec', '_b9_extdata_otp', '_b9_extdata_keygen', '_otp_device_id', '_otp_key', '_otp_iv', '_id0']
 
     b9_keys_set: bool
     """Keys have been set from the ARM9 BootROM."""
+
+    otp_keys_set: bool
+    """Keys have been set from a dumped OTP region."""
 
     b9_path: 'Optional[str]'
     """
@@ -282,6 +294,9 @@ class CryptoEngine:
         self._otp_device_id: Optional[int] = None
         self._otp_key: Optional[bytes] = None
         self._otp_iv: Optional[bytes] = None
+
+        self._otp_enc: Optional[bytes] = None
+        self._otp_dec: Optional[bytes] = None
 
         self._id0: Optional[bytes] = None
 
@@ -315,6 +330,16 @@ class CryptoEngine:
     @_requires_bootrom
     def otp_iv(self) -> bytes:
         return self._otp_iv
+
+    @_requires_otp
+    @property
+    def otp_dec(self) -> bytes:
+        return self._otp_dec
+
+    @_requires_otp
+    @property
+    def otp_enc(self) -> bytes:
+        return self._otp_enc
 
     @property
     def id0(self) -> bytes:
@@ -660,28 +685,28 @@ class CryptoEngine:
         cipher_otp = AES.new(self.otp_key, AES.MODE_CBC, self.otp_iv)
         if otp[0:4] == b'\x0f\xb0\xad\xde':
             # decrypted otp
-            otp_enc: bytes = cipher_otp.encrypt(otp)
-            otp_dec = otp
+            self._otp_enc: bytes = cipher_otp.encrypt(otp)
+            self._otp_dec = otp
         else:
             # encrypted otp
-            otp_enc = otp
-            otp_dec: bytes = cipher_otp.decrypt(otp)
+            self._otp_enc = otp
+            self._otp_dec: bytes = cipher_otp.decrypt(otp)
 
-        self._otp_device_id = int.from_bytes(otp_dec[4:8], 'little')
+        self._otp_device_id = int.from_bytes(self.otp_dec[4:8], 'little')
 
-        otp_hash: bytes = otp_dec[0xE0:0x100]
-        otp_hash_digest: bytes = sha256(otp_dec[0:0xE0]).digest()
+        otp_hash: bytes = self.otp_dec[0xE0:0x100]
+        otp_hash_digest: bytes = sha256(self.otp_dec[0:0xE0]).digest()
         if otp_hash_digest != otp_hash:
             raise CorruptOTPError(f'expected: {otp_hash.hex()}; result: {otp_hash_digest.hex()}')
 
-        otp_keysect_hash: bytes = sha256(otp_enc[0:0x90]).digest()
+        otp_keysect_hash: bytes = sha256(self.otp_enc[0:0x90]).digest()
 
         self.set_keyslot('x', Keyslot.New3DSKeySector, otp_keysect_hash[0:0x10])
         self.set_keyslot('y', Keyslot.New3DSKeySector, otp_keysect_hash[0x10:0x20])
 
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
-        twl_cid_lo, twl_cid_hi = readle(otp_dec[0x08:0xC]), readle(otp_dec[0xC:0x10])
+        twl_cid_lo, twl_cid_hi = readle(self.otp_dec[0x08:0xC]), readle(self.otp_dec[0xC:0x10])
         twl_cid_lo ^= 0xB358A6AF
         twl_cid_lo |= 0x80000000
         twl_cid_hi ^= 0x08C267B7
@@ -689,7 +714,7 @@ class CryptoEngine:
         twl_cid_hi = twl_cid_hi.to_bytes(4, 'little')
         self.set_keyslot('x', 0x03, twl_cid_lo + b'NINTENDO' + twl_cid_hi)
 
-        console_key_xy: bytes = sha256(otp_dec[0x90:0xAC] + self.b9_extdata_otp).digest()
+        console_key_xy: bytes = sha256(self.otp_dec[0x90:0xAC] + self.b9_extdata_otp).digest()
         self.set_keyslot('x', Keyslot.Boot9Internal, console_key_xy[0:0x10])
         self.set_keyslot('y', Keyslot.Boot9Internal, console_key_xy[0x10:0x20])
 
@@ -742,6 +767,8 @@ class CryptoEngine:
         for i in range(0x28, 0x2c):
             self.set_keyslot('x', i, d[off:off + 16])
             off += 16
+
+        self.otp_keys_set = True
 
     @_requires_bootrom
     def setup_keys_from_otp_file(self, path: 'Union[PathLike, str, bytes]'):
