@@ -418,14 +418,14 @@ class CryptoEngine:
 
         return CMAC.new(key, ciphermod=AES)
 
-    def create_ctr_io(self, keyslot: Keyslot, fh: 'BinaryIO', ctr: int, close_fh: bool = False):
+    def create_ctr_io(self, keyslot: Keyslot, fh: 'BinaryIO', ctr: int, closefd: bool = False):
         """
         Create an AES-CTR read-write file object with the given keyslot.
 
         :param keyslot: :class:`Keyslot` to use.
         :param fh: File-like object to wrap.
         :param ctr: Counter to start with.
-        :param close_fh Close underlying file object when closed.
+        :param closefd Close underlying file object when closed.
         :return: A file-like object that does decryption and encryption on the fly.
         :rtype: CTRFileIO
         """
@@ -433,16 +433,16 @@ class CryptoEngine:
                          crypto=self,
                          keyslot=keyslot,
                          counter=ctr,
-                         close_fh=close_fh)
+                         closefd=closefd)
 
-    def create_cbc_io(self, keyslot: Keyslot, fh: 'BinaryIO', iv: bytes, close_fh: bool = False):
+    def create_cbc_io(self, keyslot: Keyslot, fh: 'BinaryIO', iv: bytes, closefd: bool = False):
         """
         Create an AES-CBC read-only file object with the given keyslot.
 
         :param keyslot: :class:`Keyslot` to use.
         :param fh: File-like object to wrap.
         :param iv: Initialization vector.
-        :param close_fh Close underlying file object when closed.
+        :param closefd Close underlying file object when closed.
         :return: A file-like object that does decryption on the fly.
         :rtype: CBCFileIO
         """
@@ -450,7 +450,7 @@ class CryptoEngine:
                          crypto=self,
                          keyslot=keyslot,
                          iv=iv,
-                         close_fh=close_fh)
+                         closefd=closefd)
 
     @staticmethod
     def sd_path_to_iv(path: str) -> int:
@@ -809,11 +809,11 @@ class _CryptoFileBase(RawIOBase):
 
     closed = False
     _reader: 'BinaryIO'
-    _close_fh: bool
+    _closefd: bool
 
     def close(self):
         self.closed = True
-        if self._close_fh:
+        if self._closefd:
             self._reader.close()
 
     __del__ = close
@@ -847,17 +847,17 @@ class CTRFileIO(_CryptoFileBase):
     """Provides transparent read-write AES-CTR encryption as a file-like object."""
 
     def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, counter: int,
-                 close_fh: bool = False):
+                 closefd: bool = False):
         self._reader = file
         self._crypto = crypto
         self._keyslot = keyslot
         self._counter = counter
-        self._close_fh = close_fh
+        self._closefd = closefd
         self._lock = Lock()
 
     def __repr__(self):
         return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, counter={self._counter!r}, '
-                f'close_fh={self._close_fh!r})')
+                f'closefd={self._closefd!r})')
 
     def __hash__(self):
         return hash((self._reader, self._keyslot, self._counter))
@@ -895,17 +895,17 @@ class CTRFileIO(_CryptoFileBase):
 class CBCFileIO(_CryptoFileBase):
     """Provides transparent read-only AES-CBC encryption as a file-like object."""
 
-    def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, iv: bytes, close_fh: bool = False):
+    def __init__(self, file: 'BinaryIO', crypto: 'CryptoEngine', keyslot: Keyslot, iv: bytes, closefd: bool = False):
         self._reader = file
         self._crypto = crypto
         self._keyslot = keyslot
         self._iv = iv
-        self._close_fh = close_fh
+        self._closefd = closefd
         self._lock = Lock()
 
     def __repr__(self):
-        return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, iv={self._iv!r}), '
-                f'close_fh={self._close_fh!r}')
+        return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, iv={self._iv!r}, '
+                f'closefd={self._closefd!r})')
 
     def __hash__(self):
         return hash((self._reader, self._keyslot, self._iv))
