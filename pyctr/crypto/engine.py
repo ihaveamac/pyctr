@@ -290,6 +290,8 @@ class CryptoEngine:
         self.b9_keys_set = False
         self.b9_path = None
 
+        self.otp_keys_set = False
+
         self._b9_extdata_otp: Optional[bytes] = None
         self._b9_extdata_keygen: Optional[bytes] = None
 
