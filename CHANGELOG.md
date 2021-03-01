@@ -7,6 +7,7 @@
 * Store encrypted and decrypted OTP in `CryptoEngine` as `otp_enc` and `otp_dec`, and add `otp_keys_set` to check if an OTP was set
 * Verify OTP magic after decryption in `CryptoEngine.setup_keys_from_otp`
 * Make `CryptoEngine.otp_device_id` require OTP (raising an exception instead of returning None)
+* Add `TWLCTRFileIO` as a subclass of `CTRFileIO` which handles the special read/write crypto specific to TWLNAND
 
 ## v0.4.5 - October 24, 2020
 * Fix loading RomFS from a filename in `RomFSReader`

@@ -431,11 +431,18 @@ class CryptoEngine:
         :return: A file-like object that does decryption and encryption on the fly.
         :rtype: CTRFileIO
         """
-        return CTRFileIO(file=fh,
-                         crypto=self,
-                         keyslot=keyslot,
-                         counter=ctr,
-                         closefd=closefd)
+        if keyslot < 0x04:
+            return TWLCTRFileIO(file=fh,
+                                crypto=self,
+                                keyslot=keyslot,
+                                counter=ctr,
+                                closefd=True)
+        else:
+            return CTRFileIO(file=fh,
+                             crypto=self,
+                             keyslot=keyslot,
+                             counter=ctr,
+                             closefd=closefd)
 
     def create_cbc_io(self, keyslot: Keyslot, fh: 'BinaryIO', iv: bytes, closefd: bool = False):
         """
@@ -892,6 +899,37 @@ class CTRFileIO(_CryptoFileBase):
 
     def truncate(self, size: 'Optional[int]' = None) -> int:
         return self._reader.truncate(size)
+
+
+class TWLCTRFileIO(CTRFileIO):
+    """Provides transparent read-write TWL AES-CTR encryption as a file-like object."""
+
+    # TWL AES operations need data added at the end too
+    # because each 0x10-byte block is flipped before and after it is de/encrypted
+
+    @_raise_if_file_closed
+    def read(self, size: int = -1) -> bytes:
+        with self._lock:
+            cur_offset = self.tell()
+            data = self._reader.read(size)
+            padding_before = cur_offset % 0x10
+            padding_after = (-(padding_before + len(data)) % 0x10)
+            counter = self._counter + (cur_offset >> 4)
+            cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
+            data = (b'\0' * padding_before) + data + (b'\0' * padding_after)
+            return cipher.decrypt(data)[padding_before:len(data) - padding_after]
+
+    @_raise_if_file_closed
+    def write(self, data: bytes) -> int:
+        with self._lock:
+            cur_offset = self.tell()
+            padding_before = cur_offset % 0x10
+            padding_after = (-(padding_before + len(data)) % 0x10)
+            counter = self._counter + (cur_offset >> 4)
+            cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
+            data = (b'\0' * padding_before) + data + (b'\0' * padding_after)
+            data = cipher.encrypt(data)
+            return self._reader.write(data[padding_before:len(data) - padding_after])
 
 
 class CBCFileIO(_CryptoFileBase):
