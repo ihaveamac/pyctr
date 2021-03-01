@@ -1,4 +1,4 @@
-## Next
+## v0.4.6 - March 1, 2021
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)
 * Fix using bytes file paths for `CDNReader` and `SDFilesystem`
 * Support auto-closing underlying file for `CTRFileIO` and `CBCFileIO`

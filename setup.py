@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='pyctr',
-    version='0.4.5',
+    version='0.4.6',
     packages=find_packages(),
     install_requires=['pycryptodomex>=3.9,<4'],
     python_requires='>=3.6',
