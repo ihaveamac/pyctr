@@ -102,7 +102,7 @@ class CDNReader:
         else:
             self._crypto = CryptoEngine(dev=dev)
 
-        file = Path(fsdecode(file))
+        file = Path(fsdecode(file)).absolute()
         title_root = file.parent
 
         # {section: (filepath, iv)}
