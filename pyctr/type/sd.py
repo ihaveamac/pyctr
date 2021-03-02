@@ -65,7 +65,7 @@ class SDFilesystem:
         elif sd_key_file:
             self._crypto.setup_sd_key_from_file(sd_key_file)
 
-        self._base_path = Path(fsdecode(path))
+        self._base_path = Path(fsdecode(path)).absolute()
 
         try:
             self._id0_path = self._base_path / self._crypto.id0.hex()
