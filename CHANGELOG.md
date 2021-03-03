@@ -2,6 +2,7 @@
 * Use absolute paths in `CDNReader`
 * Use absolute paths in `SDFilesystem`
 * Make `SubsectionIO` objects hashable (if the underlying file object is)
+* Make sure two different `CTRFileIO`, `TWLCTRFileIO`, and `CBCFileIO` return different hashes, even with the same reader + key + iv/counter
 
 ## v0.4.6 - March 1, 2021
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)
