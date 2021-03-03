@@ -45,6 +45,9 @@ class SubsectionIO(RawIOBase):
     def __repr__(self):
         return f'{type(self).__name__}(file={self._reader!r}, offset={self._offset!r}, size={self._size!r})'
 
+    def __hash__(self):
+        return hash((self._reader, self._offset, self._size, id(self)))
+
     def close(self):
         self.closed = True
         # remove Lock reference, so it can be automatically removed from the WeakValueDictionary once all SubsectionIO
