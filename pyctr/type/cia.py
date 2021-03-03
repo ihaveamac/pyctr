@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, NamedTuple
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, Keyslot, add_seed
 from ..fileio import SubsectionIO
-from ..type.ncch import NCCHReader
-from ..type.tmd import TitleMetadataReader
 from ..util import readle, roundup
 from .base import TypeReaderCryptoBase
+from .ncch import NCCHReader
+from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from os import PathLike
