@@ -96,7 +96,9 @@ class TypeReaderBase:
                 # closefd may not have been set yet
                 pass
 
-    __del__ = close
+    # sometimes close is overridden, so this can't just be `__del__ = close` or it will not call the intended one
+    def __del__(self):
+        self.close()
 
     def _seek(self, offset: int = 0, whence: int = 0):
         """Seek to an offset in the underlying file, relative to the starting offset."""
