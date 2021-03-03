@@ -182,7 +182,8 @@ class CDNReader:
                 f.close()
 
             self.contents = {}
-            self._open_files = WeakSet()
+            # frozenset can't be modified, so even if I made a mistake this prevents opening files on a closed reader
+            self._open_files = frozenset()
 
     __del__ = close
 
