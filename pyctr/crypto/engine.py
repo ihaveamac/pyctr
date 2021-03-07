@@ -499,9 +499,9 @@ class CryptoEngine:
             title_id = bytes.fromhex(title_id)
 
         if self.dev and common_key_index == 0:
-            self.set_normal_key(0x3D, DEV_COMMON_KEY_0)
+            self.set_normal_key(Keyslot.CommonKey, DEV_COMMON_KEY_0)
         else:
-            self.set_keyslot('y', 0x3D, common_key_y[common_key_index])
+            self.set_keyslot('y', Keyslot.CommonKey, common_key_y[common_key_index])
 
         cipher = self.create_cbc_cipher(Keyslot.CommonKey, title_id + (b'\0' * 8))
         self.set_normal_key(Keyslot.DecryptedTitlekey, cipher.decrypt(titlekey))
