@@ -183,4 +183,5 @@ class CCIReader(TypeReaderBase):
         :rtype: SubsectionIO
         """
         region = self.sections[section]
-        return SubsectionIO(self._file, self._start + region.offset, region.size)
+        f = SubsectionIO(self._file, self._start + region.offset, region.size)
+        self._open_files.add(f)
