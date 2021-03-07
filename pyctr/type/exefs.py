@@ -276,9 +276,11 @@ class ExeFSReader(TypeReaderBase):
             raise ExeFSFileNotFoundError(path)
         if entry.offset == -1:
             # this would be the decompressed .code, if the original .code was compressed
-            return _ExeFSOpenFile(self, path)
+            fh = _ExeFSOpenFile(self, path)
         else:
-            return SubsectionIO(self._file, self._start + EXEFS_HEADER_SIZE + entry.offset, entry.size)
+            fh = SubsectionIO(self._file, self._start + EXEFS_HEADER_SIZE + entry.offset, entry.size)
+        self._open_files.add(fh)
+        return fh
 
     def get_data(self, info: ExeFSEntry, offset: int, size: int) -> bytes:
         if offset + size > info.size:
