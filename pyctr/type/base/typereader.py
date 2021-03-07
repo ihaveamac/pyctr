@@ -7,12 +7,13 @@
 from functools import wraps
 from os import PathLike
 from typing import TYPE_CHECKING
+from weakref import WeakSet
 
 from ...common import PyCTRError
 from ...crypto import CryptoEngine
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Optional, Union
+    from typing import BinaryIO, Optional, Set, Union
 
 __all__ = ['raise_if_closed', 'ReaderError', 'ReaderClosedError', 'TypeReaderBase', 'TypeReaderCryptoBase']
 
@@ -76,6 +77,14 @@ class TypeReaderBase:
         # Store the starting offset of the file.
         self._start = file.tell()
 
+        # Store a set of opened files based on this reader.
+        # This is a WeakSet so these references aren't kept around when all other parts of the code have deleted it.
+        # All of the files here get closed when the reader is closed.
+        # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
+        #   even though it's similar.
+        # noinspection PyTypeChecker
+        self._open_files: Set[BinaryIO] = WeakSet()
+
     def __enter__(self):
         return self
 
@@ -95,6 +104,12 @@ class TypeReaderBase:
             except AttributeError:
                 # closefd may not have been set yet
                 pass
+
+            for f in self._open_files:
+                f.close()
+                
+            # frozenset can't be modified, so even if I made a mistake this prevents opening files on a closed reader
+            self._open_files = frozenset()
 
     # sometimes close is overridden, so this can't just be `__del__ = close` or it will not call the intended one
     def __del__(self):
