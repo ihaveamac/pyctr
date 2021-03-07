@@ -6,6 +6,7 @@
 * Add `TWLCTRFileIO` to `crypto.engine.__all__`
 * Use a `frozenset` on a closed `CDNReader` object's internal open files set
 * Don't set `__del__` directly to `close` in `TypeReaderBase`, in case `close` is overridden
+* Auto-close opened files based on a reader when the reader closes (applies to `CCIReader`, `CIAReader`, `ExeFSReader`, `NCCHReader`, and `RomFSReader`)
 
 ## v0.4.6 - March 1, 2021
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)
