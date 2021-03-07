@@ -260,5 +260,6 @@ class CIAReader(TypeReaderCryptoBase):
         region = self.sections[section]
         fh = SubsectionIO(self._file, self._start + region.offset, region.size)
         if region.iv:
-            fh = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, fh, region.iv)
+            fh = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, fh, region.iv, closefd=True)
+        self._open_files.add(fh)
         return fh
