@@ -210,6 +210,7 @@ class RomFSReader(TypeReaderBase):
         f = SubsectionIO(self._file, self._start + self.data_offset + file_info.offset, file_info.size)
         if encoding is not None:
             f = TextIOWrapper(f, encoding, errors, newline)
+        self._open_files.add(f)
         return f
 
     def get_info_from_path(self, path: str) -> 'Union[RomFSDirectoryEntry, RomFSFileEntry]':
