@@ -393,7 +393,8 @@ class NCCHReader(TypeReaderCryptoBase):
         # if the region is encrypted (not ExeFS if an extra keyslot is in use), wrap it in CTRFileIO
         if not (self._assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
             keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else self.main_keyslot
-            fh = self._crypto.create_ctr_io(keyslot, fh, region.iv)
+            fh = self._crypto.create_ctr_io(keyslot, fh, region.iv, closefd=True)
+        self._open_files.add(fh)
         return fh
 
     def get_key_y(self, original: bool = False) -> bytes:
