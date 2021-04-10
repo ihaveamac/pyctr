@@ -7,6 +7,8 @@
 * Use a `frozenset` on a closed `CDNReader` object's internal open files set
 * Don't set `__del__` directly to `close` in `TypeReaderBase`, in case `close` is overridden
 * Auto-close opened files based on a reader when the reader closes (applies to `CCIReader`, `CIAReader`, `ExeFSReader`, `NCCHReader`, and `RomFSReader`)
+* Add new pseudo-keyslot `NCCHExtraKey` to store the second keyslot data for NCCH contents
+  * This is important because there exist titles that use Original NCCH but with a seed. Before this change, the key in the `NCCH` keyslot would be overwritten, causing everything but the special regions (ExeFS .code and RomFS) to be improperly decrypted.
 
 ## v0.4.6 - March 1, 2021
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)
