@@ -317,7 +317,8 @@ class NCCHReader(TypeReaderCryptoBase):
             self.setup_seed(get_seed(self.program_id))
 
         # load the (seeded, if needed) key into the extra keyslot
-        self._crypto.set_keyslot('y', self.extra_keyslot, self.get_key_y())
+        self._crypto.set_keyslot('x', Keyslot.NCCHExtraKey, self._crypto.key_x[self.extra_keyslot])
+        self._crypto.set_keyslot('y', Keyslot.NCCHExtraKey, self.get_key_y())
 
         # load the sections using their specific readers
         if load_sections:
@@ -392,7 +393,7 @@ class NCCHReader(TypeReaderCryptoBase):
             fh = SubsectionIO(self._file, self._start + region.offset, region.size)
         # if the region is encrypted (not ExeFS if an extra keyslot is in use), wrap it in CTRFileIO
         if not (self._assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
-            keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else self.main_keyslot
+            keyslot = Keyslot.NCCHExtraKey if region.section == NCCHSection.RomFS else self.main_keyslot
             fh = self._crypto.create_ctr_io(keyslot, fh, region.iv, closefd=True)
         self._open_files.add(fh)
         return fh
@@ -552,7 +553,7 @@ class NCCHReader(TypeReaderCryptoBase):
                         iv = region.iv + (chunk >> 4)
 
                         # get the extra keyslot
-                        keyslot = self.extra_keyslot
+                        keyslot = Keyslot.NCCHExtraKey
 
                         for r in self._exefs_keyslot_normal_range:
                             if r[0] <= self._file.tell() - region.offset < r[1]:
@@ -581,7 +582,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
                 # choose the extra keyslot only for RomFS here
                 # ExeFS needs special handling if a newer keyslot is used, therefore it's not checked here
-                keyslot = self.extra_keyslot if region.section == NCCHSection.RomFS else self.main_keyslot
+                keyslot = Keyslot.NCCHExtraKey if region.section == NCCHSection.RomFS else self.main_keyslot
 
                 # get the amount of padding required at the beginning
                 before = offset % 16
