@@ -10,6 +10,7 @@
 * Add new pseudo-keyslot `NCCHExtraKey` to store the second keyslot data for NCCH contents
   * This is important because there exist titles that use Original NCCH but with a seed. Before this change, the key in the `NCCH` keyslot would be overwritten, causing everything but the special regions (ExeFS .code and RomFS) to be improperly decrypted.
 * Use `NCCHExtraKey` for the second keyslot instead of the actual keyslot in `NCCHReader`
+* Set `_open_files` before opening the file in `TypeReaderBase` to prevent an additional error if opening the file fails
 
 ## v0.4.6 - March 1, 2021
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)

@@ -61,6 +61,14 @@ class TypeReaderBase:
                  mode: str = 'rb'):
         default_closefd = False
 
+        # Store a set of opened files based on this reader.
+        # This is a WeakSet so these references aren't kept around when all other parts of the code have deleted it.
+        # All of the files here get closed when the reader is closed.
+        # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
+        #   even though it's similar.
+        # noinspection PyTypeChecker
+        self._open_files: Set[BinaryIO] = WeakSet()
+
         # Determine whether or not fp is a path or not.
         if isinstance(file, (PathLike, str, bytes)):
             default_closefd = True
@@ -76,14 +84,6 @@ class TypeReaderBase:
 
         # Store the starting offset of the file.
         self._start = file.tell()
-
-        # Store a set of opened files based on this reader.
-        # This is a WeakSet so these references aren't kept around when all other parts of the code have deleted it.
-        # All of the files here get closed when the reader is closed.
-        # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
-        #   even though it's similar.
-        # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
 
     def __enter__(self):
         return self
