@@ -316,9 +316,14 @@ class NCCHReader(TypeReaderCryptoBase):
         if self.flags.uses_seed:
             self.setup_seed(get_seed(self.program_id))
 
-        # load the (seeded, if needed) key into the extra keyslot
-        self._crypto.set_keyslot('x', Keyslot.NCCHExtraKey, self._crypto.key_x[self.extra_keyslot])
-        self._crypto.set_keyslot('y', Keyslot.NCCHExtraKey, self.get_key_y())
+        # this would fail if zero-key and a seed is used, but I have *no* idea how that would work
+        # (if it's even possible)
+        if self.flags.fixed_crypto_key and self.flags.crypto_method:
+            self._crypto.set_normal_key(Keyslot.NCCHExtraKey, self._crypto.key_normal[self.extra_keyslot])
+        else:
+            # load the (seeded, if needed) key into the extra keyslot
+            self._crypto.set_keyslot('x', Keyslot.NCCHExtraKey, self._crypto.key_x[self.extra_keyslot])
+            self._crypto.set_keyslot('y', Keyslot.NCCHExtraKey, self.get_key_y())
 
         # load the sections using their specific readers
         if load_sections:
