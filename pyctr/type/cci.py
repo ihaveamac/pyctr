@@ -185,3 +185,4 @@ class CCIReader(TypeReaderBase):
         region = self.sections[section]
         f = SubsectionIO(self._file, self._start + region.offset, region.size)
         self._open_files.add(f)
+        return f

@@ -12,6 +12,7 @@
 * Use `NCCHExtraKey` for the second keyslot instead of the actual keyslot in `NCCHReader`
 * Set `_open_files` before opening the file in `TypeReaderBase` to prevent an additional error if opening the file fails
 * Don't set KeyX and KeyY separately if fixed crypto key is used without an extra crypto method
+* Fix sections in `CCIReader` not opening, raising an error
 
 ## v0.4.6 - March 1, 2021
 * Add pycryptodomex version requiremenet range (`>=3.9,<4`)
