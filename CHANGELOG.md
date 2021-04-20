@@ -1,4 +1,4 @@
-## Next
+## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`
 * Use absolute paths in `SDFilesystem`
 * Make `SubsectionIO` objects hashable (if the underlying file object is)
