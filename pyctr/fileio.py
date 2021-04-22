@@ -9,10 +9,10 @@ from threading import Lock
 from weakref import WeakValueDictionary
 from typing import TYPE_CHECKING
 
-from .common import _raise_if_file_closed
+from .common import _raise_if_file_closed, _raise_if_file_closed_generic
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, IO
+    from typing import BinaryIO, Iterable, Tuple
     # this is to trick type checkers into accepting SubsectionIO as a BinaryIO object
     # if you know a better way, let me know
     RawIOBase = BinaryIO
@@ -117,6 +117,120 @@ class SubsectionIO(RawIOBase):
     @_raise_if_file_closed
     def seekable(self) -> bool:
         return self._reader.seekable()
+
+
+class SplitFileMerger(RawIOBase):
+    """
+    Provides access to multiple file-like handles as one large file.
+
+    :param files: A list of tuples with a file-like object and its size respectively.
+    :param read_only: If writing should be disabled.
+    """
+
+    closed = False
+
+    # The seek over the current file, returned by tell().
+    _fake_seek = 0
+    # Current file index and seek on it.
+    _seek_info = (0, 0)
+
+    def __init__(self, files: 'Iterable[Tuple[BinaryIO, int]]', read_only: bool = True):
+        if not read_only:
+            raise NotImplementedError('writing is not yet supported')
+
+        self._read_only = read_only
+        self._files = []
+        curr_offset = 0
+
+        for fh, size in files:
+            self._files.append((fh, curr_offset, size))
+            curr_offset += size
+
+        self._total_size = curr_offset
+
+    def _calc_seek(self, pos: int):
+        self._fake_seek = pos
+        for idx, info in enumerate(self._files):
+            if info[1] <= pos < info[1] + info[2]:
+                self._seek_info = (idx, pos - info[1])
+                break
+
+    def close(self):
+        self.closed = True
+
+    @_raise_if_file_closed_generic
+    def seek(self, pos: int, whence: int = 0):
+        if whence == 0:
+            if pos < 0:
+                raise ValueError('negative seek value')
+            self._calc_seek(pos)
+        elif whence == 1:
+            if self._fake_seek - pos < 0:
+                pos = 0
+            self._calc_seek(self._fake_seek + pos)
+        elif whence == 2:
+            if self._total_size + pos < 0:
+                pos = -self._total_size
+            self._calc_seek(self._total_size + pos)
+        else:
+            if isinstance(whence, int):
+                raise ValueError(f'whence value {whence} unsupported')
+            else:
+                raise TypeError(f'an integer is required (got type {type(whence).__name__})')
+        return self._fake_seek
+
+    @_raise_if_file_closed_generic
+    def tell(self) -> int:
+        return self._fake_seek
+
+    @_raise_if_file_closed_generic
+    def read(self, n: int = -1) -> bytes:
+        if n == -1:
+            n = max(self._total_size - self._fake_seek, 0)
+        elif self._fake_seek + n > self._total_size:
+            n = max(self._total_size - self._fake_seek, 0)
+        if n == 0:
+            return b''
+
+        left = n
+        current_index = self._seek_info[0]
+
+        full_data = []
+
+        while True:
+            info = self._files[current_index]
+            fh = info[0]
+            real_seek = self._fake_seek - info[1]
+            to_read = min(info[2] - real_seek, left)
+
+            fh.seek(real_seek)
+            full_data.append(fh.read(to_read))
+            self._fake_seek += to_read
+
+            left -= to_read
+            if left <= 0:
+                break
+            current_index += 1
+
+        self._seek_info = (current_index, self._fake_seek - self._files[current_index][1])
+
+        return b''.join(full_data)
+
+    @_raise_if_file_closed_generic
+    def write(self, s: bytes) -> int:
+        raise NotImplementedError
+
+    @_raise_if_file_closed_generic
+    def readable(self) -> bool:
+        return True
+
+    @_raise_if_file_closed_generic
+    def writable(self) -> bool:
+        return not self._read_only
+
+    @_raise_if_file_closed_generic
+    def seekable(self) -> bool:
+        return True
 
 
 class CloseWrapper(RawIOBase):
