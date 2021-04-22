@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from typing import BinaryIO
+    from typing import BinaryIO, IO
     RawIOBase = BinaryIO
 
 
@@ -29,6 +29,22 @@ def _raise_if_file_closed(method):
     def decorator(self: '_ReaderOpenFileBase', *args, **kwargs):
         if self._reader.closed:
             self.closed = True
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+        return method(self, *args, **kwargs)
+    return decorator
+
+
+def _raise_if_file_closed_generic(method):
+    """
+    Wraps a method that raises an exception if the file object is closed. This works on any file-like object, not just
+    ones for Reader open files.
+
+    :param method: The method to call if the file is not closed.
+    :return: The wrapper method.
+    """
+    @wraps(method)
+    def decorator(self: 'IO', *args, **kwargs):
         if self.closed:
             raise ValueError('I/O operation on closed file')
         return method(self, *args, **kwargs)

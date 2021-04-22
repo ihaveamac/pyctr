@@ -1,3 +1,6 @@
+## Next
+* Add `_raise_if_file_closed_generic` to `pyctr.common`
+
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`
 * Use absolute paths in `SDFilesystem`
