@@ -378,7 +378,7 @@ class NCCHReader(TypeReaderCryptoBase):
                 # Load the ExeFS to get the file offsets and sizes. It's re-created after once a new merged file is made
                 # with the decrypted sections.
                 exefs_tmp_fp = self._open_section_generic(NCCHSection.ExeFS)
-                exefs_tmp = ExeFSReader(exefs_tmp_fp, _load_icon=False)
+                exefs_tmp = ExeFSReader(exefs_tmp_fp, closefd=False, _load_icon=False)
 
                 # Starting from 0 and the original keyslot, this is every place where the crypto changes.
                 # Example, 0 from 0x200 is original, then 0x200 to 0x380 is extra, then 0x380 to 0x400 is original,
@@ -391,6 +391,7 @@ class NCCHReader(TypeReaderCryptoBase):
                     if name not in {'icon', 'banner'}:
                         crypto_changes_set.add(info.offset + 0x200)
                         crypto_changes_set.add(info.offset + info.size + 0x200)
+                crypto_changes_set.add(self.sections[NCCHSection.ExeFS].end)
 
                 crypto_changes = sorted(crypto_changes_set)
 
@@ -409,7 +410,7 @@ class NCCHReader(TypeReaderCryptoBase):
             # This will set up either the special ExeFS encryption from above, or a straightforward decryption
             # passthrough if not.
             self._exefs_fp = self.open_raw_section(NCCHSection.ExeFS)
-            self.exefs = ExeFSReader(self._exefs_fp)
+            self.exefs = ExeFSReader(self._exefs_fp, closefd=False)
 
         # try to load RomFS
         if not self.flags.no_romfs:
