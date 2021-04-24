@@ -1,6 +1,7 @@
 ## Next
 * Add `_raise_if_file_closed_generic` to `pyctr.common`
 * Add `SplitFileMerger` to `pyctr.fileio` to merge multiple file-like objects into one (currently no support for writing)
+* Support closing all subfiles in `SplitFileMerger`
 
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`

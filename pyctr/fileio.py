@@ -124,6 +124,7 @@ class SplitFileMerger(RawIOBase):
     Provides access to multiple file-like handles as one large file.
 
     :param files: A list of tuples with a file-like object and its size respectively.
+    :param closefds: Close all file objects on close.
     :param read_only: If writing should be disabled.
     """
 
@@ -134,11 +135,12 @@ class SplitFileMerger(RawIOBase):
     # Current file index and seek on it.
     _seek_info = (0, 0)
 
-    def __init__(self, files: 'Iterable[Tuple[BinaryIO, int]]', read_only: bool = True):
+    def __init__(self, files: 'Iterable[Tuple[BinaryIO, int]]', read_only: bool = True, closefds: bool = False):
         if not read_only:
             raise NotImplementedError('writing is not yet supported')
 
         self._read_only = read_only
+        self._closefds = closefds
         self._files = []
         curr_offset = 0
 
@@ -157,6 +159,13 @@ class SplitFileMerger(RawIOBase):
 
     def close(self):
         self.closed = True
+        if self._closefds:
+            for fh in self._files:
+                fh[0].close()
+        self._files = ()
+
+    def __del__(self):
+        self.close()
 
     @_raise_if_file_closed_generic
     def seek(self, pos: int, whence: int = 0):
