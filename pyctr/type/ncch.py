@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError, _ReaderOpenFileBase
 from ..crypto import CryptoEngine, Keyslot, add_seed, get_seed
-from ..fileio import SubsectionIO
+from ..fileio import SplitFileMerger, SubsectionIO
 from ..util import readle, roundup
 from .base import TypeReaderCryptoBase
 from .exefs import ExeFSReader, EXEFS_HEADER_SIZE
@@ -169,8 +169,13 @@ class NCCHReader(TypeReaderCryptoBase):
     sections: 'Dict[NCCHSection, NCCHRegion]'
     """Contains all the sections the NCCH has."""
 
-    # this lists the ranges of the ExeFS to decrypt with Original NCCH (see load_sections)
-    _exefs_keyslot_normal_range: 'List[Tuple[int, int]]'
+    # this is used in the NCCH's ExeFSReader and in FullDecrypted
+    # because it can have special encryption handling, this is set up beforehand
+    _exefs_fp: 'BinaryIO'
+
+    # this lists the ranges of the exefs (start + end) and the keyslot to use
+    # the keyslot should alternate between main and extra for each entry, staring with main (for header)
+    _exefs_crypto_ranges: 'List[Tuple[int, int, int]]'
 
     exefs: 'Optional[ExeFSReader]' = None
     """The :class:`~.ExeFSReader` of the NCCH, if it has one."""
@@ -325,9 +330,25 @@ class NCCHReader(TypeReaderCryptoBase):
             self._crypto.set_keyslot('x', Keyslot.NCCHExtraKey, self._crypto.key_x[self.extra_keyslot])
             self._crypto.set_keyslot('y', Keyslot.NCCHExtraKey, self.get_key_y())
 
+        # checks in case ExeFS is encrypted with the extra keyslot (otherwise, decrypt normally)
+        self._exefs_special_handling = False
+        if not self.flags.no_crypto:
+            if self.main_keyslot != self.extra_keyslot:
+                self._exefs_special_handling = True
+            elif self.flags.uses_seed:
+                # a few titles use the same keyslot for main + extra, but also use seed
+                self._exefs_special_handling = True
+
         # load the sections using their specific readers
         if load_sections:
             self.load_sections()
+
+    def close(self):
+        super().close()
+        try:
+            self._exefs_fp.close()
+        except AttributeError:
+            pass
 
     def __repr__(self):
         info = [('program_id', self.program_id), ('product_code', self.product_code)]
@@ -347,30 +368,48 @@ class NCCHReader(TypeReaderCryptoBase):
         except KeyError:
             pass  # no ExeFS
         else:
-            # this is to generate what regions should be decrypted with the Original NCCH keyslot
-            # technically, it's not actually 0x200 chunks or units. the actual space of the file
-            #   is encrypted with the different key. for example, if .code is 0x300 bytes, that
-            #   means the first 0x300 are encrypted with the NCCH 7.x key, and the remaining
-            #   0x100 uses Original NCCH. however this would be quite a pain to implement properly
-            #   with random access, so I only work with 0x200 chunks here. after all, the space
-            #   after the file is effectively unused. it makes no difference, except for
-            #   perfectionists who want it perfectly decrypted. GodMode9 does it properly I think,
-            #   if that is what you want. or you can fix the empty space yourself with a hex editor.
-            self._exefs_keyslot_normal_range = [(0, 0x200)]
-            exefs_fp = self.open_raw_section(NCCHSection.ExeFS)
-            # load the ExeFS reader
-            # icon is not loaded since we need to figure out its section offset and size first
-            self.exefs = ExeFSReader(exefs_fp, _load_icon=False)
+            if self._exefs_special_handling:
+                # Get the sections that are encrypted with the extra keyslot. This includes any part that is not the
+                # header, "icon", "banner". This is how the 3DS treats it; any other file is encrypted with the extra
+                # keyslot. In practice this is only ".code", however if another file is forced in like "logo", it is
+                # encrypted with the extra keyslot. So because this has a chance of happening, no matter how unlikely,
+                # I gotta do this properly. Assumptions with Nintendo formats have bitten me in the ass before.
 
-            for entry in self.exefs.entries.values():
-                if entry.name in EXEFS_NORMAL_CRYPTO_FILES:
-                    # this will add the offset (relative to ExeFS start), with the size
-                    #   rounded up to 0x200 chunks
-                    r = (entry.offset + EXEFS_HEADER_SIZE,
-                         entry.offset + EXEFS_HEADER_SIZE + roundup(entry.size, NCCH_MEDIA_UNIT))
-                    self._exefs_keyslot_normal_range.append(r)
+                # Load the ExeFS to get the file offsets and sizes. It's re-created after once a new merged file is made
+                # with the decrypted sections.
+                exefs_tmp_fp = self._open_section_generic(NCCHSection.ExeFS)
+                exefs_tmp = ExeFSReader(exefs_tmp_fp, _load_icon=False)
 
-            self.exefs._load_icon()
+                # Starting from 0 and the original keyslot, this is every place where the crypto changes.
+                # Example, 0 from 0x200 is original, then 0x200 to 0x380 is extra, then 0x380 to 0x400 is original,
+                # then 0x400 to 0x700 is extra, then 0x700 to 0x800 is original, etc. The list in this case would look
+                # like: [0x200, 0x380, 0x400, 0x700, 0x800]
+                # This is a set to prevent duplicates. It turns into a sorted list after.
+                crypto_changes_set = set()
+
+                for name, info in exefs_tmp.entries.items():
+                    if name not in {'icon', 'banner'}:
+                        crypto_changes_set.add(info.offset + 0x200)
+                        crypto_changes_set.add(info.offset + info.size + 0x200)
+
+                crypto_changes = sorted(crypto_changes_set)
+
+                # This creates a list of start + end ranges, plus the keyslot used to decrypt them.
+                # In open_raw_section it is used to create multiple SubsectionIO objects based on one of two CTRFileIO
+                # objects, one for the main keyslot and one for extra. Then all of them are merged into one large
+                # file with SplitFileMerger to provide easy access to the full decrypted ExeFS.
+                self._exefs_crypto_ranges = []
+                previous_offset = 0
+                previous_keyslot = self.main_keyslot
+                for offset in crypto_changes:
+                    self._exefs_crypto_ranges.append((previous_offset, offset, previous_keyslot))
+                    previous_offset = offset
+                    previous_keyslot = self.main_keyslot if previous_keyslot is self.extra_keyslot else self.extra_keyslot
+
+            # This will set up either the special ExeFS encryption from above, or a straightforward decryption
+            # passthrough if not.
+            self._exefs_fp = self.open_raw_section(NCCHSection.ExeFS)
+            self.exefs = ExeFSReader(self._exefs_fp)
 
         # try to load RomFS
         if not self.flags.no_romfs:
@@ -390,14 +429,41 @@ class NCCHReader(TypeReaderCryptoBase):
         :param section: The section to open.
         :return: A file-like object that reads from the section.
         """
-        # check if the region is ExeFS and uses a newer keyslot, or is fulldec, and use a specific file class
-        if (section == NCCHSection.ExeFS and self.extra_keyslot) or (section == NCCHSection.FullDecrypted):
-            return _NCCHSectionFile(self, section)
-        else:
-            region = self.sections[section]
-            fh = SubsectionIO(self._file, self._start + region.offset, region.size)
+        if not self.flags.no_crypto:
+            # check if the region is ExeFS and needs special handling, or is fulldec, and use a specific file class
+            if section == NCCHSection.ExeFS and self._exefs_special_handling:
+                region = self.sections[section]
+                files = []
+                main_io = self._open_section_generic(section, encryption=False)
+                main_io = self._crypto.create_ctr_io(self.main_keyslot, main_io, region.iv)
+                extra_io = self._open_section_generic(section, encryption=False)
+                extra_io = self._crypto.create_ctr_io(Keyslot.NCCHExtraKey, extra_io, region.iv)
+                for exefs_range in self._exefs_crypto_ranges:
+                    base_file = main_io if exefs_range[2] is self.main_keyslot else extra_io
+                    size = exefs_range[1] - exefs_range[0]
+                    files.append((SubsectionIO(base_file, exefs_range[0], size), size))
+
+                return SplitFileMerger(files, closefds=True)
+
+            elif section == NCCHSection.FullDecrypted:
+                return _NCCHSectionFile(self, section)
+            else:
+                return self._open_section_generic(section)
+        return self._open_section_generic(section)
+
+    def _open_section_generic(self, section: 'NCCHSection', encryption: bool = True):
+        """
+        Open a raw NCCH section but without special handling for ExeFS + FullDecrypted.
+        This is used so the ExeFS header can be parsed to figure out how to decrypt it properly (see load_sections).
+
+        :param section: The section to open.
+        :param encryption: Whether or not to wrap it in a :class:`crypto.CTRFileIO` object, if necessary.
+        :return: A file-like object that reads from the section.
+        """
+        region = self.sections[section]
+        fh = SubsectionIO(self._file, self._start + region.offset, region.size)
         # if the region is encrypted (not ExeFS if an extra keyslot is in use), wrap it in CTRFileIO
-        if not (self._assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
+        if encryption and not (self._assume_decrypted or self.flags.no_crypto or section in NO_ENCRYPTION):
             keyslot = Keyslot.NCCHExtraKey if region.section == NCCHSection.RomFS else self.main_keyslot
             fh = self._crypto.create_ctr_io(keyslot, fh, region.iv, closefd=True)
         self._open_files.add(fh)
@@ -532,52 +598,8 @@ class NCCHReader(TypeReaderCryptoBase):
             # if the region is ExeFS and extra crypto is being used, special handling is required
             #   because different parts use different encryption methods
             if region.section == NCCHSection.ExeFS and self.flags.crypto_method != 0x00:
-                # get the amount to cut off at the beginning
-                before = offset % 0x200
-
-                # get the offset of the starting chunk
-                aligned_offset = offset - before
-
-                # get the real offset of the starting chunk
-                aligned_real_offset = self._start + region.offset + aligned_offset
-
-                # get the aligned total size of the requested size
-                aligned_size = size + before
-                self._file.seek(aligned_real_offset)
-
-                def do_thing(al_offset: int, al_size: int, cut_start: int, cut_end: int):
-                    # get the offset of the end of the last chunk
-                    end = al_offset + (ceil(al_size / 0x200) * 0x200)
-
-                    # get the offset to the last chunk
-                    last_chunk_offset = end - 0x200
-
-                    # noinspection PyTypeChecker
-                    for chunk in range(al_offset, end, 0x200):
-                        # generate the IV for this chunk
-                        iv = region.iv + (chunk >> 4)
-
-                        # get the extra keyslot
-                        keyslot = Keyslot.NCCHExtraKey
-
-                        for r in self._exefs_keyslot_normal_range:
-                            if r[0] <= self._file.tell() - region.offset < r[1]:
-                                # if the chunk is within the "normal keyslot" ranges,
-                                #   use the Original NCCH keyslot instead
-                                keyslot = self.main_keyslot
-
-                        # decrypt the data
-                        out = self._crypto.create_ctr_cipher(keyslot, iv).decrypt(self._file.read(0x200))
-                        if chunk == al_offset:
-                            # cut off the beginning if it's the first chunk
-                            out = out[cut_start:]
-                        if chunk == last_chunk_offset and cut_end != 0x200:
-                            # cut off the end of it's the last chunk
-                            out = out[:-cut_end]
-                        yield out
-
-                # join all the chunks into one bytes result and return it
-                return b''.join(do_thing(aligned_offset, aligned_size, before, 0x200 - ((size + before) % 0x200)))
+                self._exefs_fp.seek(offset)
+                return self._exefs_fp.read(size)
             else:
                 # this is currently used to support FullDecrypted. other sections use SubsectionIO + CTRFileIO.
 
