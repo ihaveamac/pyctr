@@ -601,7 +601,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
             # if the region is ExeFS and extra crypto is being used, special handling is required
             #   because different parts use different encryption methods
-            if region.section == NCCHSection.ExeFS and self.flags.crypto_method != 0x00:
+            if region.section == NCCHSection.ExeFS:
                 self._exefs_fp.seek(offset)
                 return self._exefs_fp.read(size)
             else:
