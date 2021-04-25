@@ -103,6 +103,12 @@ class NCCHFlags(NamedTuple):
     # if a seed must be loaded to load RomFS and parts of ExeFS
     uses_seed: bool
 
+    @classmethod
+    def from_bytes(cls, flag_bytes: bytes) -> 'NCCHFlags':
+        return cls(crypto_method=flag_bytes[3], executable=bool(flag_bytes[5] & 0x2),
+                   fixed_crypto_key=bool(flag_bytes[7] & 0x1), no_romfs=bool(flag_bytes[7] & 0x2),
+                   no_crypto=bool(flag_bytes[7] & 0x4), uses_seed=bool(flag_bytes[7] & 0x20))
+
 
 class _NCCHSectionFile(_ReaderOpenFileBase):
     """
@@ -296,10 +302,7 @@ class NCCHReader(TypeReaderCryptoBase):
         add_region(NCCHSection.RomFS, readle(header[0x1B0:0x1B4]), readle(header[0x1B4:0x1B8]))
 
         # parse flags
-        flags_raw = header[0x188:0x190]
-        self.flags = NCCHFlags(crypto_method=flags_raw[3], executable=bool(flags_raw[5] & 0x2),
-                               fixed_crypto_key=bool(flags_raw[7] & 0x1), no_romfs=bool(flags_raw[7] & 0x2),
-                               no_crypto=bool(flags_raw[7] & 0x4), uses_seed=bool(flags_raw[7] & 0x20))
+        self.flags = NCCHFlags.from_bytes(header[0x188:0x190])
 
         if self.flags.fixed_crypto_key:
             self.main_keyslot = Keyslot.FixedSystemKey if int(self.program_id, 16) & (0x10 << 32) else Keyslot.ZeroKey
