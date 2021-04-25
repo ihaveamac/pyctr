@@ -89,19 +89,34 @@ class NCCHRegion(NamedTuple):
 
 
 class NCCHFlags(NamedTuple):
-    # determines the extra keyslot used for RomFS and parts of ExeFS
+    """Flags for an NCCH. This is not a complete set. See: https://3dbrew.org/wiki/NCCH#NCCH_Flags"""
+
     crypto_method: int
-    # if this is a CXI (CTR Executable Image) or CFA (CTR File Archive)
-    # in the raw flags, "Data" has to be set for it to be a CFA, while "Executable" is unset.
+    """
+    Determines the extra keyslot used for RomFS and parts of ExeFS. 0x00 = NCCH, 0x01 = NCCH70, 0x0A = NCCH93,
+    0x0B = NCCH96
+    """
+
     executable: bool
-    # if the content is encrypted using a fixed normal key.
+    """
+    If this content is a CXI (CTR Executable Image) or CFA (CTR File Archive). In the raw flags, "Data" needs
+    to be set with "Executable" unset for this to be a CFA.
+    """
+
     fixed_crypto_key: bool
-    # if RomFS is to be ignored
+    """
+    If a fixed normal key is used to encrypt the contents. This is often a zero-key, with a different
+    "fixed system key" used in specfic situations.
+    """
+
     no_romfs: bool
-    # if the NCCH has no encryption
+    """Determines if there is no RomFS."""
+
     no_crypto: bool
-    # if a seed must be loaded to load RomFS and parts of ExeFS
+    """If no encryption is used at all. This takes precedence over other encryption flags."""
+
     uses_seed: bool
+    """If a seed is used in conjunction with the extra keyslot."""
 
     @classmethod
     def from_bytes(cls, flag_bytes: bytes) -> 'NCCHFlags':

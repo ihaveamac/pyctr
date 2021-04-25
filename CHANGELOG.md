@@ -5,6 +5,7 @@
 * Rewrite ExeFS handling in `NCCHReader` to use `SplitFileMerger` to merge multiple `SubsectionIO` files to handle the parts that use different encryption, and update `FullDecrypted` to use it when reading ExeFS
 * Add `from_bytes` classmethod to `NCCHFlags`
 * Always use the internal ExeFS file object when reading it for FullDecrypted
+* Add docstrings to `NCCHFlags`
 
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`
