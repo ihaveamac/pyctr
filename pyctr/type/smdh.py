@@ -4,8 +4,11 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+from struct import pack
 from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple
+
+from PIL import Image
 
 from ..common import PyCTRError
 
@@ -61,17 +64,60 @@ class AppTitle(NamedTuple):
     publisher: str
 
 
+# Based on:
+# https://github.com/Steveice10/FBI/blob/c6d92d86b27aaef784d1ecb4103e1346fb0f8a12/source/core/screen.c#L211-L221
+def next_pow_2(i: int):
+    i -= 1
+    i |= i >> 1
+    i |= i >> 2
+    i |= i >> 4
+    i |= i >> 8
+    i |= i >> 16
+    i += 1
+
+    return i
+
+
+def rgb565_to_rgb888(data: bytes):
+    n = int.from_bytes(data, 'little')
+    r = (((n >> 11) & 0x1F) * 0xFF // 0x1F) & 0xFF
+    g = (((n >> 5) & 0x3F) * 0xFF // 0x3F) & 0xFF
+    b = ((n & 0x1F) * 0xFF // 0x1F) & 0xFF
+    return pack('>BBB', r, g, b)
+
+
+# Based on:
+# https://github.com/Steveice10/FBI/blob/c6d92d86b27aaef784d1ecb4103e1346fb0f8a12/source/core/screen.c#L305-L323
+def load_tiled_rgb565(data: bytes, width: int, height: int):
+    pixel_size = len(data) // width // height
+
+    pixels = []
+
+    for x in range(width):
+        for y in range(height):
+            pixel_offset = ((((y >> 3) * (width >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3))) * pixel_size
+
+            pixel = rgb565_to_rgb888(data[pixel_offset:pixel_offset + pixel_size])
+
+            pixels.append(pixel)
+
+    img = Image.frombytes('RGB', (width, height), b''.join(pixels))
+    return img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_90)
+
+
 class SMDH:
     """
-    Class for 3DS SMDH. Icon data is currently not supported.
+    Class for 3DS SMDH.
 
     https://www.3dbrew.org/wiki/SMDH
     """
 
     # TODO: support other settings
 
-    def __init__(self, names: 'Dict[str, AppTitle]'):
+    def __init__(self, names: 'Dict[str, AppTitle]', icon_small: 'Image', icon_large: 'Image'):
         self.names: Mapping[str, AppTitle] = MappingProxyType({n: names.get(n, None) for n in region_names})
+        self.icon_small = icon_small
+        self.icon_large = icon_large
 
     def __repr__(self):
         return f'<{type(self).__name__} title: {self.get_app_title().short_desc}>'
@@ -104,7 +150,14 @@ class SMDH:
             names[region] = AppTitle(app_title[0:0x80].decode('utf-16le').strip('\0'),
                                      app_title[0x80:0x180].decode('utf-16le').strip('\0'),
                                      app_title[0x180:0x200].decode('utf-16le').strip('\0'))
-        return cls(names)
+
+        icon_raw_small = smdh[0x2040:0x24C0]
+        icon_raw_large = smdh[0x24C0:0x36C0]
+        # This is assuming icon data is RGB565, but 3dbrew says other formats are possible. Though every known example
+        # uses RGB565 and there doesn't seem to be a way to tell which one is being used.
+        icon_small = load_tiled_rgb565(icon_raw_small, 24, 24)
+        icon_large = load_tiled_rgb565(icon_raw_large, 48, 48)
+        return cls(names, icon_small, icon_large)
 
     @classmethod
     def from_file(cls, fn: 'Union[PathLike, str, bytes]') -> 'SMDH':
