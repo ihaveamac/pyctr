@@ -7,7 +7,7 @@ setup(
     name='pyctr',
     version='0.4.7',
     packages=find_packages(),
-    install_requires=['pycryptodomex>=3.9,<4'],
+    install_requires=['pycryptodomex>=3.9,<4', 'Pillow>=8.2'],
     python_requires='>=3.6',
     url='https://github.com/ihaveamac/pyctr',
     license='MIT',

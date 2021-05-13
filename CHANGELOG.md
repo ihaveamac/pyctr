@@ -6,6 +6,7 @@
 * Add `from_bytes` classmethod to `NCCHFlags`
 * Always use the internal ExeFS file object when reading it for FullDecrypted
 * Add docstrings to `NCCHFlags`
+* Add dependency on `Pillow>=8.2`
 
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`
