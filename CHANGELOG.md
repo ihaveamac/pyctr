@@ -8,6 +8,7 @@
 * Add docstrings to `NCCHFlags`
 * Add dependency on `Pillow>=8.2`
 * Load SMDH icons using Pillow/PIL, stored in new attributes in the `SMDH` class: `icon_small`, `icon_large`
+* Load SMDH flags into a new `SMDHFlags` class
 
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`

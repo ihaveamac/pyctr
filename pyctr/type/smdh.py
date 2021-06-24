@@ -64,6 +64,56 @@ class AppTitle(NamedTuple):
     publisher: str
 
 
+class SMDHFlags(NamedTuple):
+    Visible: bool
+    """Icon is visible at the HOME Menu"""
+
+    AutoBoot: bool
+    """Auto-boot this game card title"""
+
+    Allow3D: bool
+    """Title uses 3D (this is only for parental controls, it does not actually disable 3D if this flag is not set)"""
+
+    RequireEULA: bool
+    """Require accepting the EULA before being launched from the HOME Menu"""
+
+    AutoSave: bool
+    """Title auto-saves on exit (this means there will not be a prompt to save when attempting to close)"""
+
+    ExtendedBanner: bool
+    """Title uses an extended banner"""
+
+    RatingRequired: bool
+    """Region-specific game rating required"""
+
+    SaveData: bool
+    """Title uses save data (this will prompt the user that unsaved data will be lost, unless AutoSave is set)"""
+
+    RecordUsage: bool
+    """Application usage is recorded (when not set, the icon is not stored in the icon cache)"""
+
+    NoSaveBackups: bool
+    """Disable Save-Data Backup"""
+
+    New3DS: bool
+    """Exclusive to New Nintendo 3DS"""
+
+    @classmethod
+    def from_bytes(cls, flag_bytes: bytes):
+        flags = int.from_bytes(flag_bytes, 'little')
+        return cls(Visible=bool(flags & 0x1),
+                   AutoBoot=bool(flags & 0x2),
+                   Allow3D=bool(flags & 0x4),
+                   RequireEULA=bool(flags & 0x8),
+                   AutoSave=bool(flags & 0x10),
+                   ExtendedBanner=bool(flags & 0x20),
+                   RatingRequired=bool(flags & 0x40),
+                   SaveData=bool(flags & 0x80),
+                   RecordUsage=bool(flags & 0x100),
+                   NoSaveBackups=bool(flags & 0x400),
+                   New3DS=bool(flags & 0x1000))
+
+
 # Based on:
 # https://github.com/Steveice10/FBI/blob/c6d92d86b27aaef784d1ecb4103e1346fb0f8a12/source/core/screen.c#L211-L221
 def next_pow_2(i: int):
@@ -114,10 +164,11 @@ class SMDH:
 
     # TODO: support other settings
 
-    def __init__(self, names: 'Dict[str, AppTitle]', icon_small: 'Image', icon_large: 'Image'):
+    def __init__(self, names: 'Dict[str, AppTitle]', icon_small: 'Image', icon_large: 'Image', flags: SMDHFlags):
         self.names: Mapping[str, AppTitle] = MappingProxyType({n: names.get(n, None) for n in region_names})
         self.icon_small = icon_small
         self.icon_large = icon_large
+        self.flags = flags
 
     def __repr__(self):
         return f'<{type(self).__name__} title: {self.get_app_title().short_desc}>'
@@ -157,7 +208,11 @@ class SMDH:
         # uses RGB565 and there doesn't seem to be a way to tell which one is being used.
         icon_small = load_tiled_rgb565(icon_raw_small, 24, 24)
         icon_large = load_tiled_rgb565(icon_raw_large, 48, 48)
-        return cls(names, icon_small, icon_large)
+
+        flags_raw = smdh[0x2028:0x202C]
+        flags = SMDHFlags.from_bytes(flags_raw)
+
+        return cls(names, icon_small, icon_large, flags)
 
     @classmethod
     def from_file(cls, fn: 'Union[PathLike, str, bytes]') -> 'SMDH':
