@@ -6,7 +6,8 @@
 
 """Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory."""
 
-from os import PathLike, fsdecode
+from os import fsdecode
+from os.path import isfile, isdir
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,9 +15,11 @@ from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
 
 if TYPE_CHECKING:
+    from os import PathLike
+    from typing import BinaryIO, Union
+
     # noinspection PyProtectedMember
     from ..crypto import CTRFileIO
-    from typing import BinaryIO, Union
 
 
 class SDFilesystemError(PyCTRError):
@@ -35,8 +38,8 @@ class MissingID1Error(SDFilesystemError):
     """No ID1 directories exist in the ID0 directory."""
 
 
-def normalize_sd_path(path: str):
-    return path.lstrip('/').lstrip('\\')
+def normalize_sd_path(path: 'Union[PathLike, str]'):
+    return str(path).lstrip('/').lstrip('\\')
 
 
 class SDFilesystem:
@@ -102,7 +105,7 @@ class SDFilesystem:
             id1 = self.current_id1
         return self._id0_path / id1 / path
 
-    def open(self, path: str, mode: str = 'rb', *, id1: str = None) -> 'CTRFileIO':
+    def open(self, path: 'Union[PathLike, str]', mode: str = 'rb', *, id1: str = None) -> 'CTRFileIO':
         """
         Opens a file in the SD filesystem, allowing decrypted access.
 
@@ -134,7 +137,7 @@ class SDFilesystem:
         fh: BinaryIO = real_path.open(mode)
         return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv('/' + path))
 
-    def listdir(self, path: str, id1: str = None) -> list:
+    def listdir(self, path: 'Union[PathLike, str]', id1: str = None) -> list:
         """
         Returns a list of files in the directory.
 
@@ -145,3 +148,27 @@ class SDFilesystem:
         """
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return list(x.name for x in real_path.iterdir())
+
+    def isfile(self, path: 'Union[PathLike, str]', id1: str = None):
+        """
+        Checks if the path points to a file.
+
+        :param path: Path to check.
+        :param id1: ID1 directory to use. Defaults to current_id1.
+        :return: `True` if the file exists, `False` otherwise.
+        :rtype: bool
+        """
+        real_path = self._get_real_path(normalize_sd_path(path), id1)
+        return isfile(real_path)
+
+    def isdir(self, path: 'Union[PathLike, str]', id1: str = None):
+        """
+        Checks if the path points to a directory.
+
+        :param path: Path to check.
+        :param id1: ID1 directory to use. Defaults to current_id1.
+        :return: `True` if the file exists, `False` otherwise.
+        :rtype: bool
+        """
+        real_path = self._get_real_path(normalize_sd_path(path), id1)
+        return isdir(real_path)

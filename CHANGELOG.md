@@ -9,6 +9,7 @@
 * Add dependency on `Pillow>=8.2`
 * Load SMDH icons using Pillow/PIL, stored in new attributes in the `SMDH` class: `icon_small`, `icon_large`
 * Load SMDH flags into a new `SMDHFlags` class
+* Add `isfile` and `isdir` methods to `SDFilesystem`, convert path to string in `sd.normalize_sd_path` to make it easier to use any `os.PathLike` object (e.g. `pathlib.PurePosixPath`)
 
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`
