@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
+from .sdtitle import SDTitleReader
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -36,6 +37,10 @@ class MissingID0Error(SDFilesystemError):
 
 class MissingID1Error(SDFilesystemError):
     """No ID1 directories exist in the ID0 directory."""
+
+
+class MissingTitleError(SDFilesystemError):
+    """The requested Title ID could not be found."""
 
 
 def normalize_sd_path(path: 'Union[PathLike, str]'):
@@ -172,3 +177,34 @@ class SDFilesystem:
         """
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return isdir(real_path)
+
+    def open_title(self, title_id: str, *, case_insensitive: bool = False, seed: bytes = None, load_contents: bool = True,
+                   id1: str = None):
+        """
+        Open a title's contents for reading.
+
+        In the case where a title's directory has multiple tmd files, the first one returned by :meth:`listdir` is
+        used.
+
+        :param title_id: Title ID to open.
+        :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
+        :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
+        :param load_contents: Load each partition with :class:`~.NCCHReader`.
+        :param id1: ID1 directory to use. Defaults to current_id1.
+        :return: Opened title contents.
+        :rtype: SDTitleReader
+        """
+        id1 = id1 or self.current_id1
+        title_id = title_id.lower()
+        sd_path = f'/title/{title_id[0:8]}/{title_id[8:16]}/content'
+
+        tmd_path = None
+        for f in self.listdir(sd_path):
+            if f.endswith('.tmd'):
+                tmd_path = sd_path + '/' + f
+                break
+        else:
+            raise MissingTitleError(title_id)
+
+        return SDTitleReader(tmd_path, case_insensitive=case_insensitive, dev=self._crypto.dev, seed=seed,
+                             load_contents=load_contents, sdfs=self, sd_id1=id1)

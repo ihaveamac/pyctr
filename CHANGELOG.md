@@ -11,6 +11,7 @@
 * Load SMDH flags into a new `SMDHFlags` class
 * Add `isfile` and `isdir` methods to `SDFilesystem`, convert path to string in `sd.normalize_sd_path` to make it easier to use any `os.PathLike` object (e.g. `pathlib.PurePosixPath`)
 * Add `sdtitle` module with `SDTitleReader` class, to read titles installed to the SD card inside "Nintendo 3DS"
+* Add `open_title` method to `SDFilesystem` to open a title using `SDTitleReader`, and a new `MissingTitleError` exception
 
 ## v0.4.7 - April 20, 2021
 * Use absolute paths in `CDNReader`
