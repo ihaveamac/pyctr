@@ -17,7 +17,7 @@ from .sdtitle import SDTitleReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Union
+    from typing import BinaryIO, List, Union
 
     # noinspection PyProtectedMember
     from ..crypto import CTRFileIO
@@ -142,7 +142,7 @@ class SDFilesystem:
         fh: BinaryIO = real_path.open(mode)
         return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv('/' + path))
 
-    def listdir(self, path: 'Union[PathLike, str]', id1: str = None) -> list:
+    def listdir(self, path: 'Union[PathLike, str]', id1: str = None) -> 'List[str]':
         """
         Returns a list of files in the directory.
 
@@ -154,7 +154,7 @@ class SDFilesystem:
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return list(x.name for x in real_path.iterdir())
 
-    def isfile(self, path: 'Union[PathLike, str]', id1: str = None):
+    def isfile(self, path: 'Union[PathLike, str]', id1: str = None) -> bool:
         """
         Checks if the path points to a file.
 
@@ -166,7 +166,7 @@ class SDFilesystem:
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return isfile(real_path)
 
-    def isdir(self, path: 'Union[PathLike, str]', id1: str = None):
+    def isdir(self, path: 'Union[PathLike, str]', id1: str = None) -> bool:
         """
         Checks if the path points to a directory.
 
@@ -178,8 +178,8 @@ class SDFilesystem:
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return isdir(real_path)
 
-    def open_title(self, title_id: str, *, case_insensitive: bool = False, seed: bytes = None, load_contents: bool = True,
-                   id1: str = None):
+    def open_title(self, title_id: str, *, case_insensitive: bool = False, seed: bytes = None,
+                   load_contents: bool = True, id1: str = None) -> SDTitleReader:
         """
         Open a title's contents for reading.
 
