@@ -1,4 +1,14 @@
-## Next
+## v0.5.0 - June 26, 2021
+### Highlights
+A new `sdtitle` module with `SDTitleReader` is added to read titles installed on an SD card. When used directly, it works with contents that are not SD encrypted. To open a title on a 3DS SD card that is SD encrypted, a new method is added to `sd.SDFilesystem`: `open_title`.
+
+SMDH icons are now loaded using [Pillow](https://python-pillow.org/).
+
+SMDH flags are now loaded.
+
+The ExeFS in NCCH contents is now fully decrypted properly. This means there is no longer garbage at the last block of the `.code` section for titles that use extra NCCH keys. This was achieved by rewriting the ExeFS section to concatenate multiple file-like objects that use different keyslots with a new class, `SplitFileMerger`.
+
+### Changelog
 * Add `_raise_if_file_closed_generic` to `pyctr.common`
 * Add `SplitFileMerger` to `pyctr.fileio` to merge multiple file-like objects into one (currently no support for writing)
 * Support closing all subfiles in `SplitFileMerger`
