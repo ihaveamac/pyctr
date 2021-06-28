@@ -1,4 +1,4 @@
-## Next
+## v0.5.1 - June 28, 2021
 * Fix arbitrary reads in the first 0x10 block of `CBCFileIO`
 
 ## v0.5.0 - June 26, 2021
