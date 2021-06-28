@@ -970,6 +970,7 @@ class CBCFileIO(_CryptoFileBase):
             before = offset % 16
             if offset - before == 0:
                 iv = self._iv
+                self._reader.seek(0)
             else:
                 # seek back one block to read it as iv
                 self._reader.seek(-0x10 - before, 1)

@@ -1,3 +1,6 @@
+## Next
+* Fix arbitrary reads in the first 0x10 block of `CBCFileIO`
+
 ## v0.5.0 - June 26, 2021
 ### Highlights
 A new `sdtitle` module with `SDTitleReader` is added to read titles installed on an SD card. When used directly, it works with contents that are not SD encrypted. To open a title on a 3DS SD card that is SD encrypted, a new method is added to `sd.SDFilesystem`: `open_title`.
