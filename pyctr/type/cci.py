@@ -116,8 +116,6 @@ class CCIReader(TypeReaderBase):
         # store case-insensitivity for RomFSReader
         self._case_insensitive = case_insensitive
 
-        self.image_size = readle(header[4:8]) * CCI_MEDIA_UNIT
-
         # this contains the location of each section
         self.sections = {}
 
@@ -134,6 +132,8 @@ class CCIReader(TypeReaderBase):
         self.media_id = header[0x8:0x10][::-1].hex()
         if self.media_id == '00' * 8:
             raise InvalidCCIError('Not a CCI, this is a NAND')
+
+        self.image_size = readle(header[4:8]) * CCI_MEDIA_UNIT
 
         def add_region(section: 'CCISection', offset: int, size: int):
             region = CCIRegion(section=section, offset=offset, size=size)
