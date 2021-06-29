@@ -1,3 +1,6 @@
+## Next
+* Move around object attribute initialization in cci, cdn, cia, and sdtitle, to prevent extra exceptions if an error is raised early
+
 ## v0.5.1 - June 28, 2021
 * Fix arbitrary reads in the first 0x10 block of `CBCFileIO`
 

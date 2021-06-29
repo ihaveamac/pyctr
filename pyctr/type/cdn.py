@@ -115,6 +115,9 @@ class CDNReader:
         # public method to see what sections can be accessed
         self.available_sections = []
 
+        self.contents = {}
+        self.content_info = []
+
         def add_file(section: 'Union[CDNSection, int]', path: str, iv: 'Optional[bytes]'):
             self._base_files[section] = (path, iv)
             self.available_sections.append(section)
@@ -136,9 +139,6 @@ class CDNReader:
             add_file(CDNSection.Ticket, ticket_file, None)
             with self.open_raw_section(CDNSection.Ticket) as ticket:
                 self._crypto.load_from_ticket(ticket.read(0x2AC))
-
-        self.contents = {}
-        self.content_info = []
 
         for record in self.tmd.chunk_records:
             iv = None

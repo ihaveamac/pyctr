@@ -136,6 +136,14 @@ class CIAReader(TypeReaderCryptoBase):
         # store case-insensitivity for RomFSReader
         self._case_insensitive = case_insensitive
 
+        # this contains the location of each section, as well as the IV of encrypted ones
+        self.sections = {}
+
+        self.contents = {}
+
+        active_contents_tmd = set()
+        self.content_info = []
+
         header = self._file.read(0x20)
 
         archive_header_size = readle(header[0x0:0x4])
@@ -178,9 +186,6 @@ class CIAReader(TypeReaderCryptoBase):
         # lazy method to get the total size
         self.total_size = meta_offset + meta_size
 
-        # this contains the location of each section, as well as the IV of encrypted ones
-        self.sections = {}
-
         def add_region(section: 'Union[int, CIASection]', offset: int, size: int, iv: 'Optional[bytes]'):
             region = CIARegion(section=section, offset=offset, size=size, iv=iv)
             self.sections[section] = region
@@ -206,9 +211,6 @@ class CIAReader(TypeReaderCryptoBase):
         if seed:
             add_seed(self.tmd.title_id, seed)
 
-        active_contents_tmd = set()
-        self.content_info = []
-
         # this does a first check to make sure there are no missing contents that are marked active in content_index
         for record in self.tmd.chunk_records:
             if record.cindex in active_contents:
@@ -219,8 +221,6 @@ class CIAReader(TypeReaderCryptoBase):
         #   that are not in the tmd, which is bad
         if active_contents ^ active_contents_tmd:
             raise InvalidCIAError('Missing active contents in the TMD')
-
-        self.contents = {}
 
         # this goes through the contents and figures out their regions, then creates an NCCHReader
         curr_offset = content_offset

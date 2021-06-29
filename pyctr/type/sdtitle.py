@@ -85,11 +85,8 @@ class SDTitleReader:
         self.sdfs = sdfs
         self.sd_id1 = sd_id1
 
-        if self.sdfs:
-            file = PurePosixPath(file)
-        else:
-            file = Path(fsdecode(file)).absolute()
-        title_root = file.parent
+        self.contents = {}
+        self.content_info = []
 
         # {section: filepath}
         self._base_files: Dict[Union[SDTitleSection, int], PurePath] = {}
@@ -100,6 +97,12 @@ class SDTitleReader:
 
         # public method to see what sections can be accessed
         self.available_sections = []
+
+        if self.sdfs:
+            file = PurePosixPath(file)
+        else:
+            file = Path(fsdecode(file)).absolute()
+        title_root = file.parent
 
         def add_file(section: 'Union[SDTitleSection, int]', path: "PurePath"):
             self._base_files[section] = path
@@ -112,9 +115,6 @@ class SDTitleReader:
 
         if seed:
             add_seed(self.tmd.title_id, seed)
-
-        self.contents = {}
-        self.content_info = []
 
         for record in self.tmd.chunk_records:
             # check if the content is a Nintendo DS ROM (SRL)
