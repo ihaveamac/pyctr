@@ -1,5 +1,6 @@
 ## Next
 * Move around object attribute initialization in cci, cdn, cia, and sdtitle, to prevent extra exceptions if an error is raised early
+* Use `open_raw_section` internally when initializing a `CIAReader` object, instead of manually seeking and reading
 
 ## v0.5.1 - June 28, 2021
 * Fix arbitrary reads in the first 0x10 block of `CBCFileIO`

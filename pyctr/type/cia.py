@@ -199,14 +199,12 @@ class CIAReader(TypeReaderCryptoBase):
             add_region(CIASection.Meta, meta_offset, meta_size, None)
 
         # this will load the titlekey to decrypt the contents
-        self._file.seek(self._start + ticket_offset)
-        ticket = self._file.read(ticket_size)
-        self._crypto.load_from_ticket(ticket)
+        with self.open_raw_section(CIASection.Ticket) as ticket:
+            self._crypto.load_from_ticket(ticket.read())
 
         # the tmd describes the contents: ID, index, size, and hash
-        self._file.seek(self._start + tmd_offset)
-        tmd_data = self._file.read(tmd_size)
-        self.tmd = TitleMetadataReader.load(BytesIO(tmd_data))
+        with self.open_raw_section(CIASection.TitleMetadata) as tmd:
+            self.tmd = TitleMetadataReader.load(tmd)
 
         if seed:
             add_seed(self.tmd.title_id, seed)
