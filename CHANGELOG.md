@@ -1,4 +1,25 @@
-## Next
+## v0.6.0 - January 26, 2022
+### Highlights
+Pillow is now an optional dependency. It is available through the extra feature `images`. This means to use `pyctr[images]` when adding to `setup.py`, `requirements.txt`, or `pip install`.
+
+SMDH icon data is stored into an array like `[[(1, 2, 3), (4, 5, 6), ...]]`. It can be used with other libraries like the pure-python pypng, for example:
+
+```python
+from pyctr.type.cia import CIAReader
+from itertools import chain
+import png
+
+my_cia = CIAReader('game.cia')
+
+# pypng expects an array like [[1, 2, 3, 4, 5, 6, ...]] so we need to flatten the inner lists
+img = png.from_array(
+  (chain.from_iterable(x) for x in my_cia.contents[0].exefs.icon.icon_large_array),
+  'RGB', {'width': 48, 'height': 48}
+)
+img.save('icon.png')
+```
+
+### Changelog
 * Move around object attribute initialization in cci, cdn, cia, and sdtitle, to prevent extra exceptions if an error is raised early
 * Use `open_raw_section` internally when initializing a `CIAReader` object, instead of manually seeking and reading
 * Make Pillow an optional dependency and make SMDH load icon data into an array (useful for other libraries like pypng)

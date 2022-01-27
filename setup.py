@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='pyctr',
-    version='0.5.1',
+    version='0.6.0',
     packages=find_packages(),
     install_requires=['pycryptodomex>=3.9,<4'],
     extras_require={'images': ['Pillow>=8.2']},
@@ -22,6 +22,8 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8'
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ]
 )
