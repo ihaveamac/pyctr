@@ -5,6 +5,7 @@
   * New functions in `smdh`: `rgb565_to_rgb888_tuple`, `load_tiled_rgb565_to_array`, `rgb888_array_to_image`
   * Init arguments for `SMDH` were changed to accept icon data arrays instead of Pillow `Image` objects
   * Pillow is added to `extras_require` under the feature `images`
+* Documentation tweaks to `smdh`
 
 ## v0.5.1 - June 28, 2021
 * Fix arbitrary reads in the first 0x10 block of `CBCFileIO`

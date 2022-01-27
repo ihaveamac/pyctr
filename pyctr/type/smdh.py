@@ -76,10 +76,10 @@ class SMDHFlags(NamedTuple):
     """Icon is visible at the HOME Menu"""
 
     AutoBoot: bool
-    """Auto-boot this game card title"""
+    """Auto-boot this game card title (no effect for SD titles)"""
 
     Allow3D: bool
-    """Title uses 3D (this is only for parental controls, it does not actually disable 3D if this flag is not set)"""
+    """Title uses 3D (this is only used for a Parental Controls alert, it does not actually enable/disable 3D)"""
 
     RequireEULA: bool
     """Require accepting the EULA before being launched from the HOME Menu"""
