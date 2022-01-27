@@ -1,6 +1,10 @@
 ## Next
 * Move around object attribute initialization in cci, cdn, cia, and sdtitle, to prevent extra exceptions if an error is raised early
 * Use `open_raw_section` internally when initializing a `CIAReader` object, instead of manually seeking and reading
+* Make Pillow an optional dependency and make SMDH load icon data into an array (useful for other libraries like pypng)
+  * New functions in `smdh`: `rgb565_to_rgb888_tuple`, `load_tiled_rgb565_to_array`, `rgb888_array_to_image`
+  * Init arguments for `SMDH` were changed to accept icon data arrays instead of Pillow `Image` objects
+  * Pillow is added to `extras_require` under the feature `images`
 
 ## v0.5.1 - June 28, 2021
 * Fix arbitrary reads in the first 0x10 block of `CBCFileIO`

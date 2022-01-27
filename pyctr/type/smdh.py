@@ -8,13 +8,20 @@ from struct import pack
 from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple
 
-from PIL import Image
+try:
+    from PIL import Image
+    from itertools import chain
+except ModuleNotFoundError:
+    # Pillow not installed
+    Image = None
 
 from ..common import PyCTRError
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Dict, Mapping, Optional, Tuple, Union
+    from typing import BinaryIO, Dict, List, Mapping, Optional, Tuple, Union
+
+    RGBTuple = Tuple[int, int, int]
 
 SMDH_SIZE = 0x36C0
 
@@ -128,31 +135,48 @@ def next_pow_2(i: int):
     return i
 
 
-def rgb565_to_rgb888(data: bytes):
+def rgb565_to_rgb888_tuple(data: bytes) -> 'RGBTuple':
     n = int.from_bytes(data, 'little')
     r = (((n >> 11) & 0x1F) * 0xFF // 0x1F) & 0xFF
     g = (((n >> 5) & 0x3F) * 0xFF // 0x3F) & 0xFF
     b = ((n & 0x1F) * 0xFF // 0x1F) & 0xFF
-    return pack('>BBB', r, g, b)
+    return r, g, b
+
+
+def rgb565_to_rgb888(data: bytes):
+    return pack('>BBB', *rgb565_to_rgb888_tuple(data))
 
 
 # Based on:
 # https://github.com/Steveice10/FBI/blob/c6d92d86b27aaef784d1ecb4103e1346fb0f8a12/source/core/screen.c#L305-L323
-def load_tiled_rgb565(data: bytes, width: int, height: int):
+def load_tiled_rgb565_to_array(data: bytes, width: int, height: int) -> 'List[List[RGBTuple]]':
     pixel_size = len(data) // width // height
 
     pixels = []
 
-    for x in range(width):
-        for y in range(height):
+    for y in range(height):
+        line = []
+        pixels.append(line)
+        for x in range(width):
             pixel_offset = ((((y >> 3) * (width >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3))) * pixel_size
 
-            pixel = rgb565_to_rgb888(data[pixel_offset:pixel_offset + pixel_size])
+            pixel = rgb565_to_rgb888_tuple(data[pixel_offset:pixel_offset + pixel_size])
 
-            pixels.append(pixel)
+            line.append(pixel)
 
-    img = Image.frombytes('RGB', (width, height), b''.join(pixels))
-    return img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.ROTATE_90)
+    return pixels
+
+
+# if Pillow is installed
+if Image:
+    def rgb888_array_to_image(pixel_array: 'List[List[RGBTuple]]', width: int, height: int):
+        final_data = bytes(chain.from_iterable(chain.from_iterable(pixel_array)))
+        img = Image.frombytes('RGB', (width, height), final_data)
+        return img
+
+    def load_tiled_rgb565(data: bytes, width: int, height: int):
+        pixel_array = load_tiled_rgb565_to_array(data, width, height)
+        return rgb888_array_to_image(pixel_array, width, height)
 
 
 class SMDH:
@@ -164,11 +188,20 @@ class SMDH:
 
     # TODO: support other settings
 
-    def __init__(self, names: 'Dict[str, AppTitle]', icon_small: 'Image', icon_large: 'Image', flags: SMDHFlags):
+    def __init__(self, names: 'Dict[str, AppTitle]', icon_small_array: 'List[List[RGBTuple]]',
+                 icon_large_array: 'List[List[RGBTuple]]', flags: SMDHFlags):
         self.names: Mapping[str, AppTitle] = MappingProxyType({n: names.get(n, None) for n in region_names})
-        self.icon_small = icon_small
-        self.icon_large = icon_large
+        self.icon_small_array = icon_small_array
+        self.icon_large_array = icon_large_array
         self.flags = flags
+
+        # if Pillow is installed
+        if Image:
+            self.icon_small = rgb888_array_to_image(self.icon_small_array, 24, 24)
+            self.icon_large = rgb888_array_to_image(self.icon_large_array, 48, 48)
+        else:
+            self.icon_small = None
+            self.icon_large = None
 
     def __repr__(self):
         return f'<{type(self).__name__} title: {self.get_app_title().short_desc}>'
@@ -206,13 +239,13 @@ class SMDH:
         icon_raw_large = smdh[0x24C0:0x36C0]
         # This is assuming icon data is RGB565, but 3dbrew says other formats are possible. Though every known example
         # uses RGB565 and there doesn't seem to be a way to tell which one is being used.
-        icon_small = load_tiled_rgb565(icon_raw_small, 24, 24)
-        icon_large = load_tiled_rgb565(icon_raw_large, 48, 48)
+        icon_small_array = load_tiled_rgb565_to_array(icon_raw_small, 24, 24)
+        icon_large_array = load_tiled_rgb565_to_array(icon_raw_large, 48, 48)
 
         flags_raw = smdh[0x2028:0x202C]
         flags = SMDHFlags.from_bytes(flags_raw)
 
-        return cls(names, icon_small, icon_large, flags)
+        return cls(names, icon_small_array, icon_large_array, flags)
 
     @classmethod
     def from_file(cls, fn: 'Union[PathLike, str, bytes]') -> 'SMDH':
