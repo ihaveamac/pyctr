@@ -7,7 +7,6 @@
 """Module for interacting with CTR Importable Archive (CIA) files."""
 
 from enum import IntEnum
-from io import BytesIO
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
