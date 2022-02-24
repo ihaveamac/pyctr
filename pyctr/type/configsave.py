@@ -134,9 +134,7 @@ class ConfigSaveReader:
             if block_size > 4:
                 block_data_offset = int.from_bytes(b[4:8], 'little')
                 block_data = raw_save[block_data_offset:block_data_offset + block_size]
-                print(f'id: {block_id:08X} size: {block_size:08X} offset: {block_data_offset:04X}')
             else:
-                print(f'id: {block_id:08X} size: {block_size:08X}')
                 block_data = b[4:4 + block_size]
 
             return {'id': block_id, 'flags': block_flags, 'data': block_data}
