@@ -72,9 +72,51 @@ class ConfigSaveReader:
         return self.to_bytes()
 
     def to_bytes(self):
-        raise NotImplementedError
+        """
+        Converts the object to a raw config save file.
+
+        The result may not be 1:1 identical to the original config file due to garbage data in unused parts, as well as
+        offsets shifting around due to Python not always preserving order. This shouldn't matter in practice though.
+
+        :return: Raw config save data.
+        """
+        raw_entries = []
+        raw_block_datas = []
+
+        # offset in the block entry is from the start of the file,
+        # so the first one has the offset equal the data region offset
+        current_offset = self.data_offset
+
+        for block_id, block_entry in self.blocks.items():
+            data_size = len(block_entry.data)
+            raw_entry_list = [
+                block_id.to_bytes(4, 'little'),
+                None,
+                data_size.to_bytes(2, 'little'),
+                block_entry.flags.to_bytes(2, 'little')
+            ]
+            if data_size > 4:
+                raw_entry_list[1] = current_offset.to_bytes(4, 'little')
+                current_offset += data_size
+                raw_block_datas.append(block_entry.data)
+            else:
+                raw_entry_list[1] = block_entry.data.ljust(4, b'\0')
+                print(raw_entry_list[1].hex(), data_size)
+            raw_entries.append(b''.join(raw_entry_list))
+
+        return b''.join((
+            len(self.blocks).to_bytes(2, 'little'),
+            self.data_offset.to_bytes(2, 'little'),
+            b''.join(raw_entries).ljust(self.data_offset - 4, b'\0'),
+            *raw_block_datas
+        )).ljust(CONFIG_SAVE_SIZE, b'\0')
 
     def save(self, fn: 'Union[PathLike, str, bytes]'):
+        """
+        Save the config save to a file.
+
+        :param fn: File path to write to.
+        """
         with open(fn, 'wb') as o:
             o.write(self.to_bytes())
 
@@ -110,6 +152,18 @@ class ConfigSaveReader:
 
         try:
             return self.blocks[block_id]
+        except KeyError:
+            raise BlockIDNotFoundError(block_id)
+
+    def remove_block(self, block_id: int):
+        """
+        Removes a config block.
+
+        :param block_id: Block ID.
+        """
+
+        try:
+            del self.blocks[block_id]
         except KeyError:
             raise BlockIDNotFoundError(block_id)
 
