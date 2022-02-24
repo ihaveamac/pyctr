@@ -1,3 +1,6 @@
+## Next
+* Add the module `pyctr.type.configsave` with the class `ConfigSaveReader`
+
 ## v0.6.0 - January 26, 2022
 ### Highlights
 Pillow is now an optional dependency. It is available through the extra feature `images`. This means to use `pyctr[images]` when adding to `setup.py`, `requirements.txt`, or `pip install`.
