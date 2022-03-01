@@ -6,7 +6,7 @@
 
 from typing import TYPE_CHECKING, NamedTuple
 
-from ..common import PyCTRError
+from ...common import PyCTRError
 
 if TYPE_CHECKING:
     from os import PathLike

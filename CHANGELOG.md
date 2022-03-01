@@ -1,6 +1,10 @@
 ## Next
-* Add the module `pyctr.type.configsave` with the class `ConfigSaveReader`
+* Add the module `pyctr.type.configsave` with the class `ConfigSaveReader` (_module name changed in a future commit_)
 * Implement `to_bytes` and `remove_block` in `ConfigSaveReader`
+* Split `pyctr.type.configsave` into two packages: `pyctr.type.config.blocks` and `pyctr.type.config.save`
+  * New `ConfigSaveBlockParser` class with 3 methods: `get_username`, `get_user_time_offset`, and `get_system_model` (plus convenience functions `load` and `from_file` so a `ConfigSaveParser` doesn't need to be manually created)
+  * New enum: `SystemModel`
+  * Both `ConfigSaveReader` and `ConfigSaveBlockParser` are importable from `pyctr.type.config`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
