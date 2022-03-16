@@ -118,6 +118,11 @@ class SubsectionIO(RawIOBase):
     def seekable(self) -> bool:
         return self._reader.seekable()
 
+    @_raise_if_file_closed
+    def flush(self) -> None:
+        with self._lock:
+            self._reader.flush()
+
 
 class SplitFileMerger(RawIOBase):
     """

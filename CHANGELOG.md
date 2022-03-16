@@ -5,6 +5,7 @@
   * New `ConfigSaveBlockParser` class with 3 methods: `get_username`, `get_user_time_offset`, and `get_system_model` (plus convenience functions `load` and `from_file` so a `ConfigSaveParser` doesn't need to be manually created)
   * New enum: `SystemModel`
   * Both `ConfigSaveReader` and `ConfigSaveBlockParser` are importable from `pyctr.type.config`
+* Add `flush` to `SubsectionIO`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
