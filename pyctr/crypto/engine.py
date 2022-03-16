@@ -433,7 +433,7 @@ class CryptoEngine:
         :param keyslot: :class:`Keyslot` to use.
         :param fh: File-like object to wrap.
         :param ctr: Counter to start with.
-        :param closefd Close underlying file object when closed.
+        :param closefd: Close underlying file object when closed.
         :return: A file-like object that does decryption and encryption on the fly.
         :rtype: CTRFileIO
         """
@@ -457,7 +457,7 @@ class CryptoEngine:
         :param keyslot: :class:`Keyslot` to use.
         :param fh: File-like object to wrap.
         :param iv: Initialization vector.
-        :param closefd Close underlying file object when closed.
+        :param closefd: Close underlying file object when closed.
         :return: A file-like object that does decryption on the fly.
         :rtype: CBCFileIO
         """
