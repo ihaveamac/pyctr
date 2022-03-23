@@ -91,24 +91,31 @@ class RomFSReader(TypeReaderBase):
         self.case_insensitive = case_insensitive
 
         lv3_offset = self._file.tell()
-        magic = self._file.read(4)
+        #magic = self._file.read(4)
+        # this reads the full amount that an ivfc header might be,
+        # but this could also be an lv3 header which is only 0x28 bytes
+        # this is just to reduce the amount of read calls
+        header = self._file.read(IVFC_HEADER_SIZE)
+        magic = header[0:4]
 
         # detect ivfc and get the lv3 offset
         if magic == b'IVFC':
-            ivfc = magic + self._file.read(0x54)  # IVFC_HEADER_SIZE - 4
-            ivfc_magic_num = readle(ivfc[0x4:0x8])
+            #ivfc = magic + self._file.read(0x54)  # IVFC_HEADER_SIZE - 4
+            ivfc_magic_num = readle(header[0x4:0x8])
             if ivfc_magic_num != IVFC_ROMFS_MAGIC_NUM:
                 raise InvalidIVFCError(f'IVFC magic number is invalid '
                                        f'({ivfc_magic_num:#X} instead of {IVFC_ROMFS_MAGIC_NUM:#X})')
-            master_hash_size = readle(ivfc[0x8:0xC])
-            lv3_block_size = readle(ivfc[0x4C:0x50])
+            master_hash_size = readle(header[0x8:0xC])
+            lv3_block_size = readle(header[0x4C:0x50])
             lv3_hash_block_size = 1 << lv3_block_size
             lv3_offset += roundup(0x60 + master_hash_size, lv3_hash_block_size)
             self._file.seek(self._start + lv3_offset)
-            magic = self._file.read(4)
-        self.lv3_offset = lv3_offset
+            lv3_header = self._file.read(ROMFS_LV3_HEADER_SIZE)
+            magic = lv3_header[0:4]
+        else:
+            lv3_header = header[0:ROMFS_LV3_HEADER_SIZE]
 
-        lv3_header = magic + self._file.read(0x24)  # ROMFS_LV3_HEADER_SIZE - 4
+        self.lv3_offset = lv3_offset
 
         # get offsets and sizes from lv3 header
         lv3_header_size = readle(magic)
