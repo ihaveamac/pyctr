@@ -870,6 +870,9 @@ class CTRFileIO(_CryptoFileBase):
         self._closefd = closefd
         self._lock = Lock()
 
+        # attempt to re-use a cipher object when possible (it becomes invalidated when seeking)
+        self._current_cipher = None
+
     def __repr__(self):
         return (f'{type(self).__name__}(file={self._reader!r}, keyslot={self._keyslot}, counter={self._counter!r}, '
                 f'closefd={self._closefd!r})')
@@ -882,25 +885,33 @@ class CTRFileIO(_CryptoFileBase):
         with self._lock:
             cur_offset = self.tell()
             data = self._reader.read(size)
-            counter = self._counter + (cur_offset >> 4)
-            cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
-            # beginning padding
-            cipher.decrypt(b'\0' * (cur_offset % 0x10))
+            cipher = self._current_cipher
+            if not cipher:
+                counter = self._counter + (cur_offset >> 4)
+                cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
+                # beginning padding
+                cipher.decrypt(b'\0' * (cur_offset % 0x10))
+                self._current_cipher = cipher
             return cipher.decrypt(data)
 
     @_raise_if_file_closed
     def write(self, data: bytes) -> int:
         with self._lock:
             cur_offset = self.tell()
-            counter = self._counter + (cur_offset >> 4)
-            cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
-            # beginning padding
-            cipher.encrypt(b'\0' * (cur_offset % 0x10))
+            cipher = self._current_cipher
+            if not cipher:
+                counter = self._counter + (cur_offset >> 4)
+                cipher = self._crypto.create_ctr_cipher(self._keyslot, counter)
+                # beginning padding
+                cipher.encrypt(b'\0' * (cur_offset % 0x10))
+                self._current_cipher = cipher
             return self._reader.write(cipher.encrypt(data))
 
     @_raise_if_file_closed
     def seek(self, seek: int, whence: int = 0) -> int:
         # TODO: if the seek goes past the file, the data between the former EOF and seek point should also be encrypted.
+        # reset current cipher because it's now invalid
+        self._current_cipher = None
         return self._reader.seek(seek, whence)
 
     def truncate(self, size: 'Optional[int]' = None) -> int:
