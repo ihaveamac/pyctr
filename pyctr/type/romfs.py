@@ -6,7 +6,7 @@
 
 """Module for interacting with Read-only Filesystem (RomFS) files."""
 
-from io import TextIOWrapper
+from io import BytesIO, TextIOWrapper
 from os import PathLike
 from typing import overload, TYPE_CHECKING, NamedTuple
 
@@ -134,7 +134,7 @@ class RomFSReader(TypeReaderBase):
             raise InvalidRomFSHeaderError('File Data offset is before the end of the File Metadata region')
 
         # get entries from dirmeta and filemeta
-        def iterate_dir(out: dict, raw: bytes, current_path: str):
+        def iterate_dir(out: dict, raw: bytes, current_path: str, dirmeta: 'BinaryIO', filemeta: 'BinaryIO'):
             first_child_dir = readle(raw[0x8:0xC])
             first_file = readle(raw[0xC:0x10])
 
@@ -143,30 +143,30 @@ class RomFSReader(TypeReaderBase):
 
             # iterate through all child directories
             if first_child_dir != 0xFFFFFFFF:
-                self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset + first_child_dir)
+                dirmeta.seek(first_child_dir)
                 while True:
-                    child_dir_meta = self._file.read(0x18)
+                    child_dir_meta = dirmeta.read(0x18)
                     next_sibling_dir = readle(child_dir_meta[0x4:0x8])
-                    child_dir_name = self._file.read(readle(child_dir_meta[0x14:0x18])).decode('utf-16le')
+                    child_dir_name = dirmeta.read(readle(child_dir_meta[0x14:0x18])).decode('utf-16le')
                     child_dir_name_meta = child_dir_name.lower() if case_insensitive else child_dir_name
                     if child_dir_name_meta in out['contents']:
                         print(f'WARNING: Dirname collision! {current_path}{child_dir_name}')
                     out['contents'][child_dir_name_meta] = {'name': child_dir_name}
 
                     iterate_dir(out['contents'][child_dir_name_meta], child_dir_meta,
-                                f'{current_path}{child_dir_name}/')
+                                f'{current_path}{child_dir_name}/', dirmeta, filemeta)
                     if next_sibling_dir == 0xFFFFFFFF:
                         break
-                    self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset + next_sibling_dir)
+                    dirmeta.seek(next_sibling_dir)
 
             if first_file != 0xFFFFFFFF:
-                self._file.seek(self._start + lv3_offset + lv3_filemeta.offset + first_file)
+                filemeta.seek(first_file)
                 while True:
-                    child_file_meta = self._file.read(0x20)
+                    child_file_meta = filemeta.read(0x20)
                     next_sibling_file = readle(child_file_meta[0x4:0x8])
                     child_file_offset = readle(child_file_meta[0x8:0x10])
                     child_file_size = readle(child_file_meta[0x10:0x18])
-                    child_file_name = self._file.read(readle(child_file_meta[0x1C:0x20])).decode('utf-16le')
+                    child_file_name = filemeta.read(readle(child_file_meta[0x1C:0x20])).decode('utf-16le')
                     child_file_name_meta = child_file_name.lower() if self.case_insensitive else child_file_name
                     if child_file_name_meta in out['contents']:
                         print(f'WARNING: Filename collision! {current_path}{child_file_name}')
@@ -176,12 +176,17 @@ class RomFSReader(TypeReaderBase):
                     self.total_size += child_file_size
                     if next_sibling_file == 0xFFFFFFFF:
                         break
-                    self._file.seek(self._start + lv3_offset + lv3_filemeta.offset + next_sibling_file)
+                    filemeta.seek(next_sibling_file)
 
         self._tree_root = {'name': 'ROOT'}
         self.total_size = 0
+
         self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset)
-        iterate_dir(self._tree_root, self._file.read(0x18), '/')
+        dirmeta = BytesIO(self._file.read(lv3_dirmeta.size))
+        self._file.seek(self._start + lv3_offset + lv3_filemeta.offset)
+        filemeta = BytesIO(self._file.read(lv3_filemeta.size))
+
+        iterate_dir(self._tree_root, dirmeta.read(0x18), '/', dirmeta, filemeta)
 
     @overload
     def open(self, path: str, encoding: str, errors: 'Optional[str]' = None,
