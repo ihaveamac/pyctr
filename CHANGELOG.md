@@ -6,6 +6,9 @@
   * New enum: `SystemModel`
   * Both `ConfigSaveReader` and `ConfigSaveBlockParser` are importable from `pyctr.type.config`
 * Add `flush` to `SubsectionIO`
+* Optimize `CTRFileIO` to re-use existing cipher object when possible (seeking invalidates the current one)
+* Optimize `RomFSReader` by reading entire directory and file metadata at once before traversing, significantly reducing the amount of read calls to the underlying file
+* Optimize `RomFSReader` to reduce the read calls for the header (once for raw lv3, twice for IVFC)
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
