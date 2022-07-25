@@ -19,6 +19,13 @@ if TYPE_CHECKING:
     from .common import ReadWriteBinaryFileModes, Partition
 
 
+class UnformattedSaveError(InvalidPartitionContainerError):
+    """
+    The archive appears to be unformatted. The difference here is that the first 0x20 bytes are all null bytes,
+    the rest is garbage.
+    """
+
+
 class DISA(PartitionContainerBase):
     """
     Reads and writes to DISA files.
@@ -50,7 +57,10 @@ class DISA(PartitionContainerBase):
 
         magic = self._header[0:8]
         if magic != b'DISA\0\0\4\0':
-            raise InvalidPartitionContainerError(f'DISA magic expected, got {magic}')
+            if self._header[0:0x20] == (b'\0' * 0x20):
+                raise UnformattedSaveError('decryption may have worked but the save may have not been formatted')
+            else:
+                raise InvalidPartitionContainerError(f'DISA magic expected, got {magic}')
 
         partition_count = readle(self._header[0x8:0xC])
 
