@@ -341,7 +341,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
         # this would fail if zero-key and a seed is used, but I have *no* idea how that would work
         # (if it's even possible)
-        if self.flags.fixed_crypto_key and self.flags.crypto_method == 0:
+        if self.flags.fixed_crypto_key:
             self._crypto.set_normal_key(Keyslot.NCCHExtraKey, self._crypto.key_normal[self.extra_keyslot])
         else:
             # load the (seeded, if needed) key into the extra keyslot
