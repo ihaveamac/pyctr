@@ -25,6 +25,7 @@ Some performance improvements were done to `CTRFileIO` and `RomFSReader`.
 * Various documentation and type hint changes
   * Add new `FilePath` and `FilePathOrObject` types
 * Add `__slots__` to `SubsectionIO` and `SplitFileMerger`
+* Add some tests for `romfs` and `smdh`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
