@@ -26,6 +26,7 @@ Some performance improvements were done to `CTRFileIO` and `RomFSReader`.
   * Add new `FilePath` and `FilePathOrObject` types
 * Add `__slots__` to `SubsectionIO` and `SplitFileMerger`
 * Add some tests for `romfs` and `smdh`
+* Load all boot9 keys in `CryptoEngine.setup_keys_from_boot9`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights

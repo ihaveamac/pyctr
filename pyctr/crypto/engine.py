@@ -9,7 +9,7 @@
 from enum import IntEnum
 from functools import wraps
 from hashlib import sha256
-from io import RawIOBase
+from io import RawIOBase, BytesIO
 from os import environ
 from os.path import getsize, join as pjoin
 from struct import pack, unpack
@@ -228,6 +228,14 @@ def _requires_otp(method):
             raise KeyslotMissingError('an OTP dump is required, see setup_keys_from_otp')
         return method(self, *args, **kwargs)
     return wrapper
+
+
+if TYPE_CHECKING:
+    def _requires_bootrom(method):
+        return method
+
+    def _requires_otp(method):
+        return method
 
 
 # used from http://www.falatic.com/index.php/108/python-and-bitwise-rotation
@@ -614,47 +622,49 @@ class CryptoEngine:
         _otp_key = b9[otp_key_offset:otp_key_offset + 0x10]
         _otp_iv = b9[otp_key_offset + 0x10:otp_key_offset + 0x20]
 
-        keyblob: bytes = b9[keyblob_offset:keyblob_offset + 0x400]
+        keyblob = BytesIO(b9[keyblob_offset:keyblob_offset + 0x400])
 
-        _b9_extdata_keygen = keyblob[0:0x200]
-        _b9_extdata_otp = keyblob[0:0x24]
+        _b9_extdata_keygen = keyblob.read(0x200)
+        _b9_extdata_otp = _b9_extdata_keygen[0:0x24]
 
-        # Original NCCH key, UDS local-WLAN CCMP key, StreetPass key, 6.0 save key
-        _b9_key_x[0x2C] = _b9_key_x[0x2D] = _b9_key_x[0x2E] = _b9_key_x[0x2F] = readbe(keyblob[0x170:0x180])
+        # load keys
+        # based on https://github.com/yellows8/boot9_tools/blob/7630e679f1409b90bf40939cd78c3b008ebb2761/boot9_keytool.sh
 
-        # SD/NAND AES-CMAC key, APT wrap key, Unknown, Gamecard savedata AES-CMAC
-        _b9_key_x[0x30] = _b9_key_x[0x31] = _b9_key_x[0x32] = _b9_key_x[0x33] = readbe(keyblob[0x180:0x190])
+        keyblob.seek(0x170)
+        def key_loop(keyslot: int, kdict: 'Dict[int, Union[int, bytes]]', conv_func):
+            data = conv_func(keyblob.read(16))
+            for i in range(4):
+                kdict[keyslot + i] = data
 
-        # SD key (loaded from movable.sed), movable.sed key, Unknown (used by friends module),
-        #   Gamecard savedata actual key
-        _b9_key_x[0x34] = _b9_key_x[0x35] = _b9_key_x[0x36] = _b9_key_x[0x37] = readbe(keyblob[0x190:0x1A0])
+        def key_loop_increase(keyslot: int, kdict: 'Dict[int, Union[int, bytes]]', conv_func):
+            for i in range(4):
+                data = conv_func(keyblob.read(16))
+                kdict[keyslot + i] = data
 
-        # BOSS key, Download Play key + actual NFC key for generating retail amiibo keys, CTR-CARD hardware-crypto seed
-        #   decryption key
-        _b9_key_x[0x38] = _b9_key_x[0x39] = _b9_key_x[0x3A] = _b9_key_x[0x3B] = readbe(keyblob[0x1A0:0x1B0])
+        key_loop(0x2C, _b9_key_x, readbe)
+        key_loop(0x30, _b9_key_x, readbe)
+        key_loop(0x34, _b9_key_x, readbe)
+        key_loop(0x38, _b9_key_x, readbe)
+        key_loop_increase(0x3C, _b9_key_x, readbe)
 
-        # Unused
-        _b9_key_x[0x3C] = readbe(keyblob[0x1B0:0x1C0])
+        key_loop_increase(0x04, _b9_key_y, readbe)
+        key_loop_increase(0x08, _b9_key_y, readbe)
 
-        # Common key (titlekey crypto)
-        _b9_key_x[0x3D] = readbe(keyblob[0x1C0:0x1D0])
-
-        # Unused
-        _b9_key_x[0x3E] = readbe(keyblob[0x1D0:0x1E0])
-
-        # NAND partition keys
-        _b9_key_y[0x04] = readbe(keyblob[0x1F0:0x200])
-        # correct 0x05 KeyY not set by boot9.
-        _b9_key_y[0x06] = readbe(keyblob[0x210:0x220])
-        _b9_key_y[0x07] = readbe(keyblob[0x220:0x230])
-
-        # Unused, Unused, DSiWare export key, NAND dbs/movable.sed AES-CMAC key
-        _b9_key_y[0x08] = readbe(keyblob[0x230:0x240])
-        _b9_key_y[0x09] = readbe(keyblob[0x240:0x250])
-        _b9_key_y[0x0A] = readbe(keyblob[0x250:0x260])
-        _b9_key_y[0x0B] = readbe(keyblob[0x260:0x270])
-
-        _b9_key_normal[0x0D] = keyblob[0x270:0x280]
+        key_loop(0x0C, _b9_key_normal, bytes)
+        key_loop(0x10, _b9_key_normal, bytes)
+        key_loop_increase(0x14, _b9_key_normal, bytes)
+        key_loop(0x18, _b9_key_normal, bytes)
+        key_loop(0x1C, _b9_key_normal, bytes)
+        key_loop(0x20, _b9_key_normal, bytes)
+        key_loop(0x24, _b9_key_normal, bytes)
+        keyblob.seek(-16, 1)
+        key_loop_increase(0x28, _b9_key_normal, bytes)
+        key_loop(0x2C, _b9_key_normal, bytes)
+        key_loop(0x30, _b9_key_normal, bytes)
+        key_loop(0x34, _b9_key_normal, bytes)
+        key_loop(0x38, _b9_key_normal, bytes)
+        keyblob.seek(-16, 1)
+        key_loop_increase(0x3C, _b9_key_normal, bytes)
 
         self._copy_global_keys()
 
