@@ -1,4 +1,12 @@
 ## Next
+### Highlights
+A new `pyctr.type.config` package with `save` and `blocks` modules was added. These allow for reading the [config savegame](https://www.3dbrew.org/wiki/Config_Savegame), both to read the raw blocks, and to parse the data into a usable format.
+
+A new `nand` module with the `NAND` class is added to read and write to NAND images. This only provides raw access (for FAT32, try [nathanhi/pyfatfs](https://github.com/nathanhi/pyfatfs)).
+
+Some performance improvements were done to `CTRFileIO` and `RomFSReader`.
+
+### Changelog
 * Add the module `pyctr.type.configsave` with the class `ConfigSaveReader` (_module name changed in a future commit_)
 * Implement `to_bytes` and `remove_block` in `ConfigSaveReader`
 * Split `pyctr.type.configsave` into two packages: `pyctr.type.config.blocks` and `pyctr.type.config.save`
@@ -11,6 +19,7 @@
 * Optimize `RomFSReader` to reduce the read calls for the header (once for raw lv3, twice for IVFC)
 * Check for unformatted saves in `DISA` (the first 0x20 bytes are all NULL and the rest is garbage)
 * Remove `crypto_method == 0` check for NCCH files using `fixed_crypto_key`
+* Add `nand` module with `NAND` class, to read and write to a NAND image
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
