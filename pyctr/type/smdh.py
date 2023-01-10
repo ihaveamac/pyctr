@@ -18,8 +18,8 @@ except ModuleNotFoundError:
 from ..common import PyCTRError
 
 if TYPE_CHECKING:
-    from os import PathLike
     from typing import BinaryIO, Dict, List, Mapping, Optional, Tuple, Union
+    from ..common import FilePath
 
     RGBTuple = Tuple[int, int, int]
 
@@ -250,6 +250,6 @@ class SMDH:
         return cls(names, icon_small_array, icon_large_array, flags)
 
     @classmethod
-    def from_file(cls, fn: 'Union[PathLike, str, bytes]') -> 'SMDH':
+    def from_file(cls, fn: 'FilePath') -> 'SMDH':
         with open(fn, 'rb') as f:
             return cls.load(f)

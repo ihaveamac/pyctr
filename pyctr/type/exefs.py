@@ -7,7 +7,6 @@
 """Module for interacting with Executable Filesystem (ExeFS) files."""
 
 from hashlib import sha256
-from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -18,7 +17,8 @@ from .base import TypeReaderBase
 from .smdh import SMDH, InvalidSMDHError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Optional, Union
+    from typing import Dict, Optional
+    from ..common import FilePathOrObject
 
 __all__ = ['EXEFS_EMPTY_ENTRY', 'EXEFS_ENTRY_SIZE', 'EXEFS_ENTRY_COUNT', 'EXEFS_HEADER_SIZE', 'ExeFSError',
            'ExeFSFileNotFoundError', 'InvalidExeFSError', 'ExeFSNameError', 'BadOffsetError', 'CodeDecompressionError',
@@ -169,6 +169,7 @@ def _normalize_path(p: str):
     return p
 
 
+# noinspection PyAbstractClass
 class _ExeFSOpenFile(_ReaderOpenFileBase):
     """Class for open ExeFS file entries."""
 
@@ -204,10 +205,10 @@ class ExeFSReader(TypeReaderBase):
     entries: 'Dict[str, ExeFSEntry]'
     """Entries in the ExeFS."""
 
-    icon: 'SMDH'
+    icon: 'Optional[SMDH]'
     """The icon info, if one is in the ExeFS."""
 
-    def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = True, _load_icon: bool = True):
+    def __init__(self, fp: 'FilePathOrObject', *, closefd: bool = True, _load_icon: bool = True):
         super().__init__(fp, closefd=closefd)
 
         self.icon = None
@@ -240,7 +241,7 @@ class ExeFSReader(TypeReaderBase):
                                size=readle(entry_raw[12:16]),
                                hash=entry_hash)
 
-            # the 3DS fails to parse an ExeFS with an offset that isn't a multiple of 0x200
+            # the 3DS fails to parse an ExeFS with an offset that isn't a multiple of 0x200,
             #   so we should do the same here
             if entry.offset % 0x200:
                 raise BadOffsetError(entry.offset)

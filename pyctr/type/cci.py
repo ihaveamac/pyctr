@@ -7,7 +7,6 @@
 """Module for interacting with CTR Cart Image (CCI) files."""
 
 from enum import IntEnum
-from os import PathLike
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
@@ -17,7 +16,8 @@ from ..util import readle
 from .base import TypeReaderBase
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Union
+    from typing import Dict
+    from ..common import FilePathOrObject
 
 CCI_MEDIA_UNIT = 0x200
 
@@ -107,7 +107,7 @@ class CCIReader(TypeReaderBase):
     media_id: str
     """Same as the Title ID of the application."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None,
                  case_insensitive: bool = True, dev: bool = False, load_contents: bool = True,
                  assume_decrypted: bool = False):
         super().__init__(file, closefd=closefd)

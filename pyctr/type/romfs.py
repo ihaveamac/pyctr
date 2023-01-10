@@ -6,7 +6,6 @@
 
 """Module for interacting with Read-only Filesystem (RomFS) files."""
 from io import BytesIO, TextIOWrapper
-from os import PathLike
 from typing import overload, TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
@@ -16,6 +15,7 @@ from .base import TypeReaderBase
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Optional, Tuple, Union
+    from ..common import FilePathOrObject
 
 __all__ = ['IVFC_HEADER_SIZE', 'IVFC_ROMFS_MAGIC_NUM', 'ROMFS_LV3_HEADER_SIZE', 'RomFSError', 'InvalidIVFCError',
            'InvalidRomFSHeaderError', 'RomFSEntryError', 'RomFSFileNotFoundError', 'RomFSReader']
@@ -82,7 +82,7 @@ class RomFSReader(TypeReaderBase):
 
     __slots__ = ('_tree_root', 'case_insensitive', 'data_offset', 'lv3_offset', 'total_size')
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', case_insensitive: bool = False, *,
+    def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *,
                  closefd: bool = None):
         super().__init__(file, closefd=closefd)
 

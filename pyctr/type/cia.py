@@ -19,8 +19,8 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from os import PathLike
-    from typing import BinaryIO, Dict, List, Optional, Union
+    from typing import Dict, List, Optional, Union
+    from ..common import FilePathOrObject
     from .tmd import ContentChunkRecord
 
 ALIGN_SIZE = 64
@@ -126,7 +126,7 @@ class CIAReader(TypeReaderCryptoBase):
     total_size: int
     """Expected size of the CIA file in bytes."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = False,
                  load_contents: bool = True):
         super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)

@@ -7,7 +7,6 @@
 from enum import IntEnum
 from hashlib import sha1, sha256
 from logging import getLogger
-from os import PathLike
 from threading import Lock
 from typing import NamedTuple, TYPE_CHECKING
 from weakref import WeakSet
@@ -17,12 +16,11 @@ from ..crypto import CryptoEngine, Keyslot
 from ..fileio import SubsectionIO
 from ..util import readbe, readle
 from .base.typereader import TypeReaderCryptoBase
-from .exefs import EXEFS_HEADER_SIZE, ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
+from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Optional, Set, Tuple, Union
-
-    from ..crypto import CTRFileIO, TWLCTRFileIO
+    from typing import Dict, List, Optional, Set, Tuple, Union
+    from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
 
@@ -149,10 +147,9 @@ class NAND(TypeReaderCryptoBase):
     ctr_partitions: 'List[Tuple[int, int]]'
     twl_partitions: 'List[Tuple[int, int]]'
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', mode: str = 'rb', *, closefd: bool = True,
-                 crypto: CryptoEngine = None, dev: bool = False, otp: bytes = None,
-                 otp_file: 'Union[PathLike, str, bytes]' = None, cid: bytes = None,
-                 cid_file: 'Union[PathLike, str, bytes]' = None, auto_raise_exceptions: bool = True):
+    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, closefd: bool = True, crypto: CryptoEngine = None,
+                 dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None, cid: bytes = None,
+                 cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
         super().__init__(file=file, mode=mode, closefd=closefd, crypto=crypto, dev=dev)
 
         self._lock = Lock()
@@ -485,11 +482,11 @@ class NAND(TypeReaderCryptoBase):
         :rtype: SubsectionIO
         """
 
-        # to make things simpler to deal with, this creates a SubsectionIO object directly on the base file
-        # instead of opening it with open_ncsd_partition first
-        # why is this simpler? it means i don't have to deal with stacking SubsectionIO objects and dealing with
-        # closing them when they're done
-        # it's also probably a tiny bit faster, probably
+        # To make things simpler to deal with, this creates a SubsectionIO object directly on the base file
+        #     instead of opening it with open_ncsd_partition first
+        # Why is this simpler? It means I don't have to deal with stacking SubsectionIO objects and dealing with
+        #     closing them when they're done.
+        # It's also probably a tiny bit faster, probably.
         ctr_ncsd_info = self.ncsd_partition_info[self.ctr_index]
         ctr_mbr_info = self.ctr_partitions[partition_index]
         fh = SubsectionIO(self._base_files[ctr_ncsd_info.base_file],

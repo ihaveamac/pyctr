@@ -11,12 +11,12 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from os import PathLike
-    from typing import BinaryIO, Dict, Optional, Union
+    from typing import Dict, Optional
 
     from ...crypto import CryptoEngine
     from .cmac import CMACTypeBase
     from .common import ReadWriteBinaryFileModes, Partition
+    from ...common import FilePath, FilePathOrObject
 
 
 class UnformattedSaveError(InvalidPartitionContainerError):
@@ -45,10 +45,9 @@ class DISA(PartitionContainerBase):
     partitions: 'Dict[int, Partition]'
     """Partitions of the file. DISA can have one or two, so there is always `0` but there can be `1` as well."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
+    def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
                  closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None, dev: bool = False,
-                 cmac_base: 'CMACTypeBase' = None, sd_key_file: 'Union[PathLike, str, bytes]' = None,
-                 sd_key: bytes = None):
+                 cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None, sd_key: bytes = None):
         super().__init__(file, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,
                          sd_key_file=sd_key_file, sd_key=sd_key)
 

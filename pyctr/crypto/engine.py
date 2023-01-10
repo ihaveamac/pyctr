@@ -24,7 +24,6 @@ from ..common import PyCTRError, _raise_if_file_closed
 from ..util import config_dirs, readbe, readle
 
 if TYPE_CHECKING:
-    from os import PathLike
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_cbc import CbcMode
     # noinspection PyProtectedMember
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
     from typing import BinaryIO, Dict, List, Optional, Union
+    from ..common import FilePath
 
     # trick type checkers
     RawIOBase = BinaryIO
@@ -658,7 +658,7 @@ class CryptoEngine:
 
         self._copy_global_keys()
 
-    def setup_keys_from_boot9_file(self, path: 'Union[PathLike, str, bytes]' = None):
+    def setup_keys_from_boot9_file(self, path: 'FilePath' = None):
         """Set up certain keys from an ARM9 bootROM file."""
         global _b9_path
         if self.b9_keys_set:
@@ -791,7 +791,7 @@ class CryptoEngine:
         self.otp_keys_set = True
 
     @_requires_bootrom
-    def setup_keys_from_otp_file(self, path: 'Union[PathLike, str, bytes]'):
+    def setup_keys_from_otp_file(self, path: 'FilePath'):
         """Set up console-unique keys from an OTP file. Encrypted and decrypted are supported."""
         with open(path, 'rb') as f:
             self.setup_keys_from_otp(f.read(0x100))
@@ -813,7 +813,7 @@ class CryptoEngine:
         hash_parts = unpack('<IIII', key_hash)
         self._id0 = pack('>IIII', *hash_parts)
 
-    def setup_sd_key_from_file(self, path: 'Union[PathLike, str, bytes]'):
+    def setup_sd_key_from_file(self, path: 'FilePath'):
         """Set up the SD key from a movable.sed file."""
         with open(path, 'rb') as f:
             self.setup_sd_key(f.read(0x140))

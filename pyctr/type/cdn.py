@@ -7,7 +7,7 @@
 """Module for interacting with contents in CDN layout."""
 
 from enum import IntEnum
-from os import PathLike, fsdecode
+from os import fsdecode
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 from weakref import WeakSet
@@ -18,7 +18,9 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
+    from os import PathLike
     from typing import BinaryIO, Dict, List, Optional, Set, Tuple, Union
+    from ..common import FilePath
     from ..crypto import CBCFileIO
     from .tmd import ContentChunkRecord
 
@@ -98,7 +100,7 @@ class CDNReader:
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes]', *, case_insensitive: bool = False,
+    def __init__(self, file: 'FilePath', *, case_insensitive: bool = False,
                  crypto: 'CryptoEngine' = None, dev: bool = False, seed: bytes = None, titlekey: bytes = None,
                  decrypted_titlekey: bytes = None, common_key_index: int = 0, load_contents: bool = True):
         if crypto:
@@ -124,7 +126,7 @@ class CDNReader:
         self.contents = {}
         self.content_info = []
 
-        def add_file(section: 'Union[CDNSection, int]', path: str, iv: 'Optional[bytes]'):
+        def add_file(section: 'Union[CDNSection, int]', path: 'Union[PathLike, str]', iv: 'Optional[bytes]'):
             self._base_files[section] = (path, iv)
             self.available_sections.append(section)
 

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, NamedTuple
 from ...common import PyCTRError
 
 if TYPE_CHECKING:
-    from os import PathLike
-    from typing import BinaryIO, Dict, Union
+    from typing import BinaryIO, Dict
+    from ...common import FilePath
 
 
 CONFIG_SAVE_SIZE = 0x8000
@@ -114,7 +114,7 @@ class ConfigSaveReader:
             *raw_block_datas
         )).ljust(CONFIG_SAVE_SIZE, b'\0')
 
-    def save(self, fn: 'Union[PathLike, str, bytes]'):
+    def save(self, fn: 'FilePath'):
         """
         Save the config save to a file.
 
@@ -206,6 +206,6 @@ class ConfigSaveReader:
         return cfg_save
 
     @classmethod
-    def from_file(cls, fn: 'Union[PathLike, str, bytes]'):
+    def from_file(cls, fn: 'FilePath'):
         with open(fn, 'rb') as f:
             return cls.load(f)

@@ -13,7 +13,8 @@ from ...common import PyCTRError
 from ...crypto import CryptoEngine
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Optional, Set, Union
+    from typing import BinaryIO, Optional, Set
+    from ...common import FilePathOrObject
 
 __all__ = ['raise_if_closed', 'ReaderError', 'ReaderClosedError', 'TypeReaderBase', 'TypeReaderCryptoBase']
 
@@ -59,7 +60,7 @@ class TypeReaderBase:
     closed: bool
     """`True` if the reader is closed."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: 'Optional[bool]' = None,
+    def __init__(self, file: 'FilePathOrObject', *, closefd: 'Optional[bool]' = None,
                  mode: str = 'rb'):
         default_closefd = False
         self.closed = False
@@ -140,7 +141,7 @@ class TypeReaderCryptoBase(TypeReaderBase):
 
     __slots__ = ('_crypto',)
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None, mode: str = 'rb',
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):
         super().__init__(file, closefd=closefd, mode=mode)
 

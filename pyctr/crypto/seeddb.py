@@ -14,6 +14,7 @@ from ..util import config_dirs, readle
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, Union
+    from ..common import FilePathOrObject
 
 __all__ = ['SeedDBError', 'InvalidProgramIDError', 'InvalidSeedError', 'MissingSeedError', 'load_seeddb', 'get_seed',
            'add_seed', 'get_all_seeds', 'save_seeddb']
@@ -62,7 +63,7 @@ def _normalize_program_id(program_id: 'Union[int, str, bytes]') -> int:
     return program_id
 
 
-def load_seeddb(fp: 'Union[PathLike, str, bytes, BinaryIO]' = None):
+def load_seeddb(fp: 'FilePathOrObject' = None):
     """
     Load a seeddb file.
 
@@ -142,7 +143,7 @@ def get_all_seeds():
     return MappingProxyType(_seeds)
 
 
-def save_seeddb(fp: 'Union[PathLike, str, bytes, BinaryIO]'):
+def save_seeddb(fp: 'FilePathOrObject'):
     """
     Save the seed database to a seeddb file.
 

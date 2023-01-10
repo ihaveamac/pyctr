@@ -9,20 +9,20 @@
 from hashlib import sha256
 from enum import IntEnum
 from math import ceil
-from os import PathLike
 from threading import Lock
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError, _ReaderOpenFileBase
 from ..crypto import CryptoEngine, Keyslot, add_seed, get_seed
 from ..fileio import SplitFileMerger, SubsectionIO
-from ..util import readle, roundup
+from ..util import readle
 from .base import TypeReaderCryptoBase
-from .exefs import ExeFSReader, EXEFS_HEADER_SIZE
+from .exefs import ExeFSReader
 from .romfs import RomFSReader
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+    from ..common import FilePathOrObject
 
 __all__ = ['NCCH_MEDIA_UNIT', 'NO_ENCRYPTION', 'EXEFS_NORMAL_CRYPTO_FILES', 'FIXED_SYSTEM_KEY', 'NCCHError',
            'InvalidNCCHError', 'NCCHSeedError', 'MissingSeedError', 'extra_cryptoflags', 'NCCHSection', 'NCCHRegion',
@@ -125,18 +125,13 @@ class NCCHFlags(NamedTuple):
                    no_crypto=bool(flag_bytes[7] & 0x4), uses_seed=bool(flag_bytes[7] & 0x20))
 
 
+# noinspection PyAbstractClass
 class _NCCHSectionFile(_ReaderOpenFileBase):
     """
     Provides a raw, decrypted NCCH section as a file-like object.
 
-    This is only used in two cases:
-
-    - An ExeFS when an extra keyslot is used. Parts of the ExeFS are decrypted using Original NCCH (the header, icon,
-      and banner), while the rest uses the extra keyslot. This is done to retain compatibility with Nintendo 3DS
-      systems that don't support the extra keyslot. The .code would never be loaded on these old systems, since an
-      update prompt on the HOME Menu would prevent the title from starting.
-    - The simulated fully-decrypted NCCH. Since this loads from multiple sections with varying encryption, complex
-      handling is required. This is done in `get_data` of :class:`NCCHReader`.
+    This is used for the simulated fully-decrypted NCCH. Since this loads from multiple sections with varying
+    encryption, complex handling is required. This is done in `get_data` of :class:`NCCHReader`.
 
     In all other cases a :class:`crypto.CTRFileIO` object is used for encrypted sections, or
     :class:`fileio.SubsectionIO` for decrypted.
@@ -243,7 +238,7 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
                  load_sections: bool = True, assume_decrypted: bool = False):
 
@@ -275,7 +270,7 @@ class NCCHReader(TypeReaderCryptoBase):
         # the int is used to generate the IV for each section
         partition_id_int = readle(header[0x108:0x110])
         self.partition_id = f'{partition_id_int:016x}'
-        # load the seed verify field, which is part of an sha256 hash to verify if
+        # load the seed verify field, which is part of a sha256 hash to verify if
         #   a seed is correct for this title
         self._seed_verify = header[0x114:0x118]
         # load the Product Code store it as a unicode string
@@ -399,7 +394,7 @@ class NCCHReader(TypeReaderCryptoBase):
                 # header, "icon", "banner". This is how the 3DS treats it; any other file is encrypted with the extra
                 # keyslot. In practice this is only ".code", however if another file is forced in like "logo", it is
                 # encrypted with the extra keyslot. So because this has a chance of happening, no matter how unlikely,
-                # I gotta do this properly. Assumptions with Nintendo formats have bitten me in the ass before.
+                # I have to do this properly. Assumptions with Nintendo formats have bitten me in the ass before.
 
                 # Load the ExeFS to get the file offsets and sizes. It's re-created after once a new merged file is made
                 # with the decrypted sections.

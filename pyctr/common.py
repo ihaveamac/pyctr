@@ -10,8 +10,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from typing import BinaryIO, IO
+    from os import PathLike
+    from typing import BinaryIO, IO, Union
     RawIOBase = BinaryIO
+
+    FilePath = Union[PathLike, str, bytes]
+    FilePathOrObject = Union[FilePath, BinaryIO]
 
 
 class PyCTRError(Exception):

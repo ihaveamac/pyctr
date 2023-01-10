@@ -22,7 +22,13 @@ _lock_objects = WeakValueDictionary()
 
 
 class SubsectionIO(RawIOBase):
-    """Provides read-write access to a subsection of a file."""
+    """
+    Provides read-write access to a subsection of a file.
+
+    :param file: A file-like object.
+    :param offset: Offset of the section.
+    :param size: Size of the section.
+    """
 
     closed = False
     _seek = 0
@@ -69,8 +75,8 @@ class SubsectionIO(RawIOBase):
         with self._lock:
             self._reader.seek(self._seek + self._offset)
             data = self._reader.read(size)
-
         self._seek += len(data)
+
         return data
 
     @_raise_if_file_closed

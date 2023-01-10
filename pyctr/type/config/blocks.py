@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from .save import ConfigSaveReader
 
 if TYPE_CHECKING:
-    from os import PathLike
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
+    from ...common import FilePath
 
 
 class SystemModel(IntEnum):
@@ -83,5 +83,5 @@ class ConfigSaveBlockParser:
         return cls(ConfigSaveReader.load(fp))
 
     @classmethod
-    def from_file(cls, fn: 'Union[PathLike, str, bytes]'):
+    def from_file(cls, fn: 'FilePath'):
         return cls(ConfigSaveReader.from_file(fn))

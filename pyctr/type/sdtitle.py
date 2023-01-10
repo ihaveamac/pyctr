@@ -16,10 +16,10 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from os import PathLike
     from pathlib import PurePath
     from typing import BinaryIO, Dict, List, Set, Union
 
+    from ..common import FilePath
     from .ncch import NCCHReader
     from .sd import SDFilesystem
     from .tmd import ContentChunkRecord
@@ -47,7 +47,7 @@ class SDTitleReader:
     """
     Reads the contents of files installed on the SD card inside "Nintendo 3DS".
 
-    By default this only works with contents that do not use SD encryption (i.e. tmd and contents are plaintext). To
+    By default, this only works with contents that do not use SD encryption (i.e. tmd and contents are plaintext). To
     read contents currently encrypted on an SD card, :class:`~.SDFilesystem` is needed, and provides a method to easily
     open a title's contents. (NYI)
 
@@ -86,8 +86,8 @@ class SDTitleReader:
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
-    def __init__(self, file: 'Union[PathLike, str, bytes]', *, case_insensitive: bool = False, dev: bool = False,
-                 seed: bytes = None, load_contents: bool = True, sdfs: 'SDFilesystem' = None, sd_id1: str = None):
+    def __init__(self, file: 'FilePath', *, case_insensitive: bool = False, dev: bool = False, seed: bytes = None,
+                 load_contents: bool = True, sdfs: 'SDFilesystem' = None, sd_id1: str = None):
         self.closed = False
 
         self.sdfs = sdfs
