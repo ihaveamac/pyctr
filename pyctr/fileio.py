@@ -30,10 +30,12 @@ class SubsectionIO(RawIOBase):
     :param size: Size of the section.
     """
 
-    closed = False
-    _seek = 0
+    __slots__ = ('_end', '_lock', '_offset', '_reader', '_seek', '_size', 'closed')
 
     def __init__(self, file: 'BinaryIO', offset: int, size: int):
+        self.closed = False
+        self._seek = 0
+
         # get existing Lock object for file, or create a new one
         file_id = id(file)
         try:
@@ -139,16 +141,18 @@ class SplitFileMerger(RawIOBase):
     :param read_only: If writing should be disabled.
     """
 
-    closed = False
-
-    # The seek over the current file, returned by tell().
-    _fake_seek = 0
-    # Current file index and seek on it.
-    _seek_info = (0, 0)
+    __slots__ = ('_closefds', '_fake_seek', '_files', '_read_only', '_seek_info', '_total_size', 'closed')
 
     def __init__(self, files: 'Iterable[Tuple[BinaryIO, int]]', read_only: bool = True, closefds: bool = False):
         if not read_only:
             raise NotImplementedError('writing is not yet supported')
+
+        self.closed = False
+
+        # The seek over the current file, returned by tell().
+        self._fake_seek = 0
+        # Current file index and seek on it.
+        self._seek_info = (0, 0)
 
         self._read_only = read_only
         self._closefds = closefds
