@@ -62,10 +62,16 @@ class SDTitleReader:
         should not be set directly, instead open the title through :class:`~.SDFilesystem`. (NYI)
     :param sd_id1: ID1 to use if opened through :class:`~.SDFilesystem`.
     """
+
+    __slots__ = (
+        '_base_files', '_open_files', 'available_sections', 'closed', 'content_info', 'contents', 'sd_id1', 'sdfs',
+        'tmd'
+    )
+
     available_sections: 'List[Union[SDTitleSection, int]]'
     """A list of sections available, including contents, ticket, and title metadata."""
 
-    closed = False
+    closed: bool
     """`True` if the reader is closed."""
 
     contents: 'Dict[int, NCCHReader]'
@@ -82,6 +88,8 @@ class SDTitleReader:
 
     def __init__(self, file: 'Union[PathLike, str, bytes]', *, case_insensitive: bool = False, dev: bool = False,
                  seed: bytes = None, load_contents: bool = True, sdfs: 'SDFilesystem' = None, sd_id1: str = None):
+        self.closed = False
+
         self.sdfs = sdfs
         self.sd_id1 = sd_id1
 

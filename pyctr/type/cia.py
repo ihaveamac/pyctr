@@ -109,6 +109,8 @@ class CIAReader(TypeReaderCryptoBase):
     :param load_contents: Load each partition with :class:`~.NCCHReader`.
     """
 
+    __slots__ = ('_case_insensitive', '_lock', 'content_info', 'contents', 'sections', 'tmd', 'total_size')
+
     contents: 'Dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 

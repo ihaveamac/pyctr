@@ -54,12 +54,15 @@ class TypeReaderBase:
         a file path was given.
     """
 
-    closed = False
+    __slots__ = ('_closefd', '_file', '_open_files', '_start', 'closed')
+
+    closed: bool
     """`True` if the reader is closed."""
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: 'Optional[bool]' = None,
                  mode: str = 'rb'):
         default_closefd = False
+        self.closed = False
 
         # Store a set of opened files based on this reader.
         # This is a WeakSet so these references aren't kept around when all other parts of the code have deleted it.
@@ -134,6 +137,8 @@ class TypeReaderCryptoBase(TypeReaderBase):
     :param mode: Mode to open the file with, passed to `open`. This is set by type readers internally. Only used if
         a file path was given.
     """
+
+    __slots__ = ('_crypto',)
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):

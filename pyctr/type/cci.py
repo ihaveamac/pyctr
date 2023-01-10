@@ -93,8 +93,7 @@ class CCIReader(TypeReaderBase):
         the NCCH flags.
     """
 
-    closed = False
-    """`True` if the reader is closed."""
+    __slots__ = ('_case_insensitive', 'contents', 'image_size', 'media_id', 'sections')
 
     image_size: int
     """Image size in bytes. This does not always match the file size on disk."""

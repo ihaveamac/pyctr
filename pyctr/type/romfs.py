@@ -5,7 +5,6 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 """Module for interacting with Read-only Filesystem (RomFS) files."""
-
 from io import BytesIO, TextIOWrapper
 from os import PathLike
 from typing import overload, TYPE_CHECKING, NamedTuple
@@ -81,8 +80,7 @@ class RomFSReader(TypeReaderBase):
         file-like objects.
     """
 
-    lv3_offset = 0
-    data_offset = 0
+    __slots__ = ('_tree_root', 'case_insensitive', 'data_offset', 'lv3_offset', 'total_size')
 
     def __init__(self, file: 'Union[PathLike, str, bytes, BinaryIO]', case_insensitive: bool = False, *,
                  closefd: bool = None):

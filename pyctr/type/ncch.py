@@ -181,11 +181,15 @@ class NCCHReader(TypeReaderCryptoBase):
         the NCCH flags.
     """
 
-    # this is the KeyY when generated using the seed
-    _seeded_key_y = None
+    __slots__ = (
+        '_all_sections', '_assume_decrypted', '_case_insensitive', '_exefs_crypto_ranges', '_exefs_fp',
+        '_exefs_special_handling', '_key_y', '_lock', '_seed_set_up', '_seed_verify', '_seeded_key_y', 'closed',
+        'content_size', 'exefs', 'extra_keyslot', 'flags', 'main_keyslot', 'partition_id', 'product_code', 'program_id',
+        'romfs', 'sections', 'version'
+    )
 
-    closed = False
-    """`True` if the reader is closed."""
+    # this is the KeyY when generated using the seed
+    _seeded_key_y: 'Optional[bytes]'
 
     sections: 'Dict[NCCHSection, NCCHRegion]'
     """Contains all the sections the NCCH has."""
@@ -198,10 +202,10 @@ class NCCHReader(TypeReaderCryptoBase):
     # the keyslot should alternate between main and extra for each entry, staring with main (for header)
     _exefs_crypto_ranges: 'List[Tuple[int, int, int]]'
 
-    exefs: 'Optional[ExeFSReader]' = None
+    exefs: 'Optional[ExeFSReader]'
     """The :class:`~.ExeFSReader` of the NCCH, if it has one."""
 
-    romfs: 'Optional[RomFSReader]' = None
+    romfs: 'Optional[RomFSReader]'
     """The :class:`~.RomFSReader` of the NCCH, if it has one."""
 
     program_id: str
@@ -244,6 +248,10 @@ class NCCHReader(TypeReaderCryptoBase):
                  load_sections: bool = True, assume_decrypted: bool = False):
 
         super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
+
+        self.closed = False
+        self.exefs = None
+        self.romfs = None
 
         # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()

@@ -59,13 +59,16 @@ class ConfigSaveReader:
     https://www.3dbrew.org/wiki/Config_Savegame
     """
 
-    data_offset = 0x41E4
+    __slots__ = ('blocks', 'data_offset')
+
+    data_offset: int
     """
     Offset of the block data region. This is only used when rebuilding the raw save.
     If a config save is loaded, this is overwritten with the offset from that file.
     """
 
     def __init__(self):
+        self.data_offset = 0x41E4
         self.blocks: Dict[int, BlockInfo] = {}
 
     def __bytes__(self):

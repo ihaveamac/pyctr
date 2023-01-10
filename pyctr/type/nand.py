@@ -139,6 +139,11 @@ class NAND(TypeReaderCryptoBase):
         `False` if you still need access to a NAND even if these sections are unavailable.
     """
 
+    __slots__ = (
+        '_base_files', '_lock', '_subfile', 'counter', 'counter_twl', 'ctr_index', 'ctr_partitions', 'essential',
+        'ncsd_partition_info', 'twl_index', 'twl_partitions'
+    )
+
     essential: 'Optional[ExeFSReader]'
 
     ctr_partitions: 'List[Tuple[int, int]]'
@@ -421,7 +426,8 @@ class NAND(TypeReaderCryptoBase):
         # If we xor the ciphertext with the known plaintext, we get the encrypted counter.
         # Decrypt that and subtract the block offset, and you get the counter (hopefully).
         twl_block_xored = int.from_bytes(twln_block_0x1c, 'big') ^ 0x18000601A03F97000000A97D04000004
-        twl_counter_offs = self._crypto.create_ecb_cipher(Keyslot.TWLNAND).decrypt(twl_block_xored.to_bytes(0x10, 'little'))
+        twl_counter_offs = self._crypto.create_ecb_cipher(Keyslot.TWLNAND).decrypt(
+            twl_block_xored.to_bytes(0x10, 'little'))
         twl_counter = int.from_bytes(twl_counter_offs, 'big') - block_offset
 
         # Decrypt the next block using the counter

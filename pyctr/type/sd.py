@@ -61,6 +61,8 @@ class SDFilesystem:
         in id1s.
     """
 
+    __slots__ = ('_base_path', '_crypto', '_id0_path', 'current_id1', 'id1s')
+
     def __init__(self, path: 'Union[PathLike, str, bytes]', *, crypto: CryptoEngine = None, dev: bool = False,
                  sd_key_file: 'Union[PathLike, str, bytes]' = None, sd_key: bytes = None):
         if crypto:

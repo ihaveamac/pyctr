@@ -186,6 +186,8 @@ class SMDH:
     https://www.3dbrew.org/wiki/SMDH
     """
 
+    __slots__ = ('flags', 'icon_large', 'icon_large_array', 'icon_small', 'icon_small_array', 'names')
+
     # TODO: support other settings
 
     def __init__(self, names: 'Dict[str, AppTitle]', icon_small_array: 'List[List[RGBTuple]]',

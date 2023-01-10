@@ -18,7 +18,7 @@ from .base import TypeReaderBase
 from .smdh import SMDH, InvalidSMDHError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Union
+    from typing import BinaryIO, Dict, Optional, Union
 
 __all__ = ['EXEFS_EMPTY_ENTRY', 'EXEFS_ENTRY_SIZE', 'EXEFS_ENTRY_COUNT', 'EXEFS_HEADER_SIZE', 'ExeFSError',
            'ExeFSFileNotFoundError', 'InvalidExeFSError', 'ExeFSNameError', 'BadOffsetError', 'CodeDecompressionError',
@@ -197,16 +197,21 @@ class ExeFSReader(TypeReaderBase):
         file-like objects.
     """
 
-    _code_dec = None
+    __slots__ = ('_code_dec', '_lock', 'entries', 'icon')
+
+    _code_dec: 'Optional[bytes]'
 
     entries: 'Dict[str, ExeFSEntry]'
     """Entries in the ExeFS."""
 
-    icon: 'SMDH' = None
+    icon: 'SMDH'
     """The icon info, if one is in the ExeFS."""
 
     def __init__(self, fp: 'Union[PathLike, str, bytes, BinaryIO]', *, closefd: bool = True, _load_icon: bool = True):
         super().__init__(fp, closefd=closefd)
+
+        self.icon = None
+        self._code_dec = None
 
         # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()

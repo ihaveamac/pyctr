@@ -76,10 +76,14 @@ class CDNReader:
     :param load_contents: Load each partition with :class:`~.NCCHReader`.
     """
 
+    __slots__ = (
+        '_base_files', '_crypto', '_open_files', 'available_sections', 'closed', 'content_info', 'contents', 'tmd'
+    )
+
     available_sections: 'List[Union[CDNSection, int]]'
     """A list of sections available, including contents, ticket, and title metadata."""
 
-    closed = False
+    closed: bool
     """`True` if the reader is closed."""
 
     contents: 'Dict[int, NCCHReader]'
@@ -101,6 +105,8 @@ class CDNReader:
             self._crypto = crypto
         else:
             self._crypto = CryptoEngine(dev=dev)
+
+        self.closed = False
 
         file = Path(fsdecode(file)).absolute()
         title_root = file.parent
