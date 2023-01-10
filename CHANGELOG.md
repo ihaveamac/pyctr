@@ -21,6 +21,7 @@ Some performance improvements were done to `CTRFileIO` and `RomFSReader`.
 * Remove `crypto_method == 0` check for NCCH files using `fixed_crypto_key`
 * Add `nand` module with `NAND` class, to read and write to a NAND image
 * Add `__slots__` to a bunch of classes (`CCIReader`, `CDNReader`, `CIAReader`, `ExeFSReader`, `NAND`, `NCCHReader`, `RomFSReader`, `SDFilesystem`, `SDTitleReader`, `SMDH`, `ConfigSaveReader`, `TypeReaderBase`, `TypeReaderCryptoBase`)
+* Update copyright year
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
