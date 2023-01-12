@@ -4,7 +4,7 @@ A new `pyctr.type.config` package with `save` and `blocks` modules was added. Th
 
 A new `nand` module with the `NAND` class is added to read and write to NAND images. This only provides raw access (for FAT32, try [nathanhi/pyfatfs](https://github.com/nathanhi/pyfatfs)).
 
-Some performance improvements were done to `CTRFileIO` and `RomFSReader`.
+`RomFSReader` initialization performance was improved, especially with RomFS files containing large amounts of files or directories.
 
 ### Changelog
 * Add the module `pyctr.type.configsave` with the class `ConfigSaveReader` (_module name changed in a future commit_)
