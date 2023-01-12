@@ -5,7 +5,7 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 """Provides various tools to perform cryptographic operations with Nintendo 3DS data."""
-
+import logging
 from enum import IntEnum
 from functools import wraps
 from hashlib import sha256
@@ -40,6 +40,8 @@ if TYPE_CHECKING:
 __all__ = ['MIN_TICKET_SIZE', 'CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError',
            'TicketLengthError', 'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO',
            'TWLCTRFileIO', 'CBCFileIO']
+
+logger = logging.getLogger(__name__)
 
 BOOT9_PROT_HASH = '7331f7edece3dd33f2ab4bd0b3a5d607229fd19212c10b734cedcaf78c1a7b98'
 
@@ -294,10 +296,8 @@ class CryptoEngine:
 
     def __init__(self, boot9: str = None, dev: bool = False, setup_b9_keys: bool = True):
         self.key_x: Dict[int, int] = {}
-        self.key_y: Dict[int, int] = {Keyslot.TWLNAND: 0xE1A00005202DDD1DBD4DC4D30AB9DC76,
-                                      Keyslot.CTRNANDNew: 0x4D804F4E9990194613A204AC584460BE}
-        self.key_normal: Dict[int, bytes] = {Keyslot.ZeroKey: b'\0' * 16,
-                                             Keyslot.FixedSystemKey: bytes.fromhex('527CE630A9CA305F3696F3CDE954194B')}
+        self.key_y: Dict[int, int] = {}
+        self.key_normal: Dict[int, bytes] = {}
 
         self.dev = dev
 
@@ -543,6 +543,8 @@ class CryptoEngine:
             to_use = self.key_y
         if isinstance(key, bytes):
             key = int.from_bytes(key, 'big' if keyslot > 0x03 else 'little')
+        if __debug__:
+            logger.debug('Setting keyslot %r type %s key %032x', keyslot, xy, key)
         to_use[keyslot] = key
         try:
             self.key_normal[keyslot] = self.keygen(keyslot)
@@ -556,6 +558,8 @@ class CryptoEngine:
         :param keyslot: Keyslot to set normal key of.
         :param key: 128-bit AES key in bytes.
         """
+        if __debug__:
+            logger.debug('Setting keyslot %r type normal key %s', keyslot, key.hex())
         self.key_normal[keyslot] = key
 
     def keygen(self, keyslot: int) -> bytes:
@@ -584,6 +588,12 @@ class CryptoEngine:
         # usually would convert to LE bytes in the end then flip with [::-1], but those just cancel out
         return rol((key_x ^ key_y) + 0xFFFEFB4E295902582A680F5F1A4F3E79, 42, 128).to_bytes(0x10, 'big')
 
+    def _set_fixed_keys(self):
+        self.set_keyslot('y', Keyslot.TWLNAND, 0xE1A00005202DDD1DBD4DC4D30AB9DC76)
+        self.set_keyslot('y', Keyslot.CTRNANDNew, 0x4D804F4E9990194613A204AC584460BE)
+        self.set_normal_key(Keyslot.ZeroKey, b'\0' * 16)
+        self.set_normal_key(Keyslot.FixedSystemKey, bytes.fromhex('527CE630A9CA305F3696F3CDE954194B'))
+
     def _copy_global_keys(self):
         self.key_x.update(_b9_key_x)
         self.key_y.update(_b9_key_y)
@@ -592,6 +602,8 @@ class CryptoEngine:
         self._otp_iv = _otp_iv
         self._b9_extdata_otp = _b9_extdata_otp
         self._b9_extdata_keygen = _b9_extdata_keygen
+
+        self._set_fixed_keys()
 
         self.b9_keys_set = True
 
@@ -742,7 +754,7 @@ class CryptoEngine:
         twl_cid_hi ^= 0x08C267B7
         twl_cid_lo = twl_cid_lo.to_bytes(4, 'little')
         twl_cid_hi = twl_cid_hi.to_bytes(4, 'little')
-        self.set_keyslot('x', 0x03, twl_cid_lo + b'NINTENDO' + twl_cid_hi)
+        self.set_keyslot('x', Keyslot.TWLNAND, twl_cid_lo + b'NINTENDO' + twl_cid_hi)
 
         console_key_xy: bytes = sha256(self.otp_dec[0x90:0xAC] + self.b9_extdata_otp).digest()
         self.set_keyslot('x', Keyslot.Boot9Internal, console_key_xy[0:0x10])

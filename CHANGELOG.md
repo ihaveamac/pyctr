@@ -28,6 +28,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Add some tests for `romfs` and `smdh`
 * Load all boot9 keys in `CryptoEngine.setup_keys_from_boot9`
 * Moved package metadata to `setup.cfg`
+* Fix setting fixed keys in `CryptoEngine` and add debug logging to key setting
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
