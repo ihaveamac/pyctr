@@ -35,6 +35,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
   * Rename `open_ncsd_partition` to `oprn_raw_section`
   * Add custom section IDs that always point to the correct partition, regardless of its physical location
   * Add custom section ID for GodMode9 bonus volume
+* Add documentation files created with sphinx-autodoc
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
