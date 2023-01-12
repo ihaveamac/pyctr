@@ -30,6 +30,11 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Moved package metadata to `setup.cfg`
 * Fix setting fixed keys in `CryptoEngine` and add debug logging to key setting
 * Separate NCSD header loading from `NAND` to a separate class `NANDNCSDHeader`
+* Refactor the `nand` module and `NAND` class:
+  * Add support for virtual sections (things that are not NCSD partitions)
+  * Rename `open_ncsd_partition` to `oprn_raw_section`
+  * Add custom section IDs that always point to the correct partition, regardless of its physical location
+  * Add custom section ID for GodMode9 bonus volume
 
 ## v0.6.0 - January 26, 2022
 ### Highlights

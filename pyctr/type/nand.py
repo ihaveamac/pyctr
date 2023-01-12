@@ -20,7 +20,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional, Set, Tuple, Union
+    from typing import BinaryIO, Dict, List, Optional, Set, Tuple, Union
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -36,6 +36,52 @@ DEFAULT_TWL_MBR_INFO = [(77312, 150688256), (151067136, 34301440), (0, 0), (0, 0
 EMPTY_BLOCK = b'\0' * 16
 
 NANDNCSDHeaderStruct = Struct('<256s 4s I Q 8s 8s 64s 94s 66s')
+
+
+class NANDSection(IntEnum):
+    """
+    Partition indexes in a NAND.
+
+    Specific partition types are represented with negative numbers to ensure they can always be accessed even if the
+    partitions change indexes.
+    """
+    Header = -3
+    """NCSD header of the NAND."""
+
+    Sector0x96 = -2
+    """New 3DS keyblob."""
+
+    TWLMBR = -4
+    """Decrypted TWL MBR."""
+
+    MinSize = -5
+    """The full NAND image up to the minimum image size."""
+
+    GM9BonusVolume = -6
+    """
+    Bonus FAT16 volume set up by GodMode9. Only available on non-minsize backups if a console has a larger NAND chip
+    than required. Setting this automatically requires loading from a file, because the only way to know if it's there
+    is to check at the end of the image.
+    """
+
+    TWLNAND = -11
+    """
+    TWL NAND region.
+    
+    Note: Writes to the first 0x1BE (before the TLW MBR) are silently discarded to avoid writing a corrupted NCSD header.
+    """
+
+    AGBSAVE = -12
+    """AGB_FIRM save region."""
+
+    FIRM0 = -13
+    """NATIVE_FIRM partition."""
+
+    FIRM1 = -14
+    """NATIVE_FIRM backup partition."""
+
+    CTRNAND = -15
+    """CTR NAND region."""
 
 
 class NCSDPartitionInfo(NamedTuple):
@@ -59,7 +105,7 @@ class NANDNCSDHeader(NamedTuple):
     of the backup may be larger.
     """
 
-    partition_table: 'Dict[int, NCSDPartitionInfo]'
+    partition_table: 'Dict[Union[int, NANDSection], NCSDPartitionInfo]'
     """Partition information. Normally includes 5 partitions, but may include up to 8."""
 
     unknown: bytes
@@ -67,6 +113,22 @@ class NANDNCSDHeader(NamedTuple):
 
     twl_mbr_encrypted: bytes
     """TWL MBR in its encrypted form."""
+
+    @classmethod
+    def load(cls, fp: 'BinaryIO'):
+        header = cls.from_bytes(fp.read(0x200))
+        fp.seek(header.actual_image_size)
+        bonus_header = fp.read(0x200)
+        if bonus_header.endswith(b'\x55\xAA'):
+            bonus_size = fp.seek(0, 2) - header.actual_image_size
+            bonus_info = NCSDPartitionInfo(fs_type=PartitionFSType.Special,
+                                           encryption_type=PartitionEncryptionType.NoEncryption,
+                                           offset=header.actual_image_size,
+                                           size=bonus_size,
+                                           base_file=None)
+            header.partition_table[NANDSection.GM9BonusVolume] = bonus_info
+
+        return header
 
     @classmethod
     def from_bytes(cls, data: bytes):
@@ -87,25 +149,38 @@ class NANDNCSDHeader(NamedTuple):
         fs_types = header[4]
         crypt_types = header[5]
         table = iter_unpack('2I', header[6])
-        base_file = None
 
         partitions = {}
+
+        firm_count = 0  # used to differentiate between NANDSection.FIRM0 and NANDSection.FIRM1
 
         for idx, (fs_type, crypt_type, location) in enumerate(zip(fs_types, crypt_types, table)):
             if not fs_type:  # if there is no partition
                 continue
 
+            extra_section_id = None
+            base_file = None
+
             if fs_type == PartitionFSType.Normal:
                 if crypt_type == PartitionEncryptionType.TWL:
                     base_file = 'twl'
+                    extra_section_id = NANDSection.TWLNAND
                 elif crypt_type == PartitionEncryptionType.CTR:
                     base_file = 'ctr_old'
+                    extra_section_id = NANDSection.CTRNAND
                 elif crypt_type == PartitionEncryptionType.New3DSCTR:
                     base_file = 'ctr_new'
+                    extra_section_id = NANDSection.CTRNAND
             elif fs_type == PartitionFSType.FIRM:
                 base_file = 'firm'
+                if firm_count == 0:
+                    extra_section_id = NANDSection.FIRM0
+                elif firm_count == 1:
+                    extra_section_id = NANDSection.FIRM1
+                firm_count += 1
             elif fs_type == PartitionFSType.AGBFIRMSave:
                 base_file = 'agb'
+                extra_section_id = NANDSection.AGBSAVE
 
             info = NCSDPartitionInfo(fs_type=fs_type,
                                      encryption_type=crypt_type,
@@ -117,6 +192,29 @@ class NANDNCSDHeader(NamedTuple):
                         idx, info.fs_type, info.encryption_type, info.offset, info.size, info.base_file)
 
             partitions[idx] = info
+            if extra_section_id:
+                if extra_section_id in partitions:
+                    # there should only be one type of each section except firm
+                    raise InvalidNANDError(f'Duplicate partition types detected for {extra_section_id!r}')
+                partitions[extra_section_id] = info
+
+        partitions[NANDSection.Header] = NCSDPartitionInfo(fs_type=PartitionFSType.Special,
+                                                           encryption_type=PartitionEncryptionType.NoEncryption,
+                                                           offset=0,
+                                                           size=0x200,
+                                                           base_file=None)
+
+        partitions[NANDSection.Sector0x96] = NCSDPartitionInfo(fs_type=PartitionFSType.Special,
+                                                               encryption_type=PartitionEncryptionType.Sector0x96,
+                                                               offset=0x96 * NAND_MEDIA_UNIT,
+                                                               size=0x200,
+                                                               base_file='sector0x96')
+
+        partitions[NANDSection.MinSize] = NCSDPartitionInfo(fs_type=PartitionFSType.Special,
+                                                            encryption_type=PartitionEncryptionType.NoEncryption,
+                                                            offset=0,
+                                                            size=actual_image_size,
+                                                            base_file=None)
 
         return cls(signature=header[0],
                    image_size=image_size,
@@ -141,6 +239,9 @@ class MissingOTPError(NANDError):
 class PartitionFSType(IntEnum):
     """Type of filesystem in the partition."""
 
+    Special = -1
+    """Specially defined region from PyCTR."""
+
     Nothing = 0  # this would be "None" but that's a reserved keyword
     """No partition here."""
 
@@ -160,6 +261,12 @@ class PartitionEncryptionType(IntEnum):
     CTRNAND which changes between Old 3DS and New 3DS. It's not really known what happens if any of the other partitions
     have the crypt type changed.
     """
+
+    NoEncryption = -2
+    """No encryption. (Not an actual FS type, only used for special regions in PyCTR.)"""
+
+    Sector0x96 = -1
+    """New 3DS keyblob. (Not an actual FS type, only used for special handling in PyCTR.)"""
 
     TWL = 1
     """Used for the TWL partitions."""
@@ -221,8 +328,8 @@ class NAND(TypeReaderCryptoBase):
     """
 
     __slots__ = (
-        '_base_files', '_lock', '_subfile', 'counter', 'counter_twl', 'ctr_index', 'ctr_partitions', 'essential',
-        'header', 'twl_index', 'twl_partitions'
+        '_base_files', '_lock', '_subfile', 'bonus_partitions', 'counter', 'counter_twl', 'ctr_index', 'ctr_partitions',
+        'essential', 'header', 'twl_index', 'twl_partitions'
     )
 
     essential: 'Optional[ExeFSReader]'
@@ -254,12 +361,12 @@ class NAND(TypeReaderCryptoBase):
         raw_nand_size = self._file.tell() - self._start
         self._subfile = SubsectionIO(self._file, self._start, raw_nand_size)
 
-        header_raw = self._subfile.read(0x200)
-        self.header = NANDNCSDHeader.from_bytes(header_raw)
+        self.header = NANDNCSDHeader.load(self._subfile)
 
         # check for essential.exefs
         self.essential = None
         try:
+            self._subfile.seek(0x200)
             essential = ExeFSReader(self._subfile, closefd=False)
         except InvalidExeFSError:
             pass
@@ -344,6 +451,7 @@ class NAND(TypeReaderCryptoBase):
 
         self.ctr_partitions = []
         self.twl_partitions = []
+        self.bonus_partitions = []
 
         if self.counter:
             self._base_files.update({
@@ -353,7 +461,7 @@ class NAND(TypeReaderCryptoBase):
                 'agb': self._crypto.create_ctr_io(Keyslot.AGB, self._subfile, self.counter),
             })
 
-            with self.open_ncsd_partition(self.ctr_index) as f:
+            with self.open_raw_section(self.ctr_index) as f:
                 f.seek(0x1BE)
                 ctr_mbr = f.read(0x42)
                 try:
@@ -365,7 +473,7 @@ class NAND(TypeReaderCryptoBase):
         if self.counter_twl:
             self._base_files['twl'] = self._crypto.create_ctr_io(Keyslot.TWLNAND, self._subfile, self.counter_twl)
 
-            with self.open_ncsd_partition(self.twl_index) as f:
+            with self.open_raw_section(self.twl_index) as f:
                 f.seek(0x1BE)
                 twl_mbr = f.read(0x42)
                 try:
@@ -377,12 +485,22 @@ class NAND(TypeReaderCryptoBase):
                     logger.error('Could not load TWL partitions, using default information', exc_info=True)
                     self.twl_partitions = DEFAULT_TWL_MBR_INFO.copy()
 
+        # set up GM9 bonus volume
+        try:
+            with self.open_raw_section(NANDSection.GM9BonusVolume) as f:
+                f.seek(0x1BE)
+                bonus_mbr = f.read(0x42)
+                try:
+                    self.bonus_partitions = parse_mbr_lazy(bonus_mbr)
+                    logger.info('Loaded GM9 bonus partitions')
+                except InvalidNANDError:
+                    logger.info('Could not load GM9 bonus partitions (but it was detected? this error should not happen)')
+        except KeyError:
+            pass
+
         if auto_raise_exceptions:
             self.raise_if_ctr_failed()
             self.raise_if_twl_failed()
-
-        # check for GodMode9 bonus drive
-        #self._file.seek()
 
     def _generate_ctr_counter(self):
         """
@@ -517,7 +635,7 @@ class NAND(TypeReaderCryptoBase):
         """
 
         # To make things simpler to deal with, this creates a SubsectionIO object directly on the base file
-        #     instead of opening it with open_ncsd_partition first
+        #     instead of opening it with open_raw_section first
         # Why is this simpler? It means I don't have to deal with stacking SubsectionIO objects and dealing with
         #     closing them when they're done.
         # It's also probably a tiny bit faster, probably.
@@ -547,18 +665,39 @@ class NAND(TypeReaderCryptoBase):
         self._open_files.add(fh)
         return fh
 
-    def open_ncsd_partition(self, partition_index: int):
+    def open_bonus_partition(self):
         """
-        Opens a raw NCSD partition for reading and writing.
+        Opens the GodMode9 bonus partition.
+
+        :return: A file-like object.
+        :rtype: SubsectionIO
+        """
+
+        bonus_info = self.header.partition_table[NANDSection.GM9BonusVolume]
+        bonus_mbr_info = self.bonus_partitions[0]
+        fh = SubsectionIO(self._subfile, bonus_info.offset + bonus_mbr_info[0], bonus_mbr_info[1])
+        self._open_files.add(fh)
+        return fh
+
+    def open_raw_section(self, section: int):
+        """
+        Opens a raw NCSD section for reading and writing with on-the-fly decryption.
 
         Note: If you are looking to read from TWLNAND or CTRNAND, you may be looking for :meth:`open_twl_partition`
         or :meth:`open_ctr_partition` instead.
 
-        :param partition_index: Partition index number.
+        :param section: The section to open. Numbers 0 to 7 are specific NCSD partitions. Negative numbers are special
+            sections defined by PyCTR.
         :return: A file-like object.
         :rtype: SubsectionIO
         """
-        info = self.header.partition_table[partition_index]
-        fh = SubsectionIO(self._base_files[info.base_file], info.offset, info.size)
+        info = self.header.partition_table[section]
+        if info.base_file == 'sector0x96':
+            raise NotImplementedError('sector0x96 base file (https://github.com/ihaveamac/pyctr/issues/22)')
+        if info.base_file:
+            base = self._base_files[info.base_file]
+        else:
+            base = self._subfile
+        fh = SubsectionIO(base, info.offset, info.size)
         self._open_files.add(fh)
         return fh
