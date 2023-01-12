@@ -7,6 +7,7 @@
 from enum import IntEnum
 from hashlib import sha1, sha256
 from logging import getLogger
+from struct import Struct, iter_unpack
 from threading import Lock
 from typing import NamedTuple, TYPE_CHECKING
 from weakref import WeakSet
@@ -33,6 +34,96 @@ nand_size = {0x200000: 0x3AF00000, 0x280000: 0x4D800000}
 DEFAULT_TWL_MBR_INFO = [(77312, 150688256), (151067136, 34301440), (0, 0), (0, 0)]
 
 EMPTY_BLOCK = b'\0' * 16
+
+NANDNCSDHeaderStruct = Struct('<256s 4s I Q 8s 8s 64s 94s 66s')
+
+
+class NCSDPartitionInfo(NamedTuple):
+    fs_type: 'Union[PartitionFSType, int]'
+    encryption_type: 'Union[PartitionEncryptionType, int]'
+    offset: int
+    size: int
+    base_file: 'Optional[str]'
+
+
+class NANDNCSDHeader(NamedTuple):
+    signature: bytes
+    """RSA signature over the NAND header."""
+
+    image_size: int
+    """Image size according to the NAND header in bytes. This doesn't line up with the actual image size."""
+
+    actual_image_size: int
+    """
+    Actual image size in bytes. This is the minimum size of a NAND image, but the actual size
+    of the backup may be larger.
+    """
+
+    partition_table: 'Dict[int, NCSDPartitionInfo]'
+    """Partition information. Normally includes 5 partitions, but may include up to 8."""
+
+    unknown: bytes
+    """Unknown padding data. This is preserved so the header can be re-built exactly with a valid signature."""
+
+    twl_mbr_encrypted: bytes
+    """TWL MBR in its encrypted form."""
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        header = NANDNCSDHeaderStruct.unpack(data)
+
+        magic = header[1]
+        image_size_mu = header[2]
+        image_size = image_size_mu * NAND_MEDIA_UNIT
+        actual_image_size = nand_size[image_size_mu]
+        media_id = header[3]
+
+        if magic != b'NCSD':
+            raise InvalidNANDError(f'NCSD magic not found (got {header[1]} instead')
+
+        if media_id != 0:
+            raise InvalidNANDError(f'Not a NAND, this is a CCI (Media ID {media_id:016x})')
+
+        fs_types = header[4]
+        crypt_types = header[5]
+        table = iter_unpack('2I', header[6])
+        base_file = None
+
+        partitions = {}
+
+        for idx, (fs_type, crypt_type, location) in enumerate(zip(fs_types, crypt_types, table)):
+            if not fs_type:  # if there is no partition
+                continue
+
+            if fs_type == PartitionFSType.Normal:
+                if crypt_type == PartitionEncryptionType.TWL:
+                    base_file = 'twl'
+                elif crypt_type == PartitionEncryptionType.CTR:
+                    base_file = 'ctr_old'
+                elif crypt_type == PartitionEncryptionType.New3DSCTR:
+                    base_file = 'ctr_new'
+            elif fs_type == PartitionFSType.FIRM:
+                base_file = 'firm'
+            elif fs_type == PartitionFSType.AGBFIRMSave:
+                base_file = 'agb'
+
+            info = NCSDPartitionInfo(fs_type=fs_type,
+                                     encryption_type=crypt_type,
+                                     offset=location[0] * NAND_MEDIA_UNIT,
+                                     size=location[1] * NAND_MEDIA_UNIT,
+                                     base_file=base_file)
+
+            logger.info('NCSD Partition index %i, fs type %i, encryption type %i, offset %#x, size %#x, base file %s',
+                        idx, info.fs_type, info.encryption_type, info.offset, info.size, info.base_file)
+
+            partitions[idx] = info
+
+        return cls(signature=header[0],
+                   image_size=image_size,
+                   actual_image_size=actual_image_size,
+                   partition_table=partitions,
+                   unknown=header[7],
+                   twl_mbr_encrypted=header[8])
 
 
 class NANDError(PyCTRError):
@@ -78,14 +169,6 @@ class PartitionEncryptionType(IntEnum):
 
     New3DSCTR = 3
     """Used for the CTR partitions on New 3DS."""
-
-
-class NCSDPartitionInfo(NamedTuple):
-    fs_type: 'Union[PartitionFSType, int]'
-    encryption_type: 'Union[PartitionEncryptionType, int]'
-    offset: int
-    size: int
-    base_file: 'Optional[str]'
 
 
 def parse_mbr_lazy(raw_mbr: bytes):
@@ -139,7 +222,7 @@ class NAND(TypeReaderCryptoBase):
 
     __slots__ = (
         '_base_files', '_lock', '_subfile', 'counter', 'counter_twl', 'ctr_index', 'ctr_partitions', 'essential',
-        'ncsd_partition_info', 'twl_index', 'twl_partitions'
+        'header', 'twl_index', 'twl_partitions'
     )
 
     essential: 'Optional[ExeFSReader]'
@@ -171,16 +254,8 @@ class NAND(TypeReaderCryptoBase):
         raw_nand_size = self._file.tell() - self._start
         self._subfile = SubsectionIO(self._file, self._start, raw_nand_size)
 
-        # ignore the signature, we don't need it
-        self._subfile.seek(0x100, 1)
-        header = self._subfile.read(0x100)
-        if header[0:4] != b'NCSD':
-            raise InvalidNANDError('NCSD magic not found')
-
-        # make sure the Media ID is all zeros, since anything else makes it a CCI
-        media_id = header[0x8:0x10]
-        if media_id != b'\0' * 8:
-            raise InvalidNANDError('Not a NAND, this is a CCI')
+        header_raw = self._subfile.read(0x200)
+        self.header = NANDNCSDHeader.from_bytes(header_raw)
 
         # check for essential.exefs
         self.essential = None
@@ -196,59 +271,12 @@ class NAND(TypeReaderCryptoBase):
             else:
                 logger.info('essential.exefs not found')
 
-        partition_fs_types = header[0x10:0x18]
-        partition_crypt_types = header[0x18:0x20]
-        partition_range_table_raw = header[0x20:0x60]
-        partition_range_table = [partition_range_table_raw[x:x + 8] for x in range(0, 0x40, 0x8)]
-
-        self.ncsd_partition_info: Dict[int, NCSDPartitionInfo] = {}
-
-        for idx in range(8):
-            if not partition_fs_types[idx]:  # if there is no partition
-                continue
-
-            # This is largely based on assumptions that should work in every case, unless the partitions have been
-            #   manually tweaked. If you're bored and want to figure out how the system actually works, mess with the
-            #   partition table and let me know what you find!
-
-            fs_type = partition_fs_types[idx]
-            encryption_type = partition_crypt_types[idx]
-            offset = readle(partition_range_table[idx][0:4]) * NAND_MEDIA_UNIT
-            size = readle(partition_range_table[idx][4:8]) * NAND_MEDIA_UNIT
-
-            if fs_type == PartitionFSType.Normal:
-                if encryption_type == PartitionEncryptionType.TWL:
-                    base_file = 'twl'
-                elif encryption_type == PartitionEncryptionType.CTR:
-                    base_file = 'ctr_old'
-                elif encryption_type == PartitionEncryptionType.New3DSCTR:
-                    base_file = 'ctr_new'
-                else:
-                    base_file = None
-            elif fs_type == PartitionFSType.FIRM:
-                base_file = 'firm'
-            elif fs_type == PartitionFSType.AGBFIRMSave:
-                base_file = 'agb'
-            else:
-                base_file = None
-
-            info = NCSDPartitionInfo(fs_type=partition_fs_types[idx],
-                                     encryption_type=partition_crypt_types[idx],
-                                     offset=offset,
-                                     size=size,
-                                     base_file=base_file)
-
-            logger.info('NCSD Partition index %i, fs type %i, encryption type %i, offset %#x, size %#x, base file %s',
-                        idx, info.fs_type, info.encryption_type, info.offset, info.size, info.base_file)
-
-            self.ncsd_partition_info[idx] = info
-
         # While I could hardcode the indexes that are used on all retail units,
         # I would prefer that this is stable with modified nands
         # I wonder what happens if you try to do something like have two ctrnands though?
         # For the time being, this just tries to get the first one of each
         self.twl_index = None
-        for idx, info in self.ncsd_partition_info.items():
+        for idx, info in self.header.partition_table.items():
             if info.base_file == 'twl':
                 self.twl_index = idx
                 logger.info('Found TWL partition at index %i', idx)
@@ -258,7 +286,7 @@ class NAND(TypeReaderCryptoBase):
                            'and TWL partitions will be unavailable')
 
         self.ctr_index = None
-        for idx, info in self.ncsd_partition_info.items():
+        for idx, info in self.header.partition_table.items():
             if info.base_file.startswith('ctr'):
                 self.ctr_index = idx
                 logger.info('Found CTR partition at index %i', idx)
@@ -330,8 +358,9 @@ class NAND(TypeReaderCryptoBase):
                 ctr_mbr = f.read(0x42)
                 try:
                     self.ctr_partitions = parse_mbr_lazy(ctr_mbr)
+                    logger.info('Loaded CTR partitions')
                 except InvalidNANDError:
-                    pass
+                    logger.error('Could not load CTR partitions', exc_info=True)
 
         if self.counter_twl:
             self._base_files['twl'] = self._crypto.create_ctr_io(Keyslot.TWLNAND, self._subfile, self.counter_twl)
@@ -341,14 +370,19 @@ class NAND(TypeReaderCryptoBase):
                 twl_mbr = f.read(0x42)
                 try:
                     self.twl_partitions = parse_mbr_lazy(twl_mbr)
+                    logger.info('Loaded TWL partitions')
                 except InvalidNANDError:
                     # corrupted mbr, which can happen in the case of the NCSD header being from the wrong console
                     # this is (or was) a somewhat common case, so we will copy the default mbr here
+                    logger.error('Could not load TWL partitions, using default information', exc_info=True)
                     self.twl_partitions = DEFAULT_TWL_MBR_INFO.copy()
 
         if auto_raise_exceptions:
             self.raise_if_ctr_failed()
             self.raise_if_twl_failed()
+
+        # check for GodMode9 bonus drive
+        #self._file.seek()
 
     def _generate_ctr_counter(self):
         """
@@ -359,7 +393,7 @@ class NAND(TypeReaderCryptoBase):
         modified.
         """
 
-        part_info = self.ncsd_partition_info[self.ctr_index]
+        part_info = self.header.partition_table[self.ctr_index]
         if part_info.encryption_type == PartitionEncryptionType.CTR:
             keyslot = Keyslot.CTRNANDOld
         elif part_info.encryption_type == PartitionEncryptionType.New3DSCTR:
@@ -403,7 +437,7 @@ class NAND(TypeReaderCryptoBase):
         corrupt or modified.
         """
 
-        part_info = self.ncsd_partition_info[self.twl_index]
+        part_info = self.header.partition_table[self.twl_index]
 
         logger.info('Attempting to generate TWL Counter')
 
@@ -487,7 +521,7 @@ class NAND(TypeReaderCryptoBase):
         # Why is this simpler? It means I don't have to deal with stacking SubsectionIO objects and dealing with
         #     closing them when they're done.
         # It's also probably a tiny bit faster, probably.
-        ctr_ncsd_info = self.ncsd_partition_info[self.ctr_index]
+        ctr_ncsd_info = self.header.partition_table[self.ctr_index]
         ctr_mbr_info = self.ctr_partitions[partition_index]
         fh = SubsectionIO(self._base_files[ctr_ncsd_info.base_file],
                           ctr_ncsd_info.offset + ctr_mbr_info[0],
@@ -505,7 +539,7 @@ class NAND(TypeReaderCryptoBase):
         :return: A file-like object.
         :rtype: SubsectionIO
         """
-        twl_ncsd_info = self.ncsd_partition_info[self.twl_index]
+        twl_ncsd_info = self.header.partition_table[self.twl_index]
         twl_mbr_info = self.twl_partitions[partition_index]
         fh = SubsectionIO(self._base_files[twl_ncsd_info.base_file],
                           twl_ncsd_info.offset + twl_mbr_info[0],
@@ -524,7 +558,7 @@ class NAND(TypeReaderCryptoBase):
         :return: A file-like object.
         :rtype: SubsectionIO
         """
-        info = self.ncsd_partition_info[partition_index]
+        info = self.header.partition_table[partition_index]
         fh = SubsectionIO(self._base_files[info.base_file], info.offset, info.size)
         self._open_files.add(fh)
         return fh
