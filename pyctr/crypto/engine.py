@@ -137,9 +137,11 @@ class Keyslot(IntEnum):
 
     CardSave = 0x37
     BOSS = 0x38
+    """Used to encrypt SpotPass data."""
     DownloadPlay = 0x39
 
     DSiWareExport = 0x3A
+    """Used when exporting DSiWare to the SD card."""
 
     CommonKey = 0x3D
     """Titlekeys in tickets."""
@@ -272,8 +274,8 @@ class CryptoEngine:
 
     :param boot9: Path to a dump of the protected region of the ARM9 BootROM. Defaults to None, which causes it to
         search a predefined list of paths.
-    :param dev: Whether or not to use devunit keys.
-    :param setup_b9_keys: Whether or not to automatically load keys from boot9.
+    :param dev: Whether to use devunit keys.
+    :param setup_b9_keys: Whether to automatically load keys from boot9.
     """
 
     __slots__ = ['key_x', 'key_y', 'key_normal', 'dev', 'b9_keys_set', 'b9_path', 'otp_keys_set', '_otp_enc',
@@ -361,6 +363,10 @@ class CryptoEngine:
 
     @property
     def id0(self) -> bytes:
+        """
+        ID0 generated from a ``movable.sed``. One must be loaded first with :func:`setup_sd_key`
+        or :func:`setup_sd_key_from_file`.
+        """
         if not self._id0:
             raise KeyslotMissingError('load a movable.sed with setup_sd_key')
         return self._id0

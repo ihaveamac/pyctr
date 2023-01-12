@@ -166,12 +166,12 @@ class NCCHReader(TypeReaderCryptoBase):
 
     :param file: A file path or a file-like object with the NCCH data.
     :param case_insensitive: Use case-insensitive paths for the RomFS.
-    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+    :param crypto: A custom :class:`~.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created.
     :param dev: Use devunit keys.
     :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
-    :param load_sections: Load the ExeFS and RomFS as :class:`type.exefs.ExeFSReader` and
-        :class:`type.romfs.RomFSReader` objects.
+    :param load_sections: Load the ExeFS and RomFS as :class:`~.ExeFSReader` and
+        :class:`~.RomFSReader` objects.
     :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
         the NCCH flags.
     """
@@ -500,6 +500,12 @@ class NCCHReader(TypeReaderCryptoBase):
             return self._seeded_key_y
 
     def check_for_extheader(self) -> bool:
+        """
+        Checks if the NCCH has an Extended Header.
+
+        :return: True if it has an ExtHeader.
+        :rtype: bool
+        """
         return NCCHSection.ExtendedHeader in self.sections
 
     def setup_seed(self, seed: bytes):

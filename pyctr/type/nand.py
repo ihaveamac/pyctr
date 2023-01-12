@@ -116,6 +116,10 @@ class NANDNCSDHeader(NamedTuple):
 
     @classmethod
     def load(cls, fp: 'BinaryIO'):
+        """
+        Load a NAND header from a file-like object. This will also check at the end of the image if there is a GodMode9
+        bonus drive.
+        """
         header = cls.from_bytes(fp.read(0x200))
         fp.seek(header.actual_image_size)
         bonus_header = fp.read(0x200)
@@ -132,6 +136,7 @@ class NANDNCSDHeader(NamedTuple):
 
     @classmethod
     def from_bytes(cls, data: bytes):
+        """Load a NAND header from bytes."""
         header = NANDNCSDHeaderStruct.unpack(data)
 
         magic = header[1]

@@ -55,6 +55,15 @@ def _raise_if_file_closed_generic(method):
     return decorator
 
 
+if TYPE_CHECKING:
+    # get pycharm to stop complaining
+    def _raise_if_file_closed(method):
+        return method
+
+    def _raise_if_file_closed_generic(method):
+        return method
+
+
 class _ReaderOpenFileBase(RawIOBase):
     """Base class for all open files for Reader classes."""
 

@@ -74,7 +74,7 @@ class CIARegion(NamedTuple):
 class CIAReader(TypeReaderCryptoBase):
     """
     Reads the contents of CIA files. The sources of these are usually dumps from digital titles from Nintendo eShop or
-    the update CDN, gamecard update partitions, or Download Play children.
+    the update CDN, Game Card update partitions, or Download Play children.
 
     Only NCCH contents are supported. SRL (DSiWare) contents are currently ignored.
 
@@ -83,7 +83,7 @@ class CIAReader(TypeReaderCryptoBase):
     - a 0x20-byte header with sizes for all the following sections
     - an archive header where each bit is an enabled content
     - a Certificate chain to verify the signatures in all the following sections
-    - a Ticket with a titlekey to decrypt the contents
+    - a Ticket with a Title Key to decrypt the contents
     - a Title Metadata (TMD) that contains information about all the possible contents
     - the contents themselves
     - an optional Meta region
