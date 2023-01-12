@@ -5,24 +5,34 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 """Module for interacting with Read-only Filesystem (RomFS) files."""
+import logging
 from io import BytesIO, TextIOWrapper
+from struct import Struct
 from typing import overload, TYPE_CHECKING, NamedTuple
 
+from .base import TypeReaderBase
 from ..common import PyCTRError
 from ..fileio import SubsectionIO
 from ..util import readle, roundup
-from .base import TypeReaderBase
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
+    import io
     from typing import BinaryIO, Optional, Tuple, Union
     from ..common import FilePathOrObject
 
 __all__ = ['IVFC_HEADER_SIZE', 'IVFC_ROMFS_MAGIC_NUM', 'ROMFS_LV3_HEADER_SIZE', 'RomFSError', 'InvalidIVFCError',
            'InvalidRomFSHeaderError', 'RomFSEntryError', 'RomFSFileNotFoundError', 'RomFSReader']
 
+logger = logging.getLogger(__name__)
+
 IVFC_HEADER_SIZE = 0x5C
 IVFC_ROMFS_MAGIC_NUM = 0x10000
 ROMFS_LV3_HEADER_SIZE = 0x28
+
+Lv3HeaderStruct = Struct('<IIIIIIIIII')
+# these do not include the filename
+DirectoryEntryStruct = Struct('<IIIIII')
+FileEntryStruct = Struct('<IIQQII')
 
 
 class RomFSError(PyCTRError):
@@ -67,6 +77,27 @@ class RomFSFileEntry(NamedTuple):
     size: int
 
 
+class RomFSLv3Header(NamedTuple):
+    header_size: int
+    dirhash: RomFSRegion
+    dirmeta: RomFSRegion
+    filehash: RomFSRegion
+    filemeta: RomFSRegion
+    filedata_offset: int
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        if len(data) != 0x28:
+            raise InvalidRomFSHeaderError(f'Lv3 is not 0x28 bytes (given {len(data):#x})')
+        header_raw = Lv3HeaderStruct.unpack(data)
+        return cls(header_size=header_raw[0],
+                   dirhash=RomFSRegion(offset=header_raw[1], size=header_raw[2]),
+                   dirmeta=RomFSRegion(offset=header_raw[3], size=header_raw[4]),
+                   filehash=RomFSRegion(offset=header_raw[5], size=header_raw[6]),
+                   filemeta=RomFSRegion(offset=header_raw[7], size=header_raw[8]),
+                   filedata_offset=header_raw[9])
+
+
 class RomFSReader(TypeReaderBase):
     """
     Reads the contents of the RomFS, found inside NCCH containers.
@@ -89,16 +120,14 @@ class RomFSReader(TypeReaderBase):
         self.case_insensitive = case_insensitive
 
         lv3_offset = self._file.tell()
-        #magic = self._file.read(4)
         # this reads the full amount that an ivfc header might be,
-        # but this could also be an lv3 header which is only 0x28 bytes
+        # but this could also be a lv3 header which is only 0x28 bytes
         # this is just to reduce the amount of read calls
         header = self._file.read(IVFC_HEADER_SIZE)
         magic = header[0:4]
 
         # detect ivfc and get the lv3 offset
         if magic == b'IVFC':
-            #ivfc = magic + self._file.read(0x54)  # IVFC_HEADER_SIZE - 4
             ivfc_magic_num = readle(header[0x4:0x8])
             if ivfc_magic_num != IVFC_ROMFS_MAGIC_NUM:
                 raise InvalidIVFCError(f'IVFC magic number is invalid '
@@ -109,33 +138,27 @@ class RomFSReader(TypeReaderBase):
             lv3_offset += roundup(0x60 + master_hash_size, lv3_hash_block_size)
             self._file.seek(self._start + lv3_offset)
             lv3_header = self._file.read(ROMFS_LV3_HEADER_SIZE)
-            magic = lv3_header[0:4]
         else:
             lv3_header = header[0:ROMFS_LV3_HEADER_SIZE]
 
         self.lv3_offset = lv3_offset
 
         # get offsets and sizes from lv3 header
-        lv3_header_size = readle(magic)
-        lv3_dirhash = RomFSRegion(offset=readle(lv3_header[0x4:0x8]), size=readle(lv3_header[0x8:0xC]))
-        lv3_dirmeta = RomFSRegion(offset=readle(lv3_header[0xC:0x10]), size=readle(lv3_header[0x10:0x14]))
-        lv3_filehash = RomFSRegion(offset=readle(lv3_header[0x14:0x18]), size=readle(lv3_header[0x18:0x1C]))
-        lv3_filemeta = RomFSRegion(offset=readle(lv3_header[0x1C:0x20]), size=readle(lv3_header[0x20:0x24]))
-        lv3_filedata_offset = readle(lv3_header[0x24:0x28])
-        self.data_offset = lv3_offset + lv3_filedata_offset
+        lv3 = RomFSLv3Header.from_bytes(lv3_header[0:0x28])
+        self.data_offset = lv3_offset + lv3.filedata_offset
 
         # verify lv3 header
-        if lv3_header_size != ROMFS_LV3_HEADER_SIZE:
+        if lv3.header_size != ROMFS_LV3_HEADER_SIZE:
             raise InvalidRomFSHeaderError('Length in RomFS Lv3 header is not 0x28')
-        if lv3_dirhash.offset < lv3_header_size:
+        if lv3.dirhash.offset < lv3.header_size:
             raise InvalidRomFSHeaderError('Directory Hash offset is before the end of the Lv3 header')
-        if lv3_dirmeta.offset < lv3_dirhash.offset + lv3_dirhash.size:
+        if lv3.dirmeta.offset < lv3.dirhash.offset + lv3.dirhash.size:
             raise InvalidRomFSHeaderError('Directory Metadata offset is before the end of the Directory Hash region')
-        if lv3_filehash.offset < lv3_dirmeta.offset + lv3_dirmeta.size:
+        if lv3.filehash.offset < lv3.dirmeta.offset + lv3.dirmeta.size:
             raise InvalidRomFSHeaderError('File Hash offset is before the end of the Directory Metadata region')
-        if lv3_filemeta.offset < lv3_filehash.offset + lv3_filehash.size:
+        if lv3.filemeta.offset < lv3.filehash.offset + lv3.filehash.size:
             raise InvalidRomFSHeaderError('File Metadata offset is before the end of the File Hash region')
-        if lv3_filedata_offset < lv3_filemeta.offset + lv3_filemeta.size:
+        if lv3.filedata_offset < lv3.filemeta.offset + lv3.filemeta.size:
             raise InvalidRomFSHeaderError('File Data offset is before the end of the File Metadata region')
 
         # get entries from dirmeta and filemeta
@@ -155,7 +178,7 @@ class RomFSReader(TypeReaderBase):
                     child_dir_name = dirmeta.read(readle(child_dir_meta[0x14:0x18])).decode('utf-16le')
                     child_dir_name_meta = child_dir_name.lower() if case_insensitive else child_dir_name
                     if child_dir_name_meta in out['contents']:
-                        print(f'WARNING: Dirname collision! {current_path}{child_dir_name}')
+                        logger.warning(f'Dirname collision: {current_path}{child_dir_name}')
                     out['contents'][child_dir_name_meta] = {'name': child_dir_name}
 
                     iterate_dir(out['contents'][child_dir_name_meta], child_dir_meta,
@@ -174,7 +197,7 @@ class RomFSReader(TypeReaderBase):
                     child_file_name = filemeta.read(readle(child_file_meta[0x1C:0x20])).decode('utf-16le')
                     child_file_name_meta = child_file_name.lower() if self.case_insensitive else child_file_name
                     if child_file_name_meta in out['contents']:
-                        print(f'WARNING: Filename collision! {current_path}{child_file_name}')
+                        logger.warning(f'Filename collision! {current_path}{child_file_name}')
                     out['contents'][child_file_name_meta] = {'name': child_file_name, 'type': 'file',
                                                              'offset': child_file_offset, 'size': child_file_size}
 
@@ -186,20 +209,22 @@ class RomFSReader(TypeReaderBase):
         self._tree_root = {'name': 'ROOT'}
         self.total_size = 0
 
-        self._file.seek(self._start + lv3_offset + lv3_dirmeta.offset)
-        dirmeta = BytesIO(self._file.read(lv3_dirmeta.size))
-        self._file.seek(self._start + lv3_offset + lv3_filemeta.offset)
-        filemeta = BytesIO(self._file.read(lv3_filemeta.size))
+        self._file.seek(self._start + lv3_offset + lv3.dirmeta.offset)
+        dirmeta = BytesIO(self._file.read(lv3.dirmeta.size))
+        self._file.seek(self._start + lv3_offset + lv3.filemeta.offset)
+        filemeta = BytesIO(self._file.read(lv3.filemeta.size))
 
         iterate_dir(self._tree_root, dirmeta.read(0x18), '/', dirmeta, filemeta)
 
     @overload
     def open(self, path: str, encoding: str, errors: 'Optional[str]' = None,
-             newline: 'Optional[str]' = None) -> TextIOWrapper: ...
+             newline: 'Optional[str]' = None) -> 'io.TextIOWrapper':  # pragma: no cover
+        ...
 
     @overload
     def open(self, path: str, encoding: None = None, errors: 'Optional[str]' = None,
-             newline: 'Optional[str]' = None) -> SubsectionIO: ...
+             newline: 'Optional[str]' = None) -> 'SubsectionIO':  # pragma: no cover
+        ...
 
     def open(self, path, encoding=None, errors=None, newline=None):
         """
