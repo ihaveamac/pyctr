@@ -43,6 +43,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Many different documentation changes or additions
 * Require Python 3.8
 * Create new and update documentation pages - `example-nand` and `pyctr.type.nand`
+* Fix `closefd` being default to True always in `NAND`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights

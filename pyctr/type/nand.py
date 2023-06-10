@@ -345,7 +345,7 @@ class NAND(TypeReaderCryptoBase):
     ctr_partitions: 'List[Tuple[int, int]]'
     twl_partitions: 'List[Tuple[int, int]]'
 
-    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, closefd: bool = True, crypto: CryptoEngine = None,
+    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, closefd: bool = None, crypto: CryptoEngine = None,
                  dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None, cid: bytes = None,
                  cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
         super().__init__(file=file, mode=mode, closefd=closefd, crypto=crypto, dev=dev)
