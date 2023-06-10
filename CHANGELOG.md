@@ -42,6 +42,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Move RomFS header loading in `RomFSReader` to a new `RomFSLv3Header` class
 * Many different documentation changes or additions
 * Require Python 3.8
+* Create new and update documentation pages - `example-nand` and `pyctr.type.nand`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
