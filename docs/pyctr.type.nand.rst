@@ -10,6 +10,58 @@ This module is best combined with `pyfatfs <https://github.com/nathanhi/pyfatfs>
 
 A basic overview of reading and writing to a NAND image is available here: :doc:`example-nand`.
 
+Getting started
+---------------
+
+Here's a quick example to get inside CTRNAND and read files from within it using :mod:`~pyfatfs.PyFatBytesIOFS`:
+
+.. code-block:: python
+
+    from pyctr.type.nand import NAND
+    from pyfatfs.PyFatFS import PyFatBytesIOFS
+
+    with NAND('nand.bin') as nand:
+        with PyFatBytesIOFS(fp=nand.open_ctr_partition()) as ctrfat:
+            with ctrfat.open('/private/movable.sed', 'rb') as msed:
+                msed.read()
+
+A second example trying to load SecureInfo. This one is tricky because some consoles use ``SecureInfo_A`` and some use ``SecureInfo_B``, so we have to try both.
+
+.. code-block:: python
+
+    from pyctr.type.nand import NAND
+    from pyfatfs.PyFatFS import PyFatBytesIOFS
+    from fs.errors import ResourceNotFound
+
+    with NAND('nand.bin') as nand:
+        with PyFatBytesIOFS(fp=nand.open_ctr_partition()) as ctrfat:
+            for l in 'AB':
+                path = '/rw/sys/SecureInfo_' + l
+                if ctrfat.exists(path):
+                    with ctrfat.open(path, 'rb') as f:
+                        f.read()
+                        break
+
+Required files
+--------------
+
+In most cases users will have a NAND backup with an essentials backup embedded. However there are plenty of cases where this may not occur, so you may need to provide support files in other ways.
+
+The only hard requirement is an OTP. This is found in the essentials backup, but otherwise can be provided as a file, file-like object, and a bytestring.
+
+NAND CID is also useful to have but is not required for most consoles. This also is loaded from the essentials backup if found, otherwise it can be provided like OTP. If it's not found anywhere, PyCTR will attempt to generate the Counter for both CTR and TWL. The Counter for TWL will not be generated if the TWL MBR is corrupt.
+
+In either case the load priority is first bytestring, then file, then essentials backup.
+
+An external ``essential.exefs`` file must manually be loaded with :class:`~.ExeFSReader` and then the individual ``otp`` and ``nand_cid`` read and provided to the :mod:`NAND` initializer.
+
+Dealing with corruption
+-----------------------
+
+There are cases where the NAND is corrupt but you still want to read it.
+
+One of the most common kinds of corruption is an invalid TWL MBR. This happens if the NCSD header is replaced with one of another console. This applies mostly to very old pre-sighax NAND backups. If the TWL MBR cannot be decrypted and parsed, but a NAND CID was loaded, PyCTR will use the default partition information. Otherwise, TWL information will be inaccessible.
+
 NAND objects
 ------------
 
