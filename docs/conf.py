@@ -49,7 +49,13 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'pyfatfs': ('https://pyfatfs.readthedocs.io/en/stable', None)
+}
+
+autodoc_typehints = 'description'
+autodoc_member_order = 'bysource'
 
 
 # -- Options for HTML output -------------------------------------------------
