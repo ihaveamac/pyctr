@@ -67,8 +67,6 @@ class NANDSection(IntEnum):
     TWLNAND = -11
     """
     TWL NAND region.
-    
-    Note: Writes to the first 0x1BE (before the TLW MBR) are silently discarded to avoid writing a corrupted NCSD header.
     """
 
     AGBSAVE = -12
@@ -136,7 +134,12 @@ class NANDNCSDHeader(NamedTuple):
 
     @classmethod
     def from_bytes(cls, data: bytes):
-        """Load a NAND header from bytes."""
+        """
+        Load a NAND header from bytes.
+
+        :param data: The 512-byte NCSD header.
+        :raises InvalidNANDError:
+        """
         header = NANDNCSDHeaderStruct.unpack(data)
 
         magic = header[1]
@@ -684,12 +687,9 @@ class NAND(TypeReaderCryptoBase):
         self._open_files.add(fh)
         return fh
 
-    def open_raw_section(self, section: int):
+    def open_raw_section(self, section: 'Union[NANDSection, int]'):
         """
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
-
-        Note: If you are looking to read from TWLNAND or CTRNAND, you may be looking for :meth:`open_twl_partition`
-        or :meth:`open_ctr_partition` instead.
 
         :param section: The section to open. Numbers 0 to 7 are specific NCSD partitions. Negative numbers are special
             sections defined by PyCTR.
