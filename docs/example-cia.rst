@@ -1,7 +1,7 @@
 Example: Read contents from a CIA
 =================================
 
-In this example we will take a homebrew CIA file and extract some data from it. The example in this case will be Checkpoint 3.7.4. `Download the example link here. <https://github.com/FlagBrew/Checkpoint/releases/download/v3.7.4/Checkpoint.cia>`_
+In this example we will take a homebrew CIA file and extract some data from it. The example in this case will be Checkpoint 3.7.4. `Download the example title here. <https://github.com/FlagBrew/Checkpoint/releases/download/v3.7.4/Checkpoint.cia>`_
 
 First we need to import :class:`~.CIAReader` and :class:`~.CIASection`. The former does the actual reading, the latter is an enum that can be used to access the contents. We will also import :py:mod:`json` to read a JSON file inside the RomFS.
 
@@ -96,7 +96,7 @@ You can also use :class:`~.CIAReader` in the form of a context manager.
 
 .. code-block:: python
 
-    with CIAReader('Checkpoint.CIA') as cia:
+    with CIAReader('Checkpoint.cia') as cia:
         with cia.contents[CIASection.Application].romfs.open('/config.json') as f:
             config = json.load(f)
             print('Config version:', config['version'])
