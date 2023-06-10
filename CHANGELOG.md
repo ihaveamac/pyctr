@@ -1,5 +1,7 @@
 ## Next
 ### Highlights
+Python 3.8 or later is now required, up from 3.6.1.
+
 A new `pyctr.type.config` package with `save` and `blocks` modules was added. These allow for reading the [config savegame](https://www.3dbrew.org/wiki/Config_Savegame), both to read the raw blocks, and to parse the data into a usable format.
 
 A new `nand` module with the `NAND` class is added to read and write to NAND images. This only provides raw access (for FAT32, try [nathanhi/pyfatfs](https://github.com/nathanhi/pyfatfs)).
@@ -39,6 +41,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Switch Sphinx theme to rtd, add example-cia, add info to index page
 * Move RomFS header loading in `RomFSReader` to a new `RomFSLv3Header` class
 * Many different documentation changes or additions
+* Require Python 3.8
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
