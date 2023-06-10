@@ -51,7 +51,7 @@ The only hard requirement is an OTP. This is found in the essentials backup, but
 
 NAND CID is also useful to have but is not required for most consoles. This also is loaded from the essentials backup if found, otherwise it can be provided like OTP. If it's not found anywhere, PyCTR will attempt to generate the Counter for both CTR and TWL. The Counter for TWL will not be generated if the TWL MBR is corrupt.
 
-In either case the load priority is first bytestring, then file, then essentials backup.
+In either case the load priority is first file, then bytestring, then essentials backup.
 
 An external ``essential.exefs`` file must manually be loaded with :class:`~.ExeFSReader` and then the individual ``otp`` and ``nand_cid`` read and provided to the :mod:`NAND` initializer.
 
