@@ -39,16 +39,47 @@ It can be installed with ``pip``:
     $ pip install pyctr
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Getting started
 
    example-cia
+   example-nand
 
 .. toctree::
-   :maxdepth: 5
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: App containers
 
-   pyctr
+   pyctr.type.cdn
+   pyctr.type.cia
+   pyctr.type.ncch
+   pyctr.type.sdtitle
+
+.. toctree::
+   :maxdepth: 1
+   :caption: App data
+
+   pyctr.type.exefs
+   pyctr.type.romfs
+
+.. toctree::
+   :maxdepth: 1
+   :caption: App metadata
+
+   pyctr.type.smdh
+   pyctr.type.tmd
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Console data
+
+   pyctr.type.nand
+   pyctr.type.sd
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Extras
+
+   pyctr.util
 
 
 Indices and tables
