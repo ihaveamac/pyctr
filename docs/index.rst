@@ -80,6 +80,7 @@ It can be installed with ``pip``:
    :caption: Extras
 
    pyctr.util
+   pyctr.fileio
 
 
 Indices and tables
