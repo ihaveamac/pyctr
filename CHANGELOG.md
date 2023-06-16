@@ -45,6 +45,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Create new and update documentation pages - `example-nand` and `pyctr.type.nand`
 * Fix `closefd` being default to True always in `NAND`
 * Create documentation page for `pyctr.type.sd`
+* Create documentation page for `pyctr.fileio`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
