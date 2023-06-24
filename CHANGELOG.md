@@ -47,6 +47,11 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * Create documentation page for `pyctr.type.sd`
 * Create documentation page for `pyctr.fileio`
 * Create documentation page for `pyctr.util`
+* Fixes to `ConfigSaveReader`:
+  * `data_offset` is not hardcoded to `0x41E4`, it's based on the amount of data from the blocks
+  * CFG adds data to save from end to start when the block data is > 4 bytes, so now we are replicating this behavior and generating a proper `data_offset` and data sorting when using `to_bytes`
+  * Added sanity checks while parsing a config save
+  * `set_block` previously didn't allowed `None` in flags despite being stated to default to `0xE`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
