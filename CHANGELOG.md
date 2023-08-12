@@ -52,6 +52,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
   * CFG adds data to save from end to start when the block data is > 4 bytes, so now we are replicating this behavior and generating a proper `data_offset` and data sorting when using `to_bytes`
   * Added sanity checks while parsing a config save
   * `set_block` previously didn't allowed `None` in flags despite being stated to default to `0xE`
+* New attribute for SMDH: `SMDH.region_lockout`, with a new NamedTuple `SMDHRegionLockout`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights

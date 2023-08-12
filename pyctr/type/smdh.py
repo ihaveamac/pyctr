@@ -71,6 +71,29 @@ class AppTitle(NamedTuple):
     publisher: str
 
 
+class SMDHRegionLockout(NamedTuple):
+    Japan: bool
+    NorthAmerica: bool
+    Europe: bool
+    Australia: bool
+    China: bool
+    Korea: bool
+    Taiwan: bool
+    RegionFree: bool
+
+    @classmethod
+    def from_bytes(cls, region_lockout_bytes: bytes):
+        region_lockouts = int.from_bytes(region_lockout_bytes, 'little')
+        return cls(Japan=bool(region_lockouts & 0x1),
+                   NorthAmerica=bool(region_lockouts & 0x2),
+                   Europe=bool(region_lockouts & 0x4),
+                   Australia=bool(region_lockouts & 0x8),
+                   China=bool(region_lockouts & 0x10),
+                   Korea=bool(region_lockouts & 0x20),
+                   Taiwan=bool(region_lockouts & 0x40),
+                   RegionFree=(region_lockouts == 0x7FFFFFFF))
+
+
 class SMDHFlags(NamedTuple):
     Visible: bool
     """Icon is visible at the HOME Menu"""
@@ -186,16 +209,17 @@ class SMDH:
     https://www.3dbrew.org/wiki/SMDH
     """
 
-    __slots__ = ('flags', 'icon_large', 'icon_large_array', 'icon_small', 'icon_small_array', 'names')
+    __slots__ = ('flags', 'icon_large', 'icon_large_array', 'icon_small', 'icon_small_array', 'names', 'region_lockout')
 
     # TODO: support other settings
 
     def __init__(self, names: 'Dict[str, AppTitle]', icon_small_array: 'List[List[RGBTuple]]',
-                 icon_large_array: 'List[List[RGBTuple]]', flags: SMDHFlags):
+                 icon_large_array: 'List[List[RGBTuple]]', flags: SMDHFlags, region_lockout: SMDHRegionLockout):
         self.names: Mapping[str, AppTitle] = MappingProxyType({n: names.get(n, None) for n in region_names})
         self.icon_small_array = icon_small_array
         self.icon_large_array = icon_large_array
         self.flags = flags
+        self.region_lockout = region_lockout
 
         # if Pillow is installed
         if Image:
@@ -247,7 +271,10 @@ class SMDH:
         flags_raw = smdh[0x2028:0x202C]
         flags = SMDHFlags.from_bytes(flags_raw)
 
-        return cls(names, icon_small_array, icon_large_array, flags)
+        region_lockout_raw = smdh[0x2018:0x201C]
+        region_lockout = SMDHRegionLockout.from_bytes(region_lockout_raw)
+
+        return cls(names, icon_small_array, icon_large_array, flags, region_lockout)
 
     @classmethod
     def from_file(cls, fn: 'FilePath') -> 'SMDH':
