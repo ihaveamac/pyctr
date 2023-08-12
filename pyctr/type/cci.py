@@ -6,7 +6,7 @@
 
 """Module for interacting with CTR Cart Image (CCI) files."""
 
-from enum import IntEnum
+from enum import Enum, IntEnum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..common import PyCTRError
@@ -75,6 +75,16 @@ class CCIRegion(NamedTuple):
     size: int
 
 
+class CCICartRegion(Enum):
+    USA = 'USA'
+    EUR = 'EUR'
+    JPN = 'JPN'
+    CHN = 'CHN'
+    KOR = 'KOR'
+    TWN = 'TWN'
+    Unknown = 'Unknown'
+
+
 class CCIReader(TypeReaderBase):
     """
     Reads the contents of CCI files, usually dumps from Nintendo 3DS game cards.
@@ -93,7 +103,10 @@ class CCIReader(TypeReaderBase):
         the NCCH flags.
     """
 
-    __slots__ = ('_case_insensitive', 'contents', 'image_size', 'media_id', 'sections')
+    __slots__ = ('_case_insensitive', 'cart_region', 'contents', 'image_size', 'media_id', 'sections')
+
+    cart_region: CCICartRegion
+    """Region that the game card is for. This is detected by checking the files in the Update RomFS."""
 
     image_size: int
     """Image size in bytes. This does not always match the file size on disk."""
@@ -161,6 +174,25 @@ class CCIReader(TypeReaderBase):
                     content_fp = self.open_raw_section(section_id)
                     self.contents[section_id] = NCCHReader(content_fp, case_insensitive=case_insensitive, dev=dev,
                                                            assume_decrypted=assume_decrypted)
+
+        self.cart_region = CCICartRegion.Unknown
+        try:
+            update_romfs = self.contents[CCISection.UpdateOld3DS].romfs
+            version_cias = {  # CVer
+                '000400db00017102.cia': CCICartRegion.EUR,
+                '000400db00017202.cia': CCICartRegion.JPN,
+                '000400db00017302.cia': CCICartRegion.USA,
+                '000400db00017402.cia': CCICartRegion.CHN,
+                '000400db00017502.cia': CCICartRegion.KOR,
+                '000400db00017602.cia': CCICartRegion.TWN,
+            }
+            update_contents = update_romfs.get_info_from_path('/').contents
+            for cia_name, region in version_cias.items():
+                if cia_name in update_contents:
+                    self.cart_region = region
+                    break
+        except KeyError:
+            pass
 
     def __repr__(self):
         info = [('media_id', self.media_id)]
