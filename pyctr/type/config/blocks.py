@@ -53,7 +53,7 @@ class ConfigSaveBlockParser:
 
     @username.setter
     def username(self, value: str):
-        username_raw = value.encode('utf-16le').ljust(KNOWN_BLOCKS[0x000A0000]["size"])
+        username_raw = value.encode('utf-16le').ljust(KNOWN_BLOCKS[0x000A0000]["size"], b'\0')
         self.save.set_block(0x000A0000, username_raw)
 
     @property
