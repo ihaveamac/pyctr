@@ -54,6 +54,8 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
   * `set_block` previously didn't allowed `None` in flags despite being stated to default to `0xE`
 * New attribute for SMDH: `SMDH.region_lockout`, with a new NamedTuple `SMDHRegionLockout`
 * New attribute for CCIReader: `CCIReader.cart_region`, with a new Enum `CCICartRegion`
+* `ConfigSaveReader.set_block` will now check Block IDs, flags, and sizes against a known list of blocks
+  * Passing `strict=True` to `set_block` will bypass this
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
