@@ -57,6 +57,8 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * `ConfigSaveReader.set_block` will now check Block IDs, flags, and sizes against a known list of blocks
   * Passing `strict=True` to `set_block` will bypass this
 * `KNOWN_BLOCKS` in `pyctr.type.config.save` was changed to have values be dicts with "flags" and "size" keys (instead of plain tuples)
+* Switch `get_*` and `set_*` to getters and setters in `pyctr.type.config.blocks
+  * e.g. `username` instead of `get_username` and `set_username`
 
 ## v0.6.0 - January 26, 2022
 ### Highlights

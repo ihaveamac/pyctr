@@ -7,10 +7,10 @@
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
-from .save import ConfigSaveReader
+from .save import BlockIDNotFoundError, ConfigSaveReader, KNOWN_BLOCKS
 
 if TYPE_CHECKING:
-    from typing import BinaryIO
+    from typing import BinaryIO, Union
     from ...common import FilePath
 
 
@@ -33,14 +33,12 @@ class ConfigSaveBlockParser:
     def __init__(self, save: 'ConfigSaveReader'):
         self.save = save
 
-    def get_username(self) -> str:
+    @property
+    def username(self) -> str:
         """
-        Gets the username.
+        Profile username. Can be up to 10 characters long.
 
         Block ID: 0x000A0000
-
-        :return: Username.
-        :rtype: str
         """
 
         username_raw = self.save.get_block(0x000A0000)
@@ -53,30 +51,47 @@ class ConfigSaveBlockParser:
 
         return username
 
-    def get_user_time_offset(self) -> int:
+    @username.setter
+    def username(self, value: str):
+        username_raw = value.encode('utf-16le').ljust(KNOWN_BLOCKS[0x000A0000]["size"])
+        self.save.set_block(0x000A0000, username_raw)
+
+    @property
+    def user_time_offset(self) -> int:
         """
-        Gets the offset to the Raw RTC.
+        The offset to the Raw RTC in milliseconds.
 
         Block ID: 0x00030001
-
-        :return: Time offset in milliseconds.
-        :rtype: int
         """
         time_offset_raw = self.save.get_block(0x00030001)
         return int.from_bytes(time_offset_raw.data, 'little')
 
-    def get_system_model(self) -> SystemModel:
+    @user_time_offset.setter
+    def user_time_offset(self, value: int):
+        time_offset_raw = value.to_bytes(KNOWN_BLOCKS[0x00030001]["size"], "little")
+        self.save.set_block(0x00030001, time_offset_raw)
+
+    @property
+    def system_model(self) -> SystemModel:
         """
-        Gets the system model.
+        System model.
 
         Block ID: 0x000F0004
-
-        :return: System model.
-        :rtype: SystemModel
         """
 
         system_model_raw = self.save.get_block(0x000F0004)
         return SystemModel(system_model_raw.data[0])
+
+    @system_model.setter
+    def system_model(self, value: 'Union[int, SystemModel]'):
+        # this field is actually 4 bytes
+        # just in case, we'll preserve the next 3 bytes (their use is unknown)
+        try:
+            system_model_raw = bytearray(self.save.get_block(0x000F0004))
+        except BlockIDNotFoundError:
+            system_model_raw = bytearray(4)
+        system_model_raw[0] = value
+        self.save.set_block(0x000F0004, system_model_raw)
 
     @classmethod
     def load(cls, fp: 'BinaryIO'):
