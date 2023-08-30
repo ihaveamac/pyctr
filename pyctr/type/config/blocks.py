@@ -87,7 +87,7 @@ class ConfigSaveBlockParser:
         # this field is actually 4 bytes
         # just in case, we'll preserve the next 3 bytes (their use is unknown)
         try:
-            system_model_raw = bytearray(self.save.get_block(0x000F0004))
+            system_model_raw = bytearray(self.save.get_block(0x000F0004).data)
         except BlockIDNotFoundError:
             system_model_raw = bytearray(4)
         system_model_raw[0] = value
