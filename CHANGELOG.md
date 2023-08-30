@@ -56,6 +56,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 * New attribute for CCIReader: `CCIReader.cart_region`, with a new Enum `CCICartRegion`
 * `ConfigSaveReader.set_block` will now check Block IDs, flags, and sizes against a known list of blocks
   * Passing `strict=True` to `set_block` will bypass this
+* `KNOWN_BLOCKS` in `pyctr.type.config.save` was changed to have values be dicts with "flags" and "size" keys (instead of plain tuples)
 
 ## v0.6.0 - January 26, 2022
 ### Highlights
