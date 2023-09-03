@@ -3,7 +3,9 @@ Python library to interact with Nintendo 3DS files.
 
 The API is not yet stable. If you decide to use this, you should stick to a specific version on pypi, or store a copy locally, until it is stable.
 
-Documentation is being updated over time and is published on [Read the Docs](https://pyctr.readthedocs.io/en/latest/). Most classes and functions have docstrings. Support can be found on Discord ([info](https://ihaveahax.net/view/Discord), [invite link](https://discord.gg/YVuFUrs))
+Documentation is being updated over time and is published on [Read the Docs](https://pyctr.readthedocs.io/en/latest/). Most classes and functions have docstrings.
+
+Support is provided on [GitHub Discussions](https://github.com/ihaveamac/pyctr/discussions) or Discord ([info](https://ihaveahax.net/view/Discord), [invite link](https://discord.gg/YVuFUrs)).
 
 ## Supported types
 * Application metadata and containers
