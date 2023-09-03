@@ -1,3 +1,8 @@
+## Next
+
+### Changelog
+* Add initial pyctr command line tool, `pyctr.cmd` (entry point `pyctrcmd`) with one command, `checkenv`
+
 ## v0.7.0 - September 3, 2023
 ### Highlights
 Python 3.8 or later is now required, up from 3.6.1.
