@@ -1,4 +1,4 @@
-## Next
+## v0.7.0 - September 3, 2023
 ### Highlights
 Python 3.8 or later is now required, up from 3.6.1.
 
@@ -7,6 +7,9 @@ A new `pyctr.type.config` package with `save` and `blocks` modules was added. Th
 A new `nand` module with the `NAND` class is added to read and write to NAND images. This only provides raw access (for FAT32, try [nathanhi/pyfatfs](https://github.com/nathanhi/pyfatfs)).
 
 `RomFSReader` initialization performance was improved, especially with RomFS files containing large amounts of files or directories.
+
+Documentation is being added and improved over time. Check it on [Read the
+Docs](https://pyctr.readthedocs.io/en/latest/).
 
 ### Changelog
 * Add the module `pyctr.type.configsave` with the class `ConfigSaveReader` (_module name changed in a future commit_)
