@@ -41,6 +41,13 @@ class MissingSeedError(SeedDBError):
 _seeds: 'Dict[int, bytes]' = {}
 _loaded_from_default_paths = False
 
+seeddb_paths = [join(x, 'seeddb.bin') for x in config_dirs]
+try:
+    # try to insert the path in the SEEDDB_PATH environment variable
+    seeddb_paths.insert(0, environ['SEEDDB_PATH'])
+except KeyError:
+    pass
+
 
 def _load_seeds_from_file_object(fh: 'BinaryIO'):
     seed_count = readle(fh.read(4))
@@ -75,13 +82,6 @@ def load_seeddb(fp: 'FilePathOrObject' = None):
             fp = open(fp, 'rb')
         _load_seeds_from_file_object(fp)
     elif not _loaded_from_default_paths:
-        seeddb_paths = [join(x, 'seeddb.bin') for x in config_dirs]
-        try:
-            # try to insert the path in the SEEDDB_PATH environment variable
-            seeddb_paths.insert(0, environ['SEEDDB_PATH'])
-        except KeyError:
-            pass
-
         for path in seeddb_paths:
             try:
                 with open(path, 'rb') as fh:

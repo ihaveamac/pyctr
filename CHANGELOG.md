@@ -2,6 +2,7 @@
 
 ### Changelog
 * Add initial pyctr command line tool, `pyctr.cmd` (entry point `pyctrcmd`) with one command, `checkenv`
+* Move `seeddb_paths` to `pyctr.crypto.seeddb` from a function, making it publicly accessible (and then use it in `pyctr.cmd.checkenv`)
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

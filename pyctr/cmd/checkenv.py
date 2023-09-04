@@ -10,17 +10,11 @@ from os.path import join, isfile
 from typing import TYPE_CHECKING
 
 from ..crypto.engine import BOOT9_PROT_HASH, b9_paths
+from ..crypto.seeddb import seeddb_paths
 from ..util import config_dirs
 
 if TYPE_CHECKING:
     from argparse import ArgumentParser, Namespace
-
-seeddb_paths = [join(x, 'seeddb.bin') for x in config_dirs]
-try:
-    # try to insert the path in the SEEDDB_PATH environment variable
-    seeddb_paths.insert(0, environ['SEEDDB_PATH'])
-except KeyError:
-    pass
 
 
 def find_boot9():
