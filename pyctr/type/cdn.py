@@ -172,7 +172,8 @@ class CDNReader:
             # this needs to check how many files are being opened
             if load_contents and not is_srl:
                 decrypted_file = self.open_raw_section(record.cindex)
-                self.contents[record.cindex] = NCCHReader(decrypted_file, case_insensitive=case_insensitive, dev=dev)
+                self.contents[record.cindex] = NCCHReader(decrypted_file, case_insensitive=case_insensitive, dev=dev,
+                                                          crypto=self._crypto.clone())
 
     def __enter__(self):
         return self

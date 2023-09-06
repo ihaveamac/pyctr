@@ -234,7 +234,7 @@ class CIAReader(TypeReaderCryptoBase):
                 if not is_srl:
                     content_fp = self.open_raw_section(record.cindex)
                     self.contents[record.cindex] = NCCHReader(content_fp, case_insensitive=case_insensitive,
-                                                              dev=dev)
+                                                              dev=dev, crypto=self._crypto.clone())
 
             curr_offset += record.size
 
