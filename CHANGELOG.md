@@ -8,6 +8,8 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * `RomFSReader` was updated to use PyFilesystem2.
   * To match PyFilesystem2, the function signature for `open` has changed to add `mode` and `buffering` arguments between `path` and `encoding`. This also means opening files is done in text mode by default. For compatibility, if the second argument is detected to be an encoding, the file will be opened like before, and a `DeprecationWarning` will be raised.
   * `get_info_from_path` is deprecated and should be replaced with `getinfo`, `listdir`, or `scandir`.
+* `pyctr.type.sdfs` was created to replace `pyctr.type.sd`, which is now deprecated.
+  * `sdfs` uses PyFilesystem2. The one deviation from the standard is that `SDFS.open` will only open files in binary mode.
 
 ### Changelog
 * Add initial pyctr command line tool, `pyctr.cmd` (entry point `pyctrcmd`) with one command, `checkenv`
@@ -22,6 +24,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Use `fs.base.FS` for `RomFSReader`
   * fs (PyFilesystem2) is now a dependency
   * Tests have been updated to use the new FS methods
+* Create `pyctr.type.sdfs` as a replacement for `pyctr.type.sd`
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

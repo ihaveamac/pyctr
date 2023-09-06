@@ -6,6 +6,9 @@
 
 The :mod:`sd` module enables reading and writing of Nintendo 3DS SD card encrypted digital content. This is the "Nintendo 3DS" folder on an SD card and includes application data, save data, and extdata.
 
+.. deprecated:: 0.8.0
+    Replaced with :mod:`~pyctr.type.sdfs`.
+
 Directory hierarchy
 -------------------
 

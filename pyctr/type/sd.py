@@ -4,12 +4,18 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
-"""Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory."""
+"""
+Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory.
+
+.. deprecated:: 0.8.0
+    Replaced with :mod:`~pyctr.type.sdfs`.
+"""
 
 from os import fsdecode
 from os.path import isfile, isdir
 from pathlib import Path
 from typing import TYPE_CHECKING
+from warnings import warn
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
@@ -22,6 +28,10 @@ if TYPE_CHECKING:
 
     # noinspection PyProtectedMember
     from ..crypto import CTRFileIO
+
+
+warn('pyctr.type.sd is deprecated, use pyctr.type.sdfs instead',
+     DeprecationWarning)
 
 
 class SDFilesystemError(PyCTRError):

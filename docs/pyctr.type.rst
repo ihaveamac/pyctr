@@ -25,6 +25,7 @@ Submodules
    pyctr.type.ncch
    pyctr.type.romfs
    pyctr.type.sd
+   pyctr.type.sdfs
    pyctr.type.sdtitle
    pyctr.type.smdh
    pyctr.type.tmd

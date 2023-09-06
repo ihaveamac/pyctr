@@ -12,10 +12,14 @@ if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
     from os import PathLike
     from typing import BinaryIO, IO, Union
+
+    from fs.base import FS
+
     RawIOBase = BinaryIO
 
     FilePath = Union[PathLike, str, bytes]
     FilePathOrObject = Union[FilePath, BinaryIO]
+    DirPathOrFS = Union[PathLike, str, bytes, FS]
 
 
 class PyCTRError(Exception):
