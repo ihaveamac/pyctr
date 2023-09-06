@@ -846,6 +846,80 @@ class CryptoEngine:
         with open(path, 'rb') as f:
             self.setup_sd_key(f.read(0x140))
 
+    def _format_state(self):
+        """
+        Formats the current state of the engine into Markdown.
+        This is for debugging and so is slow and expensive.
+        """
+        from .. import __version__
+        from io import StringIO
+
+        out = StringIO()
+        longest_keyslot_name = 0
+
+        def keyslot_repr(ks):
+            nonlocal longest_keyslot_name
+            try:
+                val = Keyslot(ks).name
+            except ValueError:
+                val = f''
+            longest_keyslot_name = len(val) if len(val) > longest_keyslot_name else longest_keyslot_name
+            return val
+
+        print('# CryptoEngine state', file=out)
+        print('* pyctr version:', __version__, file=out)
+        print('* Key set:', 'dev' if self.dev else 'retail', file=out)
+        print('* B9 path loaded:', self.b9_path, file=out)
+        print('* B9 keys set (local):', self.b9_keys_set, file=out)
+        print('* B9 keys set (global):', bool(_b9_key_x), file=out)
+        print('* OTP keys set:', self.otp_keys_set, file=out)
+        key_x = {}
+        key_y = {}
+        key_normal = {}
+        for ks, v in self.key_x.items():
+            key_x[ks] = v.to_bytes(0x10, ('big' if ks > 0x03 else 'little'))
+        for ks, v in self.key_y.items():
+            key_y[ks] = v.to_bytes(0x10, ('big' if ks > 0x03 else 'little'))
+        for ks, v in self.key_normal.items():
+            key_normal[ks] = v
+
+        all_keyslots = sorted(key_x.keys() | key_y.keys() | key_normal.keys())
+        all_keyslot_names = {x: keyslot_repr(x) for x in all_keyslots}
+
+        print(file=out)
+        print(f'| Keyslot | {"Name".ljust(longest_keyslot_name)} | {"X".ljust(34)} | {"Y".ljust(34)} | {"Normal".ljust(34)} | N State |', file=out)
+        print(f'| ------- | {"-" * longest_keyslot_name} | {"-" * 34} | {"-" * 34} | {"-" * 34} | ------- |', file=out)
+        for ks in all_keyslots:
+            try:
+                x = '`' + key_x[ks].hex() + '`'
+            except KeyError:
+                x = '(none)'.ljust(34)
+            try:
+                y = '`' + key_y[ks].hex() + '`'
+            except KeyError:
+                y = '(none)'.ljust(34)
+            n_state = '       '
+            try:
+                n = '`' + key_normal[ks].hex() + '`'
+            except KeyError:
+                n = '(none)'.ljust(34)
+            else:
+                if ks in key_x and ks in key_y:
+                    expected_n = self.keygen(ks)
+                    if expected_n.hex() != n:
+                        n_state = 'invalid'
+
+            print(f'| 0x{ks:02X}    | {all_keyslot_names[ks].ljust(longest_keyslot_name)} | {x} | {y} | {n} | {n_state} |', file=out)
+
+        return out.getvalue()
+
+    def _print_state(self):
+        """
+        Prints the current state of the engine.
+        This is for debugging and so is slow and expensive.
+        """
+        print(self._format_state())
+
 
 class _CryptoFileBase(RawIOBase):
     """Base class for CTR and CBC IO classes."""

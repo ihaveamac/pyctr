@@ -1,3 +1,8 @@
+## Next (0.7 branch)
+
+### Changelog
+* Backport `CryptoEngine._format_state` and `CryptoEngine._print_state` from 0.8
+
 ## v0.7.0 - September 3, 2023
 ### Highlights
 Python 3.8 or later is now required, up from 3.6.1.
