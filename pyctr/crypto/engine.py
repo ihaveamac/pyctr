@@ -630,7 +630,7 @@ class CryptoEngine:
 
         self.load_encrypted_titlekey(titlekey_enc, common_key_index, title_id)
 
-    def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]', *, update_normal_key: bool = False):
+    def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]', *, update_normal_key: bool = True):
         """Sets a keyslot to the specified key."""
         to_use = None
         if xy == 'x':
