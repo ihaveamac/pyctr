@@ -764,6 +764,7 @@ class CryptoEngine:
         key_loop_increase('n', 0x3C)
 
         self._set_fixed_keys()
+        self.b9_keys_set = True
 
     def setup_keys_from_boot9(self, b9: bytes):
         """Set up certain keys from an ARM9 bootROM dump."""
