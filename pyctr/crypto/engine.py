@@ -794,40 +794,40 @@ class CryptoEngine:
         cipher_otp = AES.new(self.otp_key, AES.MODE_CBC, self.otp_iv)
         if otp[0:4] == OTP_MAGIC:
             # decrypted otp
-            self._otp_enc: bytes = cipher_otp.encrypt(otp)
-            self._otp_dec = otp
+            otp_enc: bytes = cipher_otp.encrypt(otp)
+            otp_dec = otp
         else:
             # encrypted otp
-            self._otp_enc = otp
-            self._otp_dec: bytes = cipher_otp.decrypt(otp)
+            otp_enc = otp
+            otp_dec: bytes = cipher_otp.decrypt(otp)
         
-        if self._otp_dec[0:4] != OTP_MAGIC:
+        if otp_dec[0:4] != OTP_MAGIC:
             raise CorruptOTPError('OTP magic not found, corrupt or not an OTP')
 
-        self._otp_device_id = int.from_bytes(self.otp_dec[4:8], 'little')
+        self._otp_device_id = int.from_bytes(otp_dec[4:8], 'little')
 
-        otp_hash: bytes = self.otp_dec[0xE0:0x100]
-        otp_hash_digest: bytes = sha256(self.otp_dec[0:0xE0]).digest()
+        otp_hash: bytes = otp_dec[0xE0:0x100]
+        otp_hash_digest: bytes = sha256(otp_dec[0:0xE0]).digest()
         if otp_hash_digest != otp_hash:
             raise CorruptOTPError(f'expected: {otp_hash.hex()}; result: {otp_hash_digest.hex()}')
 
-        otp_keysect_hash: bytes = sha256(self.otp_enc[0:0x90]).digest()
+        otp_keysect_hash: bytes = sha256(otp_enc[0:0x90]).digest()
 
-        self.set_keyslot('x', Keyslot.New3DSKeySector, otp_keysect_hash[0:0x10])
-        self.set_keyslot('y', Keyslot.New3DSKeySector, otp_keysect_hash[0x10:0x20])
+        self.set_keyslot('x', Keyslot.New3DSKeySector, otp_keysect_hash[0:0x10], update_normal_key=False)
+        self.set_keyslot('y', Keyslot.New3DSKeySector, otp_keysect_hash[0x10:0x20], update_normal_key=False)
 
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
-        twl_cid_lo, twl_cid_hi = readle(self.otp_dec[0x08:0xC]), readle(self.otp_dec[0xC:0x10])
+        twl_cid_lo, twl_cid_hi = readle(otp_dec[0x08:0xC]), readle(otp_dec[0xC:0x10])
         twl_cid_lo ^= 0xB358A6AF
         twl_cid_lo |= 0x80000000
         twl_cid_hi ^= 0x08C267B7
         twl_cid_lo = twl_cid_lo.to_bytes(4, 'little')
         twl_cid_hi = twl_cid_hi.to_bytes(4, 'little')
-        self.set_keyslot('x', Keyslot.TWLNAND, twl_cid_lo + b'NINTENDO' + twl_cid_hi)
+        self.set_keyslot('x', Keyslot.TWLNAND, twl_cid_lo + b'NINTENDO' + twl_cid_hi, update_normal_key=False)
 
-        console_key_xy: bytes = sha256(self.otp_dec[0x90:0xAC] + self.b9_extdata_otp).digest()
-        self.set_keyslot('x', Keyslot.Boot9Internal, console_key_xy[0:0x10])
+        console_key_xy: bytes = sha256(otp_dec[0x90:0xAC] + self._b9_extdata_otp).digest()
+        self.set_keyslot('x', Keyslot.Boot9Internal, console_key_xy[0:0x10], update_normal_key=False)
         self.set_keyslot('y', Keyslot.Boot9Internal, console_key_xy[0x10:0x20])
 
         extdata_off = 0
@@ -845,42 +845,45 @@ class CryptoEngine:
 
         a = gen(64)
         for i in range(0x4, 0x8):
-            self.set_keyslot('x', i, a[0:16])
+            self.set_keyslot('x', i, a[0:16], update_normal_key=False)
 
         for i in range(0x8, 0xc):
-            self.set_keyslot('x', i, a[16:32])
+            self.set_keyslot('x', i, a[16:32], update_normal_key=False)
 
         for i in range(0xc, 0x10):
-            self.set_keyslot('x', i, a[32:48])
+            self.set_keyslot('x', i, a[32:48], update_normal_key=False)
 
-        self.set_keyslot('x', 0x10, a[48:64])
+        self.set_keyslot('x', 0x10, a[48:64], update_normal_key=False)
 
         b = gen(16)
         off = 0
         for i in range(0x14, 0x18):
-            self.set_keyslot('x', i, b[off:off + 16])
+            self.set_keyslot('x', i, b[off:off + 16], update_normal_key=False)
             off += 16
 
         c = gen(64)
         for i in range(0x18, 0x1c):
-            self.set_keyslot('x', i, c[0:16])
+            self.set_keyslot('x', i, c[0:16], update_normal_key=False)
 
         for i in range(0x1c, 0x20):
-            self.set_keyslot('x', i, c[16:32])
+            self.set_keyslot('x', i, c[16:32], update_normal_key=False)
 
         for i in range(0x20, 0x24):
-            self.set_keyslot('x', i, c[32:48])
+            self.set_keyslot('x', i, c[32:48], update_normal_key=False)
 
-        self.set_keyslot('x', Keyslot.CMACAGB, c[48:64])
+        self.set_keyslot('x', Keyslot.CMACAGB, c[48:64], update_normal_key=False)
 
         d = gen(16)
         off = 0
 
         for i in range(0x28, 0x2c):
-            self.set_keyslot('x', i, d[off:off + 16])
+            self.set_keyslot('x', i, d[off:off + 16], update_normal_key=False)
             off += 16
 
+        self.update_normal_keys()
         self.otp_keys_set = True
+        self._otp_dec = otp_dec
+        self._otp_enc = otp_enc
 
     @_requires_bootrom
     def setup_keys_from_otp_file(self, path: 'FilePath'):
