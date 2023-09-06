@@ -1,7 +1,7 @@
-:mod:`sd` - SD card filesystem
-==============================
+:mod:`sdfs` - SD card filesystem
+================================
 
-.. py:module:: pyctr.type.sd
+.. py:module:: pyctr.type.sdfs
     :synopsis: Read and write Nintendo 3DS SD card encrypted digital content
 
 The :mod:`sd` module enables reading and writing of Nintendo 3DS SD card encrypted digital content. This is the "Nintendo 3DS" folder on an SD card and includes application data, save data, and extdata.
@@ -26,7 +26,7 @@ Directory hierarchy
       * Nintendo DSiWare
 
 Getting started
---------------
+---------------
 
 There are two or three steps to get access to the filesystem inside id1. First you create an :class:`SDRoot` object pointing at a "Nintendo 3DS" folder. Then, if you wish, you can select an id1 directory to use. Then use :meth:`~SDRoot.open_id1` to open the filesystem it and receive an :class:`SDFS` object.
 
