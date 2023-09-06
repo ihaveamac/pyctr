@@ -8,6 +8,7 @@
   * This should also fix issues with separate retail and dev versions of `CryptoEngine` being used (some keys stored globally only stored one type of key)
   * `CryptoEngine.setup_keys_from_boot9` and `CryptoEngine.setup_keys_from_boot9_file` will now output a deprecation warning
 * `CryptoEngine.setup_keys_from_otp` will now only update normal keys and set `otp_dec` and `otp_enc` at the end
+* Add `CryptoEngine.clone` method to create a copy of the `CryptoEngine` state
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

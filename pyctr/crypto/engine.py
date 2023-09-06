@@ -384,7 +384,7 @@ class CryptoEngine:
     dev: bool
     """Uses devunit keys."""
 
-    def __init__(self, boot9: str = None, dev: bool = False, setup_b9_keys: bool = True):
+    def __init__(self, boot9: 'FilePathOrObject' = None, dev: bool = False, setup_b9_keys: bool = True):
         self.key_x: Dict[int, int] = {}
         self.key_y: Dict[int, int] = {}
         self.key_normal: Dict[int, bytes] = {}
@@ -409,6 +409,27 @@ class CryptoEngine:
         if setup_b9_keys:
             if setup_boot9_keys(b9_file=boot9):
                 self._setup_keys_from_keyblob()
+
+    def clone(self):
+        """
+        Creates a copy of the :class:`CryptoEngine` state.
+        :return:
+        """
+        cloned = type(self)(dev=self.dev, setup_b9_keys=False)
+        cloned.key_x = self.key_x.copy()
+        cloned.key_y = self.key_y.copy()
+        cloned.key_normal = self.key_normal.copy()
+
+        cloned.b9_keys_set = self.b9_keys_set
+        cloned.otp_keys_set = self.otp_keys_set
+        cloned._otp_device_id = self._otp_device_id
+        cloned._otp_enc = self._otp_enc
+        cloned._otp_dec = self._otp_dec
+        cloned._b9_extdata_otp = self._b9_extdata_otp
+        cloned._b9_extdata_keygen = self._b9_extdata_keygen
+        cloned._id0 = self._id0
+
+        return cloned
 
     @property
     @_requires_bootrom
