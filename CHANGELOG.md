@@ -3,6 +3,10 @@
 ### Changelog
 * Add initial pyctr command line tool, `pyctr.cmd` (entry point `pyctrcmd`) with one command, `checkenv`
 * Move `seeddb_paths` to `pyctr.crypto.seeddb` from a function, making it publicly accessible (and then use it in `pyctr.cmd.checkenv`)
+* `pyctr.crypto.engine` now includes a new function, `setup_boot9_keys`, which loads the keyblobs from boot9 instead of doing that within `CryptoEngine`
+  * `CryptoEngine` now generates the keys from the global key blobs on initialization
+  * This should also fix issues with separate retail and dev versions of `CryptoEngine` being used (some keys stored globally only stored one type of key)
+  * `CryptoEngine.setup_keys_from_boot9` and `CryptoEngine.setup_keys_from_boot9_file` will now output a deprecation warning
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

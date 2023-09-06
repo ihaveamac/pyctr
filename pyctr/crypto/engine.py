@@ -10,11 +10,12 @@ from enum import IntEnum
 from functools import wraps
 from hashlib import sha256
 from io import RawIOBase, BytesIO
-from os import environ
-from os.path import getsize, join as pjoin
+from os import environ, fsdecode, PathLike
+from os.path import join as pjoin
 from struct import pack, unpack
 from threading import Lock
 from typing import TYPE_CHECKING
+from warnings import warn
 
 from Cryptodome.Cipher import AES
 from Cryptodome.Hash import CMAC
@@ -31,18 +32,19 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
-    from typing import BinaryIO, Dict, List, Optional, Union
-    from ..common import FilePath
+    from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+    from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
     RawIOBase = BinaryIO
 
 __all__ = ['MIN_TICKET_SIZE', 'CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError',
            'TicketLengthError', 'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO',
-           'TWLCTRFileIO', 'CBCFileIO']
+           'TWLCTRFileIO', 'CBCFileIO', 'setup_boot9_keys']
 
 logger = logging.getLogger(__name__)
 
+BOOT9_FULL_HASH = '2f88744feed717856386400a44bba4b9ca62e76a32c715d4f309c399bf28166f'
 BOOT9_PROT_HASH = '7331f7edece3dd33f2ab4bd0b3a5d607229fd19212c10b734cedcaf78c1a7b98'
 
 DEV_COMMON_KEY_0 = bytes.fromhex('55A3F872BDC80C555A654381139E153B')
@@ -83,7 +85,10 @@ class TicketLengthError(CryptoError):
 
 # wonder if I'm doing this right...
 class BootromNotFoundError(CryptoError):
-    """ARM9 bootROM was not found. Main argument is a tuple of checked paths."""
+    """
+    ARM9 bootROM was not found, or all the files attempted were corrupted.
+    Main argument is a tuple of checked paths.
+    """
 
 
 class CorruptBootromError(CryptoError):
@@ -172,7 +177,7 @@ class Keyslot(IntEnum):
     """
 
 
-common_key_y = (
+_common_key_y = (
     # eShop
     0xD07B337F9CA4385932A2E25723232EB9,
     # System
@@ -187,7 +192,7 @@ common_key_y = (
     0x5E66998AB4E8931606850FD7A16DD755
 )
 
-base_key_x = {
+_base_key_x = {
     # New3DS 9.3 NCCH
     0x18: (0x82E9C9BEBFB8BDB875ECC0A07D474374, 0x304BF1468372EE64115EBD4093D84276),
     # New3DS 9.6 NCCH
@@ -196,15 +201,21 @@ base_key_x = {
     0x25: (0xCEE7D8AB30C00DAE850EF5E382AC5AF3, 0x81907A4B6F1B47323A677974CE4AD71B),
 }
 
+_b9_keyblob: 'Dict[str, Optional[bytes]]' = {
+    'retail': None,
+    'dev': None
+}
+# tuples are (key, iv)
+_otp_key_iv: 'Dict[str, Optional[Tuple[bytes, bytes]]]' = {
+    'retail': None,
+    'dev': None
+}
+b9_blobs_loaded = False
+# the path where the info was loaded from
+b9_path: 'Optional[str]' = None
+
 # global values to be copied to new CryptoEngine instances after the first one
-_b9_key_x: 'Dict[int, int]' = {}
-_b9_key_y: 'Dict[int, int]' = {}
-_b9_key_normal: 'Dict[int, bytes]' = {}
-_b9_extdata_otp: bytes = None
-_b9_extdata_keygen: bytes = None
-_b9_path: str = None
-_otp_key: bytes = None
-_otp_iv: bytes = None
+
 
 b9_paths: 'List[str]' = []
 for p in config_dirs:
@@ -216,10 +227,93 @@ except KeyError:
     pass
 
 
+def _setup_keyblobs(b9: bytes):
+    global b9_blobs_loaded
+    keyblob_offset = 0x5860
+    otp_blob_offset = 0x56E0
+
+    if len(b9) not in {0x10000, 0x8000}:
+        raise CorruptBootromError(f'wrong length: 0x{len(b9):X}')
+
+    b9_hash = sha256(b9).hexdigest()
+    if b9_hash == BOOT9_FULL_HASH:
+        keyblob_offset += 0x8000
+        otp_blob_offset += 0x8000
+    elif b9_hash == BOOT9_PROT_HASH:
+        pass  # nothing to do here!
+    else:
+        raise CorruptBootromError('invalid hash')
+
+    b9_file = BytesIO(b9)
+
+    b9_file.seek(keyblob_offset)
+    _b9_keyblob['retail'] = b9_file.read(0x400)
+    _b9_keyblob['dev'] = b9_file.read(0x400)
+
+    b9_file.seek(otp_blob_offset)
+    _otp_key_iv['retail'] = (b9_file.read(0x10), b9_file.read(0x10))
+    _otp_key_iv['dev'] = (b9_file.read(0x10), b9_file.read(0x10))
+
+    b9_file.close()
+    b9_blobs_loaded = True
+
+
+def setup_boot9_keys(*, b9_file: 'FilePathOrObject' = None, b9_data: 'Optional[bytes]' = None) -> bool:
+    """
+    Load keys from the ARM9 BootROM. Accepts full and prot-only boot9 dumps.
+
+    This function is called automatically by :class:`CryptoEngine` on initialization, however one can manually call
+    this if boot9 needs to be loaded before or from a separate path.
+
+    This function can attempt to load the boot9 in four different ways:
+    #. With no arguments: it will attempt to load boot9 from the default configuration paths.
+    #. With a file path: it will attempt to open and read the data from that path.
+    #. With a file-like object: it will attempt to read 0x10000 bytes.
+    #. With a bytes value.
+
+    This method can be called multiple times, subsequent calls after the keys are loaded will do nothing.
+
+    :param b9_file: File path or opened file-like object to a boot9 file.
+    :param b9_data: Raw boot9 data.
+    :return: If the keys were loaded successfully, or if they were already loaded.
+    :rtype: bool
+    :raises BootromNotFoundError: If no path or data is provided, all paths defined in :data:`b9_paths` were invalid.
+    :raises CorruptBootromError: If a file or data was provided, the file was invalid (wrong size or hash).
+    """
+    global b9_path, b9_blobs_loaded
+    if b9_blobs_loaded:
+        return True
+    if b9_data:
+        # trim useless data just in case
+        _setup_keyblobs(b9_data[0:0x10000])
+        return True
+    elif b9_file is None:
+        for path in b9_paths:
+            try:
+                with open(path, 'rb') as f:
+                    _setup_keyblobs(f.read(0x10000))
+            except (FileNotFoundError, CorruptBootromError):
+                continue
+            else:
+                b9_path = path
+                return True
+        else:
+            raise BootromNotFoundError(b9_paths)
+    elif isinstance(b9_file, (PathLike, str, bytes)):
+        b9_file = fsdecode(b9_file)
+        with open(b9_file, 'rb') as f:
+            _setup_keyblobs(f.read(0x10000))
+        b9_path = fsdecode(b9_file)
+        return True
+    else:
+        _setup_keyblobs(b9_file.read(0x10000))
+        return True
+
+
 def _requires_bootrom(method):
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        if not self.b9_keys_set:
+    def wrapper(self: 'CryptoEngine', *args, **kwargs):
+        if not b9_blobs_loaded:
             raise KeyslotMissingError('bootrom is required to set up keys, see setup_keys_from_boot9')
         return method(self, *args, **kwargs)
     return wrapper
@@ -227,8 +321,8 @@ def _requires_bootrom(method):
 
 def _requires_otp(method):
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        if not self.b9_keys_set:
+    def wrapper(self: 'CryptoEngine', *args, **kwargs):
+        if not self.otp_keys_set:
             raise KeyslotMissingError('an OTP dump is required, see setup_keys_from_otp')
         return method(self, *args, **kwargs)
     return wrapper
@@ -278,20 +372,14 @@ class CryptoEngine:
     :param setup_b9_keys: Whether to automatically load keys from boot9.
     """
 
-    __slots__ = ['key_x', 'key_y', 'key_normal', 'dev', 'b9_keys_set', 'b9_path', 'otp_keys_set', '_otp_enc',
-                 '_otp_dec', '_b9_extdata_otp', '_b9_extdata_keygen', '_otp_device_id', '_otp_key', '_otp_iv', '_id0']
+    __slots__ = ['key_x', 'key_y', 'key_normal', 'dev', 'b9_keys_set', 'otp_keys_set', '_otp_enc',
+                 '_otp_dec', '_b9_extdata_otp', '_b9_extdata_keygen', '_otp_device_id', '_id0', '_key_set']
 
     b9_keys_set: bool
     """Keys have been set from the ARM9 BootROM."""
 
     otp_keys_set: bool
     """Keys have been set from a dumped OTP region."""
-
-    b9_path: 'Optional[str]'
-    """
-    Path that the ARM9 BootROM was loaded from. Set when :meth:`setup_keys_from_boot9_file` is called, which is
-    automatically called on object creation if `setup_b9_keys` was `True`.
-    """
 
     dev: bool
     """Uses devunit keys."""
@@ -302,29 +390,25 @@ class CryptoEngine:
         self.key_normal: Dict[int, bytes] = {}
 
         self.dev = dev
+        self._key_set = 'dev' if dev else 'retail'
 
         self.b9_keys_set = False
-        self.b9_path = None
 
         self.otp_keys_set = False
 
-        self._b9_extdata_otp: Optional[bytes] = None
-        self._b9_extdata_keygen: Optional[bytes] = None
-
         self._otp_device_id: Optional[int] = None
-        self._otp_key: Optional[bytes] = None
-        self._otp_iv: Optional[bytes] = None
 
         self._otp_enc: Optional[bytes] = None
         self._otp_dec: Optional[bytes] = None
 
         self._id0: Optional[bytes] = None
 
-        for keyslot, keys in base_key_x.items():
+        for keyslot, keys in _base_key_x.items():
             self.key_x[keyslot] = keys[dev]
 
         if setup_b9_keys:
-            self.setup_keys_from_boot9_file(boot9)
+            if setup_boot9_keys(b9_file=boot9):
+                self._setup_keys_from_keyblob()
 
     @property
     @_requires_bootrom
@@ -337,14 +421,20 @@ class CryptoEngine:
         return self._b9_extdata_keygen
 
     @property
+    def b9_path(self):
+        warn('CryptoEngine.b9_path has been replaced with pyctr.crypto.engine.b9_path',
+             DeprecationWarning)
+        return b9_path
+
+    @property
     @_requires_bootrom
     def otp_key(self) -> bytes:
-        return self._otp_key
+        return _otp_key_iv[self._key_set][0]
 
     @property
     @_requires_bootrom
     def otp_iv(self) -> bytes:
-        return self._otp_iv
+        return _otp_key_iv[self._key_set][1]
 
     @property
     @_requires_otp
@@ -521,7 +611,7 @@ class CryptoEngine:
         if self.dev and common_key_index == 0:
             self.set_normal_key(Keyslot.CommonKey, DEV_COMMON_KEY_0)
         else:
-            self.set_keyslot('y', Keyslot.CommonKey, common_key_y[common_key_index])
+            self.set_keyslot('y', Keyslot.CommonKey, _common_key_y[common_key_index])
 
         cipher = self.create_cbc_cipher(Keyslot.CommonKey, title_id + (b'\0' * 8))
         self.set_normal_key(Keyslot.DecryptedTitlekey, cipher.decrypt(titlekey))
@@ -540,7 +630,7 @@ class CryptoEngine:
 
         self.load_encrypted_titlekey(titlekey_enc, common_key_index, title_id)
 
-    def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]'):
+    def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]', *, update_normal_key: bool = False):
         """Sets a keyslot to the specified key."""
         to_use = None
         if xy == 'x':
@@ -548,14 +638,16 @@ class CryptoEngine:
         elif xy == 'y':
             to_use = self.key_y
         if isinstance(key, bytes):
-            key = int.from_bytes(key, 'big' if keyslot > 0x03 else 'little')
+            # noinspection PyTypeChecker
+            key = int.from_bytes(key, ('big' if keyslot > 0x03 else 'little'))
         if __debug__:
             logger.debug('Setting keyslot %r type %s key %032x', keyslot, xy, key)
         to_use[keyslot] = key
-        try:
-            self.key_normal[keyslot] = self.keygen(keyslot)
-        except KeyError:
-            pass
+        if update_normal_key:
+            try:
+                self.key_normal[keyslot] = self.keygen(keyslot)
+            except KeyError:
+                pass
 
     def set_normal_key(self, keyslot: int, key: bytes):
         """
@@ -567,6 +659,17 @@ class CryptoEngine:
         if __debug__:
             logger.debug('Setting keyslot %r type normal key %s', keyslot, key.hex())
         self.key_normal[keyslot] = key
+
+    def update_normal_keys(self):
+        """
+        Refresh normal keys.
+        This is only required if :meth:`set_keyslot` was called with `update_normal_key=False`.
+        """
+        shared_keys = self.key_x.keys() & self.key_y.keys()
+        for keyslot in shared_keys:
+            if __debug__:
+                logger.debug('Updating keyslot %r normalkey', keyslot)
+            self.set_normal_key(keyslot, self.keygen(keyslot))
 
     def keygen(self, keyslot: int) -> bytes:
         """
@@ -600,121 +703,81 @@ class CryptoEngine:
         self.set_normal_key(Keyslot.ZeroKey, b'\0' * 16)
         self.set_normal_key(Keyslot.FixedSystemKey, bytes.fromhex('527CE630A9CA305F3696F3CDE954194B'))
 
-    def _copy_global_keys(self):
-        self.key_x.update(_b9_key_x)
-        self.key_y.update(_b9_key_y)
-        self.key_normal.update(_b9_key_normal)
-        self._otp_key = _otp_key
-        self._otp_iv = _otp_iv
-        self._b9_extdata_otp = _b9_extdata_otp
-        self._b9_extdata_keygen = _b9_extdata_keygen
-
-        self._set_fixed_keys()
-
-        self.b9_keys_set = True
-
-    def setup_keys_from_boot9(self, b9: bytes):
-        """Set up certain keys from an ARM9 bootROM dump."""
-        global _otp_key, _otp_iv, _b9_extdata_otp, _b9_extdata_keygen
+    @_requires_bootrom
+    def _setup_keys_from_keyblob(self):
         if self.b9_keys_set:
             return
 
-        if _b9_key_x:
-            self._copy_global_keys()
-            return
-
-        b9_len = len(b9)
-        if b9_len != 0x8000:
-            raise CorruptBootromError(f'wrong length: {b9_len}')
-
-        b9_hash_digest: str = sha256(b9).hexdigest()
-        if b9_hash_digest != BOOT9_PROT_HASH:
-            raise CorruptBootromError(f'expected: {BOOT9_PROT_HASH}; returned: {b9_hash_digest}')
-
-        keyblob_offset = 0x5860
-        otp_key_offset = 0x56E0
+        target = 'retail'
         if self.dev:
-            keyblob_offset += 0x400
-            otp_key_offset += 0x20
+            target = 'dev'
 
-        _otp_key = b9[otp_key_offset:otp_key_offset + 0x10]
-        _otp_iv = b9[otp_key_offset + 0x10:otp_key_offset + 0x20]
+        keyblob = BytesIO(_b9_keyblob[target])
 
-        keyblob = BytesIO(b9[keyblob_offset:keyblob_offset + 0x400])
-
-        _b9_extdata_keygen = keyblob.read(0x200)
-        _b9_extdata_otp = _b9_extdata_keygen[0:0x24]
+        self._b9_extdata_keygen = keyblob.read(0x200)
+        self._b9_extdata_otp = self._b9_extdata_keygen[0:0x24]
 
         # load keys
         # based on https://github.com/yellows8/boot9_tools/blob/7630e679f1409b90bf40939cd78c3b008ebb2761/boot9_keytool.sh
 
         keyblob.seek(0x170)
-        def key_loop(keyslot: int, kdict: 'Dict[int, Union[int, bytes]]', conv_func):
-            data = conv_func(keyblob.read(16))
+
+        def key_loop(xy: str, keyslot: int):
+            data = keyblob.read(0x10)
             for i in range(4):
-                kdict[keyslot + i] = data
+                if xy == 'n':
+                    self.set_normal_key(keyslot + i, data)
+                else:
+                    self.set_keyslot(xy, keyslot + i, data, update_normal_key=False)
 
-        def key_loop_increase(keyslot: int, kdict: 'Dict[int, Union[int, bytes]]', conv_func):
+        def key_loop_increase(xy: str, keyslot: int):
             for i in range(4):
-                data = conv_func(keyblob.read(16))
-                kdict[keyslot + i] = data
+                data = keyblob.read(16)
+                if xy == 'n':
+                    self.set_normal_key(keyslot + i, data)
+                else:
+                    self.set_keyslot(xy, keyslot + i, data, update_normal_key=False)
 
-        key_loop(0x2C, _b9_key_x, readbe)
-        key_loop(0x30, _b9_key_x, readbe)
-        key_loop(0x34, _b9_key_x, readbe)
-        key_loop(0x38, _b9_key_x, readbe)
-        key_loop_increase(0x3C, _b9_key_x, readbe)
+        key_loop('x', 0x2C)
+        key_loop('x', 0x30)
+        key_loop('x', 0x34)
+        key_loop('x', 0x38)
+        key_loop_increase('x', 0x3C)
 
-        key_loop_increase(0x04, _b9_key_y, readbe)
-        key_loop_increase(0x08, _b9_key_y, readbe)
+        key_loop_increase('y', 0x04)
+        key_loop_increase('y', 0x08)
 
-        key_loop(0x0C, _b9_key_normal, bytes)
-        key_loop(0x10, _b9_key_normal, bytes)
-        key_loop_increase(0x14, _b9_key_normal, bytes)
-        key_loop(0x18, _b9_key_normal, bytes)
-        key_loop(0x1C, _b9_key_normal, bytes)
-        key_loop(0x20, _b9_key_normal, bytes)
-        key_loop(0x24, _b9_key_normal, bytes)
+        key_loop('n', 0x0C)
+        key_loop('n', 0x10)
+        key_loop_increase('n', 0x14)
+        key_loop('n', 0x18)
+        key_loop('n', 0x1C)
+        key_loop('n', 0x20)
+        key_loop('n', 0x24)
         keyblob.seek(-16, 1)
-        key_loop_increase(0x28, _b9_key_normal, bytes)
-        key_loop(0x2C, _b9_key_normal, bytes)
-        key_loop(0x30, _b9_key_normal, bytes)
-        key_loop(0x34, _b9_key_normal, bytes)
-        key_loop(0x38, _b9_key_normal, bytes)
+        key_loop_increase('n', 0x28)
+        key_loop('n', 0x2C)
+        key_loop('n', 0x30)
+        key_loop('n', 0x34)
+        key_loop('n', 0x38)
         keyblob.seek(-16, 1)
-        key_loop_increase(0x3C, _b9_key_normal, bytes)
+        key_loop_increase('n', 0x3C)
 
-        self._copy_global_keys()
+        self._set_fixed_keys()
+
+    def setup_keys_from_boot9(self, b9: bytes):
+        """Set up certain keys from an ARM9 bootROM dump."""
+        warn('CryptoEngine.setup_keys_from_boot9 has been replaced with pyctr.crypto.engine.setup_boot9_keys',
+             DeprecationWarning)
+        setup_boot9_keys(b9_data=b9)
+        self._setup_keys_from_keyblob()
 
     def setup_keys_from_boot9_file(self, path: 'FilePath' = None):
         """Set up certain keys from an ARM9 bootROM file."""
-        global _b9_path
-        if self.b9_keys_set:
-            return
-
-        if _b9_key_x:
-            self.b9_path = _b9_path
-            self._copy_global_keys()
-            return
-
-        paths = (path,) if path else b9_paths
-
-        for p in paths:
-            try:
-                b9_size = getsize(p)
-                if b9_size in {0x8000, 0x10000}:
-                    with open(p, 'rb') as f:
-                        if b9_size == 0x10000:
-                            f.seek(0x8000)
-                        self.setup_keys_from_boot9(f.read(0x8000))
-                        _b9_path = p
-                        self.b9_path = p
-                        return
-            except FileNotFoundError:
-                continue
-
-        # if keys are not set...
-        raise BootromNotFoundError(paths)
+        warn('CryptoEngine.setup_keys_from_boot9_file has been replaced with pyctr.crypto.engine.setup_boot9_keys',
+             DeprecationWarning)
+        setup_boot9_keys(b9_file=path)
+        self._setup_keys_from_keyblob()
 
     @_requires_bootrom
     def setup_keys_from_otp(self, otp: bytes):
@@ -845,6 +908,80 @@ class CryptoEngine:
         """Set up the SD key from a movable.sed file."""
         with open(path, 'rb') as f:
             self.setup_sd_key(f.read(0x140))
+
+    def _format_state(self):
+        """
+        Formats the current state of the engine into Markdown.
+        This is for debugging and so is slow and expensive.
+        """
+        from .. import __version__
+        from io import StringIO
+
+        out = StringIO()
+        longest_keyslot_name = 0
+
+        def keyslot_repr(ks):
+            nonlocal longest_keyslot_name
+            try:
+                val = Keyslot(ks).name
+            except ValueError:
+                val = f''
+            longest_keyslot_name = len(val) if len(val) > longest_keyslot_name else longest_keyslot_name
+            return val
+
+        print('# CryptoEngine state', file=out)
+        print('* pyctr version:', __version__, file=out)
+        print('* Key set:', 'dev' if self.dev else 'retail', file=out)
+        print('* B9 path loaded:', b9_path, file=out)
+        print('* B9 keys set (local):', self.b9_keys_set, file=out)
+        print('* B9 keys set (global):', b9_blobs_loaded, file=out)
+        print('* OTP keys set:', self.otp_keys_set, file=out)
+        key_x = {}
+        key_y = {}
+        key_normal = {}
+        for ks, v in self.key_x.items():
+            key_x[ks] = v.to_bytes(0x10, ('big' if ks > 0x03 else 'little'))
+        for ks, v in self.key_y.items():
+            key_y[ks] = v.to_bytes(0x10, ('big' if ks > 0x03 else 'little'))
+        for ks, v in self.key_normal.items():
+            key_normal[ks] = v
+
+        all_keyslots = sorted(key_x.keys() | key_y.keys() | key_normal.keys())
+        all_keyslot_names = {x: keyslot_repr(x) for x in all_keyslots}
+
+        print(file=out)
+        print(f'| Keyslot | {"Name".ljust(longest_keyslot_name)} | {"X".ljust(34)} | {"Y".ljust(34)} | {"Normal".ljust(34)} | N State |', file=out)
+        print(f'| ------- | {"-" * longest_keyslot_name} | {"-" * 34} | {"-" * 34} | {"-" * 34} | ------- |', file=out)
+        for ks in all_keyslots:
+            try:
+                x = '`' + key_x[ks].hex() + '`'
+            except KeyError:
+                x = '(none)'.ljust(34)
+            try:
+                y = '`' + key_y[ks].hex() + '`'
+            except KeyError:
+                y = '(none)'.ljust(34)
+            n_state = '       '
+            try:
+                n = '`' + key_normal[ks].hex() + '`'
+            except KeyError:
+                n = '(none)'.ljust(34)
+            else:
+                if ks in key_x and ks in key_y:
+                    expected_n = self.keygen(ks)
+                    if expected_n.hex() != n:
+                        n_state = 'invalid'
+
+            print(f'| 0x{ks:02X}    | {all_keyslot_names[ks].ljust(longest_keyslot_name)} | {x} | {y} | {n} | {n_state} |', file=out)
+
+        return out.getvalue()
+
+    def _print_state(self):
+        """
+        Prints the current state of the engine.
+        This is for debugging and so is slow and expensive.
+        """
+        print(self._format_state())
 
 
 class _CryptoFileBase(RawIOBase):
