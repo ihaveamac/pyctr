@@ -73,6 +73,7 @@ It can be installed with ``pip``:
    :caption: Console data
 
    pyctr.type.nand
+   pyctr.type.sdfs
    pyctr.type.sd
 
 .. toctree::
