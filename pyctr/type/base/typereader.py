@@ -95,6 +95,11 @@ class TypeReaderBase:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    @property
+    def _closed(self):
+        # for PyFilesystem2 which checks _closed
+        return self.closed
+
     def close(self):
         """Close the reader. If closefd is `True`, the underlying file is also closed."""
         if not self.closed:

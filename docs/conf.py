@@ -51,7 +51,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'pyfatfs': ('https://pyfatfs.readthedocs.io/en/stable', None)
+    'pyfatfs': ('https://pyfatfs.readthedocs.io/en/stable', None),
+    'fs': ('https://docs.pyfilesystem.org/en/stable', None),
 }
 
 autodoc_typehints = 'description'

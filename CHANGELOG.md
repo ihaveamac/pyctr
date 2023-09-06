@@ -1,4 +1,13 @@
 ## Next
+### Highlights
+A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
+
+[PyFilesystem2](https://www.pyfilesystem.org/) (fs) is now a dependency, used for `RomFSReader`.
+
+### Deprecation warnings
+* `RomFSReader` was updated to use PyFilesystem2.
+  * To match PyFilesystem2, the function signature for `open` has changed to add `mode` and `buffering` arguments between `path` and `encoding`. This also means opening files is done in text mode by default. For compatibility, if the second argument is detected to be an encoding, the file will be opened like before, and a `DeprecationWarning` will be raised.
+  * `get_info_from_path` is deprecated and should be replaced with `getinfo`, `listdir`, or `scandir`.
 
 ### Changelog
 * Add initial pyctr command line tool, `pyctr.cmd` (entry point `pyctrcmd`) with one command, `checkenv`
@@ -10,6 +19,9 @@
 * `CryptoEngine.setup_keys_from_otp` will now only update normal keys and set `otp_dec` and `otp_enc` at the end
 * Add `CryptoEngine.clone` method to create a copy of the `CryptoEngine` state
 * `CDNReader` and `CIAReader` will now clone their `CryptoEngine` state for each `NCCHReader`
+* Use `fs.base.FS` for `RomFSReader`
+  * fs (PyFilesystem2) is now a dependency
+  * Tests have been updated to use the new FS methods
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
@@ -21,8 +33,7 @@ A new `nand` module with the `NAND` class is added to read and write to NAND ima
 
 `RomFSReader` initialization performance was improved, especially with RomFS files containing large amounts of files or directories.
 
-Documentation is being added and improved over time. Check it on [Read the
-Docs](https://pyctr.readthedocs.io/en/latest/).
+Documentation is being added and improved over time. Check it on [Read the Docs](https://pyctr.readthedocs.io/en/latest/).
 
 ### Changelog
 * Add the module `pyctr.type.configsave` with the class `ConfigSaveReader` (_module name changed in a future commit_)
