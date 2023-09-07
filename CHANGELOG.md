@@ -2,7 +2,10 @@
 ### Highlights
 A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 
-[PyFilesystem2](https://www.pyfilesystem.org/) (fs) is now a dependency, used for `RomFSReader`.
+[PyFilesystem2](https://www.pyfilesystem.org/) (fs) is now a dependency.
+* `RomFSReader` is now based on `fs.base.FS`
+* `pyctr.type.sdfs` is a replacement for `pyctr.type.sd` that uses `fs.base.FS`
+* `NAND` now contains 3 new methods: `open_ctr_fat`, `open_twl_fat`, and `open_bonus_fat`
 
 ### Deprecation warnings
 * `RomFSReader` was updated to use PyFilesystem2.
@@ -25,6 +28,8 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
   * fs (PyFilesystem2) is now a dependency
   * Tests have been updated to use the new FS methods
 * Create `pyctr.type.sdfs` as a replacement for `pyctr.type.sd`
+* Implement `open_ctr_fat`, `open_twl_fat`, and `open_bonus_fat` in `NAND`
+  * pyfatfs is now a dependency
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
