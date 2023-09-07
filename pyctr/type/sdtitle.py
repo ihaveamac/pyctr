@@ -127,10 +127,6 @@ class SDTitleReader:
                 fs = OSFS(title_root)
         self.fs = fs
 
-        print(title_root)
-        print(fs)
-        print(fs.listdir(title_root))
-
         def add_file(section: 'Union[SDTitleSection, int]', path: str):
             self._base_files[section] = path
             self.available_sections.append(section)
