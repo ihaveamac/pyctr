@@ -6,14 +6,17 @@
 
 from functools import wraps
 from io import RawIOBase
+from os import PathLike, fsdecode
+from os.path import dirname as os_dirname
 from typing import TYPE_CHECKING
+
+from fs import open_fs
+from fs.base import FS
+from fs.path import dirname as fs_dirname
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from os import PathLike
-    from typing import BinaryIO, IO, Union
-
-    from fs.base import FS
+    from typing import BinaryIO, IO, Union, Optional, Tuple
 
     RawIOBase = BinaryIO
 
@@ -24,6 +27,34 @@ if TYPE_CHECKING:
 
 class PyCTRError(Exception):
     """Common base class for all PyCTR errors."""
+
+
+def get_fs_file_object(
+        path: 'FilePathOrObject',
+        fs: 'Optional[FS]' = None,
+        *,
+        mode: str = 'rb'
+    ) -> 'Tuple[IO, bool]':
+    if isinstance(path, (PathLike, str, bytes)):
+        """
+        Opens a file on the given filesystem. This can be given a simple OS path, a path and a filesystem, or an
+        olready opened file object.
+        
+        :param path: A path to a file.
+        :param fs: A filesystem or an FS URL.
+        :return: A file-like object and True if the file is newly opened.
+        """
+        if fs:
+            # fs can be an FS object or an FS URL
+            if not isinstance(fs, FS):
+                fs = open_fs(fs)
+            return fs.open(path, mode), True
+        else:
+            # no fs means assuming OS, and no real need to bother going through OSFS for this one
+            return open(path, mode), True
+    else:
+        # it's already an opened file object, so just return that
+        return path, False
 
 
 def _raise_if_file_closed(method):

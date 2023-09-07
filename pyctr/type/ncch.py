@@ -22,6 +22,9 @@ from .romfs import RomFSReader
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+
+    from fs.base import FS
+
     from ..common import FilePathOrObject
 
 __all__ = ['NCCH_MEDIA_UNIT', 'NO_ENCRYPTION', 'EXEFS_NORMAL_CRYPTO_FILES', 'FIXED_SYSTEM_KEY', 'NCCHError',
@@ -238,11 +241,11 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
                  load_sections: bool = True, assume_decrypted: bool = False):
 
-        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
+        super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev)
 
         self.closed = False
         self.exefs = None

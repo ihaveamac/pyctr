@@ -15,10 +15,13 @@ except ModuleNotFoundError:
     # Pillow not installed
     Image = None
 
-from ..common import PyCTRError
+from ..common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Dict, List, Mapping, Optional, Tuple, Union
+
+    from fs.base import FS
+
     from ..common import FilePath
 
     RGBTuple = Tuple[int, int, int]
@@ -288,6 +291,6 @@ class SMDH:
         return cls(names, icon_small_array, icon_large_array, flags, region_lockout)
 
     @classmethod
-    def from_file(cls, fn: 'FilePath') -> 'SMDH':
-        with open(fn, 'rb') as f:
+    def from_file(cls, fn: 'FilePath', *, fs: 'Optional[FS]' = None) -> 'SMDH':
+        with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f)

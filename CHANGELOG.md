@@ -6,6 +6,9 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * `RomFSReader` is now based on `fs.base.FS`
 * `pyctr.type.sdfs` is a replacement for `pyctr.type.sd` that uses `fs.base.FS`
 * `NAND` now contains 3 new methods: `open_ctr_fat`, `open_twl_fat`, and `open_bonus_fat`
+* Most types that accept a file path or file-like object now accept an `fs=` argument, which can be an FS URL or a filesystem. For example:
+  * `CIAReader('mygame.cia', fs='zip://path/to/mygame.zip')`
+  * `CDNReader('tmd', fs=fs.zipfs.ZipFS('mycdngame.zip'))`
 
 ### Deprecation warnings
 * `RomFSReader` was updated to use PyFilesystem2.
@@ -30,6 +33,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Create `pyctr.type.sdfs` as a replacement for `pyctr.type.sd`
 * Implement `open_ctr_fat`, `open_twl_fat`, and `open_bonus_fat` in `NAND`
   * pyfatfs is now a dependency
+* Implement loading from SD in remaining types
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

@@ -8,11 +8,14 @@ from hashlib import sha256
 from struct import pack
 from typing import TYPE_CHECKING, NamedTuple
 
-from ..common import PyCTRError
+from ..common import PyCTRError, get_fs_file_object
 from ..util import readbe, readle
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Iterable
+    from typing import BinaryIO, Iterable, Optional
+
+    from fs.base import FS
+
     from ..common import FilePath
 
 __all__ = ['CHUNK_RECORD_SIZE', 'TitleMetadataError', 'InvalidSignatureTypeError', 'InvalidHashError',
@@ -331,6 +334,6 @@ class TitleMetadataReader:
                    _u_access_rights=u_access_rights, _u_boot_count=u_boot_count, _u_padding=u_padding)
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, verify_hashes: bool = True) -> 'TitleMetadataReader':
-        with open(fn, 'rb') as f:
+    def from_file(cls, fn: 'FilePath', *, fs: 'Optional[FS]' = None, verify_hashes: bool = True) -> 'TitleMetadataReader':
+        with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f, verify_hashes=verify_hashes)

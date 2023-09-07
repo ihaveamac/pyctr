@@ -137,8 +137,8 @@ class RomFSReader(TypeReaderBase, FS):
     __slots__ = ('_tree_root', 'case_insensitive', 'data_offset', 'lv3_offset', 'total_size')
 
     def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *,
-                 closefd: bool = None, open_compatibility_mode: bool = True):
-        super().__init__(file, closefd=closefd)
+                 fs: 'Optional[FS]' = None, closefd: bool = None, open_compatibility_mode: bool = True):
+        super().__init__(file, fs=fs, closefd=closefd)
         self.case_insensitive = case_insensitive
         self.open_compatibility_mode = open_compatibility_mode
 

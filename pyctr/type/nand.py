@@ -347,12 +347,22 @@ class NAND(TypeReaderCryptoBase):
     ctr_partitions: 'List[Tuple[int, int]]'
     twl_partitions: 'List[Tuple[int, int]]'
 
-    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, closefd: bool = None, crypto: CryptoEngine = None,
-                 dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None, cid: bytes = None,
-                 cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
-        super().__init__(file=file, mode=mode, closefd=closefd, crypto=crypto, dev=dev)
+    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+                 crypto: CryptoEngine = None, dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None,
+                 cid: bytes = None, cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
+        super().__init__(file=file, fs=fs, mode=mode, closefd=closefd, crypto=crypto, dev=dev)
 
         self._lock = Lock()
+
+        # opened files to close if the NAND is closed
+        # noinspection PyTypeChecker
+        self._open_files: Set[SubsectionIO] = WeakSet()
+        # FAT partitions should be closed before the underlying file so it can do some final cleanup
+        # noinspection PyTypeChecker
+        self._fat_partitons: Set[PyFatBytesIOFS] = WeakSet()
+
+        # these do the actual de/encryption part and are used as the basis for SubsectionIO files
+        self._base_files = {}
 
         # set up otp if it was provided
         # otherwise it has to be in essential.exefs or set up manually with a custom CryptoEngine object
@@ -362,13 +372,6 @@ class NAND(TypeReaderCryptoBase):
         elif otp_file:
             logger.info('Using OTP from file %s', otp_file)
             self._crypto.setup_keys_from_otp_file(otp_file)
-
-        # opened files to close if the NAND is closed
-        # noinspection PyTypeChecker
-        self._open_files: Set[SubsectionIO] = WeakSet()
-        # FAT partitions should be closed before the underlying file so it can do some final cleanup
-        # noinspection PyTypeChecker
-        self._fat_partitons: Set[PyFatBytesIOFS] = WeakSet()
 
         self._file.seek(0, 2)
         raw_nand_size = self._file.tell() - self._start
@@ -458,9 +461,6 @@ class NAND(TypeReaderCryptoBase):
                 self._generate_ctr_counter()
             if self.twl_index is not None:
                 self._generate_twl_counter()
-
-        # these do the actual de/encryption part and are used as the basis for SubsectionIO files
-        self._base_files = {}
 
         self.ctr_partitions = []
         self.twl_partitions = []

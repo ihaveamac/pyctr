@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 from weakref import WeakSet
 
+from fs import open_fs
+from fs.base import FS
+from fs.osfs import OSFS
+from fs.path import dirname as fs_dirname, join as fs_join, basename as fs_basename
+
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, Keyslot, add_seed
 from .ncch import NCCHReader
@@ -79,7 +84,7 @@ class CDNReader:
     """
 
     __slots__ = (
-        '_base_files', '_crypto', '_open_files', 'available_sections', 'closed', 'content_info', 'contents', 'tmd'
+        '_base_files', '_crypto', '_open_files', 'available_sections', 'closed', 'content_info', 'contents', 'tmd', 'fs'
     )
 
     available_sections: 'List[Union[CDNSection, int]]'
@@ -100,7 +105,7 @@ class CDNReader:
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
-    def __init__(self, file: 'FilePath', *, case_insensitive: bool = False,
+    def __init__(self, file: 'FilePath', *, fs: 'Optional[FS]' = None, case_insensitive: bool = False,
                  crypto: 'CryptoEngine' = None, dev: bool = False, seed: bytes = None, titlekey: bytes = None,
                  decrypted_titlekey: bytes = None, common_key_index: int = 0, load_contents: bool = True):
         if crypto:
@@ -110,8 +115,18 @@ class CDNReader:
 
         self.closed = False
 
-        file = Path(fsdecode(file)).absolute()
-        title_root = file.parent
+        if fs:
+            if not isinstance(fs, FS):
+                fs = open_fs(fs)
+            title_root = fs_dirname(file)
+            file = fs_basename(file)
+        else:
+            # the path being absolute makes Path.parent work reliably
+            file = Path(file).absolute()
+            fs = OSFS(fsdecode(file.parent))
+            title_root = '/'
+            file = file.name
+        self.fs = fs
 
         # {section: (filepath, iv)}
         self._base_files: Dict[Union[CDNSection, int], Tuple[str, bytes]] = {}
@@ -130,7 +145,7 @@ class CDNReader:
             self._base_files[section] = (path, iv)
             self.available_sections.append(section)
 
-        add_file(CDNSection.TitleMetadata, file, None)
+        add_file(CDNSection.TitleMetadata, fs_join(title_root, file), None)
 
         with self.open_raw_section(CDNSection.TitleMetadata) as tmd:
             self.tmd = TitleMetadataReader.load(tmd)
@@ -143,7 +158,7 @@ class CDNReader:
         elif titlekey:
             self._crypto.load_encrypted_titlekey(titlekey, common_key_index, self.tmd.title_id)
         else:
-            ticket_file = title_root / 'cetk'
+            ticket_file = fs_join(title_root, 'cetk')
             add_file(CDNSection.Ticket, ticket_file, None)
             with self.open_raw_section(CDNSection.Ticket) as ticket:
                 self._crypto.load_from_ticket(ticket.read(0x2AC))
@@ -156,11 +171,11 @@ class CDNReader:
             is_srl = record.cindex == 0 and self.tmd.title_id[3:5] == '48'
 
             # allow both lowercase and uppercase contents
-            content_lower = title_root / record.id
-            content_upper = title_root / record.id.upper()
-            if content_lower.is_file():
+            content_lower = fs_join(title_root, record.id)
+            content_upper = fs_join(title_root, record.id.upper())
+            if fs.isfile(content_lower):
                 content_file = content_lower
-            elif content_upper.is_file():
+            elif fs.isfile(content_upper):
                 content_file = content_upper
             else:
                 # can't find the file, so continue to the next record
@@ -215,7 +230,7 @@ class CDNReader:
         :rtype: io.BufferedIOBase | CBCFileIO
         """
         filepath, iv = self._base_files[section]
-        f = open(filepath, 'rb')
+        f = self.fs.open(filepath, 'rb')
         if iv:  # if encrypted
             f = self._crypto.create_cbc_io(Keyslot.DecryptedTitlekey, f, iv, closefd=True)
         self._open_files.add(f)
