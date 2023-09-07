@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 from weakref import WeakSet
 
 from fs import open_fs
+from fs.base import FS
 from fs.osfs import OSFS
-from fs.path import dirname as fs_dirname, join as fs_join
+from fs.path import dirname as fs_dirname, join as fs_join, basename as fs_basename
 
 from ..common import PyCTRError
 from ..crypto import add_seed
@@ -23,9 +24,7 @@ if TYPE_CHECKING:
     from pathlib import PurePath
     from typing import BinaryIO, Dict, List, Set, Union
 
-    from fs.base import FS
-
-    from ..common import FilePath, FilePathOrFS
+    from ..common import FilePath
     from .ncch import NCCHReader
     from .sd import SDFilesystem
     from .tmd import ContentChunkRecord
@@ -118,20 +117,26 @@ class SDTitleReader:
             file = PurePosixPath(file)
             title_root = fsdecode(file.parent)
             fs = OSFS(title_root)
+            file = file.name
         else:
             if fs:
+                if not isinstance(fs, FS):
+                    fs = open_fs(fs)
                 title_root = fs_dirname(file)
+                file = fs_basename(file)
             else:
+                # the path being absolute makes Path.parent work reliably
                 file = Path(file).absolute()
-                title_root = fsdecode(file.parent)
-                fs = OSFS(title_root)
+                fs = OSFS(fsdecode(file.parent))
+                title_root = '/'
+                file = file.name
         self.fs = fs
 
         def add_file(section: 'Union[SDTitleSection, int]', path: str):
             self._base_files[section] = path
             self.available_sections.append(section)
 
-        add_file(SDTitleSection.TitleMetadata, file)
+        add_file(SDTitleSection.TitleMetadata, fs_join(title_root, file))
 
         with self.open_raw_section(SDTitleSection.TitleMetadata) as tmd:
             self.tmd = TitleMetadataReader.load(tmd)
