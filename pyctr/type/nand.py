@@ -729,9 +729,6 @@ class NAND(TypeReaderCryptoBase):
         """
         Opens the GodMode9 bonus FAT partition.
 
-        0 is TWL NAND and 1 is TWL Photo.
-
-        :param partition_index: Partition index number.
         :return: A FAT filesystem.
         :rtype: PyFatBytesIOFS
         """
