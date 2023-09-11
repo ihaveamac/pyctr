@@ -404,7 +404,8 @@ class RomFSReader(TypeReaderBase, FS):
         :param path:
         :return:
         """
-        warn('RomFSReader.get_info_from_path should be replaced with getinfo, listdir, or scandir')
+        warn('RomFSReader.get_info_from_path should be replaced with getinfo, listdir, or scandir',
+             DeprecationWarning)
         file_info = self.getinfo(path)
         if file_info.is_dir:
             return RomFSDirectoryEntry(file_info.name, 'dir', tuple(self.listdir(path)))
