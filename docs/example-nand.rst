@@ -3,8 +3,6 @@ Example: Read and write NAND partitions
 
 In this example we will take a dumped Nintendo 3DS NAND image and extract data from the partitions.
 
-To use the FAT filesystems in TWL Photo, TWL NAND, and CTRNAND, we will also use the `pyfatfs package <https://github.com/nathanhi/pyfatfs>`_. This is not a dependency for pyctr and so your application needs to have it as one if you expect to interact with filesystem contents.
-
 `Use GodMode9 to dump the NAND and essential files from your console. <https://wiki.hacks.guide/wiki/3DS:GodMode9/Usage#Creating_a_NAND_Backup>`_ No examples files are provided.
 
 .. note::
@@ -12,28 +10,22 @@ To use the FAT filesystems in TWL Photo, TWL NAND, and CTRNAND, we will also use
 
     (soon) The full :class:`~.NAND` module documentation helps you to figure out how to handle these cases.
 
-First we need to import :class:`~.NAND` and :class:`~NANDSection`. The former does the actual reading and writing, the latter is an enum that can be used to access the contents.
-
-.. code-block:: python
-
-    >>> from pyctr.type.nand import NAND, NANDSection
-
-Now let's open the NAND backup. In this case we will assume it has the GodMode9 essentials backup embedded.
+First we need to import :class:`~.NAND`, and use it to open our NAND backup. In this case we will assume it has the GodMode9 essentials backup embedded.
 
 When opening a NAND backup file without any additional arguments, it is read-only by default.
 
 .. code-block:: python
 
+    >>> from pyctr.type.nand import NAND
     >>> nand = NAND('nand.bin')
 
 With this we now immediately have access to decrypted versions of every NCSD partition and the GodMode9 bonus partition if it exists. We can also access the essentials backup with the :attr:`essential <pyctr.type.nand.NAND.essential>` attribute, an :class:`~.ExeFSReader` object.
 
-Most of the time when interacting with a NAND backup, we'll want to access CTR NAND. There is a convenience function that will immediately open the CTR NAND FAT32 partition, :meth:`~.NAND.open_ctr_partition`. This will give us a file-like object to read and write bytes. Then we will open the FAT16 filesystem using :external+pyfatfs:class:`PyFatBytesIOFS <pyfatfs.PyFatFS.PyFatBytesIOFS>`.
+Most of the time when interacting with a NAND backup, we'll want to access CTR NAND. There is a convenience function that will immediately open the CTR NAND FAT32 partition and enable access to the filesystem, :meth:`~pyctr.type.nand.NAND.open_ctr_fat`. This returns a :external+pyfatfs:class:`PyFatBytesIOFS <pyfatfs.PyFatFS.PyFatBytesIOFS>`, provided by `pyfatfs <https://github.com/nathanhi/pyfatfs>`_.
 
 .. code-block:: python
 
-    >>> from pyfatfs.PyFatFS import PyFatBytesIOFS
-    >>> ctrfat = PyFatBytesIOFS(fp=nand.open_ctr_partition())
+    >>> ctrfat = nand.open_ctr_fat()
 
 With that let's list the files and open one.
 
@@ -57,10 +49,6 @@ Once done, let's remember to close all the files properly.
     >>> ctrnand.close()
     >>> nand.close()
 
-.. note::
-
-    PyFatFS automatically closes the underlying filesystem object (the one opened with :meth:`~.NAND.open_ctr_partition`).
-
 Writing
 -------
 
@@ -73,7 +61,7 @@ To do this, the second argument for :class:`~.NAND` should be given ``'rb+'``.
     >>> from pyctr.type.nand import NAND, NANDSection
     >>> from pyfatfs.PyFatFS import PyFatBytesIOFS
     >>> nand = NAND('nand.bin', 'rb+')
-    >>> ctrfat = PyFatBytesIOFS(fp=nand.open_ctr_partition)
+    >>> ctrfat = nand.open_ctr_fat()
 
 With the NAND in read-write mode we can open files for writing now.
 
@@ -91,6 +79,21 @@ Files can all be opened using context managers as well.
 .. code-block:: python
 
     with NAND('nand.bin') as nand:
-        with PyFatBytesIOFS(fp=nand.open_ctr_partition()) as ctrfat:
+        with nand.open_ctr_fat() as ctrfat:
             with ctrfat.open('/myfile.txt', 'rb') as f:
                 print(f.read())
+
+Next steps
+----------
+
+Now that you know the basics of reading and writing to a NAND backup, you may want to check out these methods:
+
+* :meth:`~pyctr.type.nand.NAND.open_ctr_partition` - opens the raw CTR NAND partition
+* :meth:`~pyctr.type.nand.NAND.open_twl_partition` - opens a raw TWL NAND partition
+* :meth:`~pyctr.type.nand.NAND.open_bonus_partition` - opens the raw bonus partition created by GodMode9
+* :meth:`~pyctr.type.nand.NAND.open_ctr_fat` - opens the FAT16 filesystem in the CTR NAND partition
+* :meth:`~pyctr.type.nand.NAND.open_twl_fat` - opens the FAT12/FAT16 filesystem in a TWL NAND partition
+* :meth:`~pyctr.type.nand.NAND.open_bonus_fat` - opens the FAT32 filesystem in the GodMode9 bonus partition
+* :meth:`~pyctr.type.nand.NAND.open_raw_section` - opens a raw NCSD section
+* :meth:`~pyctr.type.nand.NAND.raise_if_ctr_failed` - raise an error if CTR partitions are inaccessible
+* :meth:`~pyctr.type.nand.NAND.raise_if_twl_failed` - raise an error if TWL partitions are inaccessible

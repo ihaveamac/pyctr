@@ -68,7 +68,9 @@ NAND objects
 .. autoclass:: NAND
 
     .. automethod:: open_ctr_partition
+    .. automethod:: open_ctr_fat
     .. automethod:: open_twl_partition
+    .. automethod:: open_twl_fat
     .. py:method:: open_raw_section(section)
 
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
@@ -78,7 +80,8 @@ NAND objects
         .. note::
 
             If you are looking to read from TWL NAND or CTR NAND, you may be looking for :meth:`open_twl_partition`
-            or :meth:`open_ctr_partition` instead.
+            or :meth:`open_ctr_partition` instead to open the raw MBR partition. This will return NCSD partitions,
+            which for TWL NAND and CTR NAND, include the MBR.
 
         :param section: The section to open. Numbers 0 to 7 are specific NCSD partitions. Negative numbers are special
             sections defined by PyCTR.
@@ -87,6 +90,7 @@ NAND objects
         :rtype: SubsectionIO
 
     .. automethod:: open_bonus_partition
+    .. automethod:: open_bonus_fat
     .. automethod:: raise_if_ctr_failed
     .. automethod:: raise_if_twl_failed
 
