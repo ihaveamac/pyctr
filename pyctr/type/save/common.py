@@ -59,9 +59,10 @@ class PartitionContainerBase(TypeReaderCryptoBase):
     """Raw header for CMAC generation."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None, dev: bool = False,
-                 cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None, sd_key: bytes = None):
-        super().__init__(file, closefd=closefd, mode=mode, crypto=crypto, dev=dev)
+                 fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
+                 dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
+                 sd_key: bytes = None):
+        super().__init__(file, fs=fs, closefd=closefd, mode=mode, crypto=crypto, dev=dev)
 
         self.cmac = self._file.read(0x10)
 
