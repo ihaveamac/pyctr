@@ -35,6 +35,9 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
   * pyfatfs is now a dependency
 * Implement loading from SD in remaining types
 * Add new example for getting version from a NAND backup
+* Add experimental Inner FAT reader for savegames (not extdata or title database yet)
+  * Two new modules: `pyctr.type.save.fat.common`, `pyctr.type.save.fat.save`
+  * Currently, there are no easy methods to load a save from an SD card or NAND
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
