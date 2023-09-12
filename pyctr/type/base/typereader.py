@@ -74,6 +74,9 @@ class TypeReaderBase:
         # noinspection PyTypeChecker
         self._open_files: Set[BinaryIO] = WeakSet()
 
+        if 'b' not in mode:
+            mode += 'b'
+
         fileobj, newly_opened = get_fs_file_object(file, fs, mode=mode)
 
         if closefd is None:
