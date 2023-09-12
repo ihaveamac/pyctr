@@ -17,11 +17,16 @@ from fs.path import abspath, normpath, join
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
 from .sdtitle import SDTitleReader
+from .save.disa import DISA
+from .save.partdesc.ivfc import IVFCLevel4Reader
+from .save.fat.save import InnerFATSAVE
 
 if TYPE_CHECKING:
-    from os import PathLike
-    from typing import BinaryIO, Mapping, Optional
+    from typing import BinaryIO, Mapping, Optional, Collection, List
     from ..common import FilePath, DirPathOrFS
+
+    from fs.info import Info, RawInfo
+    from fs.permissions import Permissions
 
     # noinspection PyProtectedMember
     from ..crypto import CTRFileIO
@@ -121,32 +126,42 @@ class SDRoot:
         return SDTitleReader(join(sd_path, tmds[0]), case_insensitive=case_insensitive, fs=fs,
                              dev=self._crypto.dev, seed=seed, load_contents=load_contents)
 
+    def open_save(self, /, title_id: str, mode: str = 'rb', *, id1: 'Optional[str]' = None) -> 'InnerFATSAVE':
+        if 'w' in mode or '+' in mode:
+            raise NotImplementedError('writing to saves is not implemented yet')
+        fs = self.open_id1(id1)
+        title_id = title_id.lower()
+        sd_path = f'/title/{title_id[0:8]}/{title_id[8:16]}/data/00000001.sav'
 
-class SDFS(SubFS):
+        disa = DISA(sd_path, mode, fs=fs, closefd=True)
+        lv4p1 = IVFCLevel4Reader(disa.partitions[0].ivfc_hash_tree)
+        try:
+            lv4p2 = IVFCLevel4Reader(disa.partitions[1].ivfc_hash_tree)
+        except IndexError:
+            lv4p2 = None
+
+        return InnerFATSAVE(lv4p1, lv4p2, closefd=True, container=disa)
+
+
+class SDFS(FS):
     """
     Enables access to an SD card filesystem inside Nintendo 3DS/id0/id1.
-
-    :param path: Path to the Nintendo 3DS folder.
-    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
-        be created.
-    :param sd_key_file: Path to a movable.sed file to load the SD KeyY from.
-    :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
-    :ivar id1s: A list of ID1 directories found in the ID0 directory.
-    :ivar current_id1: The ID1 directory used as the default when none is specified, initially set to the first value
-        in id1s.
     """
 
     __slots__ = ('_base_path', '_crypto', '_id0_path', 'current_id1', 'id1s')
 
     def __init__(self, parent_fs: 'FS', path: str, *, crypto: CryptoEngine):
-        super().__init__(parent_fs, path)
+        self._wrap_fs = parent_fs
+        self._path = path
+        super().__init__()
         self._crypto = crypto
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+    def _getpath(self, path: str) -> str:
+        if path[0:2] == './':
+            path = path[2:]
+        elif path[0] == '/':
+            path = path[1:]
+        return join(self._path, path)
 
     def openbin(self, path: str, mode: str = 'r', buffering: int = -1, **options) -> 'BinaryIO':
         """
@@ -166,9 +181,33 @@ class SDFS(SubFS):
         if 'Nintendo DSiWare' in path:
             raise NotImplementedError('files under "Nintendo DSiWare" currently cannot be opened with this method')
 
-        fh = super().openbin(path, mode, buffering, **options)
+        fh = self._wrap_fs.openbin(self._getpath(path), mode, buffering, **options)
         return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv(normpath(abspath(path))),
                                           closefd=True)
+
+    def getinfo(self, path: str, namespaces: 'Optional[Collection[str]]' = None) -> 'Info':
+        return self._wrap_fs.getinfo(join(self._path, path), namespaces)
+
+    def makedir(
+        self,
+        path: str,
+        permissions: 'Optional[Permissions]' = None,
+        recreate: bool = False,
+    ) -> 'SubFS[FS]':
+        self._wrap_fs.makedir(join(self._path, path), permissions, recreate)
+        return self.opendir(path)
+
+    def listdir(self, path: str) -> 'List[str]':
+        return self._wrap_fs.listdir(self._getpath(path))
+
+    def remove(self, path: str):
+        self._wrap_fs.remove(self._getpath(path))
+
+    def removedir(self, path: str):
+        self._wrap_fs.removedir(self._getpath(path))
+
+    def setinfo(self, path: str, info: 'RawInfo'):
+        self._wrap_fs.setinfo(self._getpath(path), info)
 
     def open(
         self,
@@ -188,6 +227,6 @@ class SDFS(SubFS):
         return self.openbin(path, mode, buffering, **options)
 
     def getmeta(self, namespace: str = 'standard') -> 'Mapping[str, object]':
-        meta = dict(super().getmeta(namespace))
+        meta = dict(self._wrap_fs.getmeta(namespace))
         meta['supports_rename'] = False
         return meta
