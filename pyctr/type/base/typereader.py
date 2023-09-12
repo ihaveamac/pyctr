@@ -99,6 +99,11 @@ class TypeReaderBase:
         # for PyFilesystem2 which checks _closed
         return self.closed
 
+    @_closed.setter
+    def _closed(self, value):
+        # for PyFilesystem2 which wants to set _closed
+        self.closed = value
+
     def close(self):
         """Close the reader. If closefd is `True`, the underlying file is also closed."""
         if not self.closed:
