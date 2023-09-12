@@ -12,6 +12,7 @@ from fs.enums import ResourceType
 from fs.info import Info
 from fs import errors
 
+from ...base import TypeReaderBase
 from ....fileio import SubsectionIO
 from .common import (InnerFATError, InnerFATFileNotInitializedError, InnerFATHeader, FSInfo, DirEntrySAVEBDRI,
                      FileEntrySAVE, DirEntrySAVEBDRIStruct, FileEntrySAVEStruct, FATEntryStruct, iterate_fat,
@@ -22,8 +23,10 @@ if TYPE_CHECKING:
 
     from fs.permissions import Permissions
 
+    from ..common import PartitionContainerBase
 
-class InnerFATSAVE(FS):
+
+class InnerFATSAVE(TypeReaderBase, FS):
     """
     Loads an Inner FAT for savegames (DISA).
 
@@ -31,28 +34,28 @@ class InnerFATSAVE(FS):
     :param fs_data_file: File-like object for the data region, only if it's in Partition B of the DISA wrapper.
     """
     def __init__(self, fs_file: 'BinaryIO', fs_data_file: 'Optional[BinaryIO]' = None, *,
-                 case_insensitive: bool = False):
-        super().__init__()
-        self._fs_file = fs_file
+                 closefd: bool = False, case_insensitive: bool = False, container: 'PartitionContainerBase' = None):
+        super().__init__(fs_file, closefd=closefd)
+        FS.__init__(self)
         self.case_insensitive = case_insensitive
-        self._open_files = set()
+        self._container = container
 
         if case_insensitive:
             raise NotImplementedError('case insensitive is not supported yet')
 
-        header = InnerFATHeader.load(self._fs_file)
+        header = InnerFATHeader.load(self._file)
         if header.magic != b'SAVE':
             raise InnerFATError(f'expected {b"SAVE"!r}, got {header.magic!r}')
 
-        self._fs_file.seek(header.fs_info_offset)
-        self._fs_info = FSInfo.load(self._fs_file)
+        self._file.seek(header.fs_info_offset)
+        self._fs_info = FSInfo.load(self._file)
 
-        self._fat_io = SubsectionIO(self._fs_file,
+        self._fat_io = SubsectionIO(self._file,
                                     self._fs_info.file_allocation_table_offset,
                                     (self._fs_info.file_allocation_table_entry_count + 1) * FATEntryStruct.size)
 
         if self._fs_info.data_region_offset:  # savegames with duplicate data = true
-            self._fs_data_file = SubsectionIO(self._fs_file,
+            self._fs_data_file = SubsectionIO(self._file,
                                               self._fs_info.data_region_offset,
                                               self._fs_info.data_region_block_count
                                               * self._fs_info.data_region_block_size)
@@ -71,10 +74,10 @@ class InnerFATSAVE(FS):
         else:  # savegames with duplicate data = false
             self._fs_data_file = fs_data_file
 
-            dir_table_io = SubsectionIO(self._fs_file,
+            dir_table_io = SubsectionIO(self._file,
                                         self._fs_info.directory_entry_table_offset,
                                         (self._fs_info.maximum_directory_count + 2) * DirEntrySAVEBDRIStruct.size)
-            file_table_io = SubsectionIO(self._fs_file,
+            file_table_io = SubsectionIO(self._file,
                                          self._fs_info.file_entry_table_offset,
                                          (self._fs_info.maximum_file_count + 1) * FileEntrySAVEStruct.size)
 
@@ -126,6 +129,15 @@ class InnerFATSAVE(FS):
         root_entry = DirEntrySAVEBDRI.load(dir_table_io)
         self._tree_root = {'name': root_entry.name}
         iterate_dir(root_entry, self._tree_root, dir_table_io, file_table_io, self._fat_io)
+
+    def close(self):
+        if not self.closed:
+            super().close()
+            FS.close(self)
+            if self._closefd:
+                self._fs_data_file.close()
+                if self._container:
+                    self._container.close()
 
     def _get_raw_info(self, path: str):
         curr = self._tree_root
@@ -189,7 +201,7 @@ class InnerFATSAVE(FS):
     ) -> 'SubFS[FS]':
         raise errors.ResourceReadOnly(path)
 
-    def openbin(self, path, mode='r', buffering=-1, **options):
+    def openbin(self, path, mode='r', buffering=-1, **options) -> 'InnerFATOpenFile':
         file_info = self.getinfo(path)
         if file_info.is_dir:
             raise errors.FileExpected(path)
@@ -200,10 +212,12 @@ class InnerFATSAVE(FS):
         if not data_indexes:
             raise InnerFATFileNotInitializedError(path)
         
-        return InnerFATOpenFile(self._fs_data_file,
-                                data_indexes,
-                                file_info.size,
-                                self._fs_info.data_region_block_size)
+        fh = InnerFATOpenFile(self._fs_data_file,
+                              data_indexes,
+                              file_info.size,
+                              self._fs_info.data_region_block_size)
+        self._open_files.add(fh)
+        return fh
 
     def scandir(
         self,
