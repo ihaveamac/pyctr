@@ -34,6 +34,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Implement `open_ctr_fat`, `open_twl_fat`, and `open_bonus_fat` in `NAND`
   * pyfatfs is now a dependency
 * Implement loading from SD in remaining types
+* Add new example for getting version from a NAND backup
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
