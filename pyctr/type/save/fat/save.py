@@ -67,9 +67,9 @@ class InnerFATSAVE(TypeReaderBase, FS):
                                         * self._fs_info.data_region_block_size)
 
             file_table_io = SubsectionIO(self._fs_data_file,
-                                         self._fs_info.directory_entry_table_starting_block_index
+                                         self._fs_info.file_entry_table_starting_block_index
                                          * self._fs_info.data_region_block_size,
-                                         self._fs_info.directory_entry_table_block_count
+                                         self._fs_info.file_entry_table_block_count
                                          * self._fs_info.data_region_block_size)
         else:  # savegames with duplicate data = false
             self._fs_data_file = fs_data_file
