@@ -117,10 +117,10 @@ class FSInfo(NamedTuple):
         return cls.from_bytes(fp.read(0x68))
 
 
-DirEntrySAVEBDRIStruct = Struct('<I 16s I I I 4x I')
+DirEntrySAVEVSXEStruct = Struct('<I 16s I I I 4x I')
 
 
-class DirEntrySAVEBDRI(NamedTuple):
+class DirEntrySAVEVSXE(NamedTuple):
     parent_directory_index: int
     name: str
     next_sibling_directory_index: int
@@ -130,7 +130,7 @@ class DirEntrySAVEBDRI(NamedTuple):
 
     @classmethod
     def from_bytes(cls, data: bytes):
-        unpacked = DirEntrySAVEBDRIStruct.unpack(data)
+        unpacked = DirEntrySAVEVSXEStruct.unpack(data)
 
         return cls(parent_directory_index=unpacked[0],
                    name=unpacked[1].rstrip(b'\0').decode('ascii'),
@@ -141,7 +141,7 @@ class DirEntrySAVEBDRI(NamedTuple):
 
     @classmethod
     def load(cls, fp: 'BinaryIO'):
-        return cls.from_bytes(fp.read(DirEntrySAVEBDRIStruct.size))
+        return cls.from_bytes(fp.read(DirEntrySAVEVSXEStruct.size))
 
 
 DirEntryDummySAVEBDRIStruct = Struct('<I I 28x I')

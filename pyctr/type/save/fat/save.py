@@ -14,8 +14,8 @@ from fs import errors
 
 from ...base import TypeReaderBase
 from ....fileio import SubsectionIO
-from .common import (InnerFATError, InnerFATFileNotInitializedError, InnerFATHeader, FSInfo, DirEntrySAVEBDRI,
-                     FileEntrySAVE, DirEntrySAVEBDRIStruct, FileEntrySAVEStruct, FATEntryStruct, iterate_fat,
+from .common import (InnerFATError, InnerFATFileNotInitializedError, InnerFATHeader, FSInfo, DirEntrySAVEVSXE,
+                     FileEntrySAVE, DirEntrySAVEVSXEStruct, FileEntrySAVEStruct, FATEntryStruct, iterate_fat,
                      InnerFATOpenFile)
 
 if TYPE_CHECKING:
@@ -76,13 +76,13 @@ class InnerFATSAVE(TypeReaderBase, FS):
 
             dir_table_io = SubsectionIO(self._file,
                                         self._fs_info.directory_entry_table_offset,
-                                        (self._fs_info.maximum_directory_count + 2) * DirEntrySAVEBDRIStruct.size)
+                                        (self._fs_info.maximum_directory_count + 2) * DirEntrySAVEVSXEStruct.size)
             file_table_io = SubsectionIO(self._file,
                                          self._fs_info.file_entry_table_offset,
                                          (self._fs_info.maximum_file_count + 1) * FileEntrySAVEStruct.size)
 
         def iterate_dir(
-                entry: 'DirEntrySAVEBDRI',
+                entry: 'DirEntrySAVEVSXE',
                 out: dict,
                 dir_table: 'BinaryIO',
                 file_table: 'BinaryIO',
@@ -93,9 +93,9 @@ class InnerFATSAVE(TypeReaderBase, FS):
             out['name'] = entry.name
 
             if entry.first_subdirectory_index:
-                dir_table.seek(entry.first_subdirectory_index * DirEntrySAVEBDRIStruct.size)
+                dir_table.seek(entry.first_subdirectory_index * DirEntrySAVEVSXEStruct.size)
                 while True:
-                    subdir = DirEntrySAVEBDRI.load(dir_table)
+                    subdir = DirEntrySAVEVSXE.load(dir_table)
                     subdir_entry = {'name': subdir.name}
                     out['contents'][subdir.name] = subdir_entry
 
@@ -103,7 +103,7 @@ class InnerFATSAVE(TypeReaderBase, FS):
 
                     if not subdir.next_sibling_directory_index:
                         break
-                    dir_table.seek(subdir.next_sibling_directory_index * DirEntrySAVEBDRIStruct.size)
+                    dir_table.seek(subdir.next_sibling_directory_index * DirEntrySAVEVSXEStruct.size)
 
             if entry.first_file_index:
                 file_table.seek(entry.first_file_index * FileEntrySAVEStruct.size)
@@ -125,8 +125,8 @@ class InnerFATSAVE(TypeReaderBase, FS):
                     file_table.seek(file.next_sibling_file_index * FileEntrySAVEStruct.size)
 
         # first one is always a dummy entry, so we skip ahead the second which is always root
-        dir_table_io.seek(DirEntrySAVEBDRIStruct.size)
-        root_entry = DirEntrySAVEBDRI.load(dir_table_io)
+        dir_table_io.seek(DirEntrySAVEVSXEStruct.size)
+        root_entry = DirEntrySAVEVSXE.load(dir_table_io)
         self._tree_root = {'name': root_entry.name}
         iterate_dir(root_entry, self._tree_root, dir_table_io, file_table_io, self._fat_io)
 
