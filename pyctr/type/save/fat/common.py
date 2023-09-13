@@ -144,6 +144,25 @@ class DirEntrySAVEVSXE(NamedTuple):
         return cls.from_bytes(fp.read(DirEntrySAVEVSXEStruct.size))
 
 
+# only first file index matters here as BDRI only has one root folder
+# all the other 4x values are all zero
+DirEntryBDRIStruct = Struct('<4x 4x 4x I 12x 4x')
+
+
+class DirEntryBDRI(NamedTuple):
+    first_file_index: int
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        unpacked = DirEntryBDRIStruct.unpack(data)
+
+        return cls(*unpacked)
+
+    @classmethod
+    def load(cls, fp: 'BinaryIO'):
+        return cls.from_bytes(fp.read(DirEntryBDRIStruct.size))
+
+
 DirEntryDummySAVEBDRIStruct = Struct('<I I 28x I')
 
 
@@ -186,6 +205,33 @@ class FileEntrySAVE(NamedTuple):
     @classmethod
     def load(cls, fp):
         return cls.from_bytes(fp.read(FileEntrySAVEStruct.size))
+
+
+FileEntryBDRIStruct = Struct('<I Q I 4x I Q 8x I')
+
+
+class FileEntryBDRI(NamedTuple):
+    parent_directory_index: int
+    title_id: int
+    next_sibling_file_index: int
+    first_block_index: int
+    size: int
+    next_file_in_same_hash_table_bucket: int
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        unpacked = FileEntryBDRIStruct.unpack(data)
+
+        return cls(parent_directory_index=unpacked[0],
+                   title_id=unpacked[1],
+                   next_sibling_file_index=unpacked[2],
+                   first_block_index=unpacked[3],
+                   size=unpacked[4],
+                   next_file_in_same_hash_table_bucket=unpacked[5])
+
+    @classmethod
+    def load(cls, fp):
+        return cls.from_bytes(fp.read(FileEntryBDRIStruct.size))
 
 
 FATEntryStruct = Struct('<I I')
