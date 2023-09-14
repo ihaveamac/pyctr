@@ -7,26 +7,19 @@
 from typing import TYPE_CHECKING
 
 from fs.base import FS
-from fs.subfs import SubFS
-from fs.enums import ResourceType
-from fs.info import Info
-from fs import errors
 
-from ...base import TypeReaderBase
+from .base import InnerFATBase
+from .common import (InnerFATError, InnerFATHeader, FSInfo, DirEntryBDRI, DirEntryBDRIStruct, FileEntryBDRI,
+                     FileEntryBDRIStruct, FATEntryStruct, iterate_fat)
 from ....fileio import SubsectionIO
-from .common import (InnerFATError, InnerFATFileNotInitializedError, InnerFATHeader, FSInfo, DirEntryBDRI,
-                     DirEntryBDRIStruct, FileEntryBDRI, FileEntryBDRIStruct, FATEntryStruct, iterate_fat,
-                     InnerFATOpenFile)
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Optional, Collection, Union, Tuple, Iterator, List
-
-    from fs.permissions import Permissions
+    from typing import BinaryIO, Union
 
     from ..common import PartitionContainerBase
 
 
-class InnerFATBDRI(TypeReaderBase, FS):
+class InnerFATBDRI(InnerFATBase):
     """
     Loads an Inner FAT for title databases (DIFF), including ``title.db`` and ``ticket.db``.
 
@@ -34,10 +27,7 @@ class InnerFATBDRI(TypeReaderBase, FS):
     """
 
     def __init__(self, fs_file: 'BinaryIO', *, closefd: bool = False, container: 'PartitionContainerBase' = None):
-        super().__init__(fs_file, closefd=closefd)
-        FS.__init__(self)
-        self.case_insensitive = True
-        self._container = container
+        super().__init__(fs_file, closefd=closefd, container=container, case_insensitive=True)
 
         preheader = self._file.read(8)
 
@@ -114,51 +104,6 @@ class InnerFATBDRI(TypeReaderBase, FS):
         self._tree_root = {'name': ''}
         iterate_dir(root_entry, self._tree_root, file_table_io, self._fat_io)
 
-    def close(self):
-        if not self.closed:
-            super().close()
-            FS.close(self)
-            if self._closefd:
-                self._fs_data_file.close()
-                if self._container:
-                    self._container.close()
-
-    def _get_raw_info(self, path: str):
-        curr = self._tree_root
-        if path == '.':
-            return curr
-        if self.case_insensitive:
-            path = path.lower()
-        if path[0:2] == './':
-            path = path[2:]
-        elif path[0] == '/':
-            path = path[1:]
-        for part in path.split('/'):
-            if part == '':
-                break
-            try:
-                # noinspection PyTypeChecker
-                curr = curr['contents'][part]
-            except KeyError:
-                raise errors.ResourceNotFound(path)
-
-        return curr
-
-    def _gen_info(self, c: dict) -> 'Info':
-        is_dir = c['type'] == 'dir'
-        info = {'basic': {'name': c['name'],
-                          'is_dir': is_dir},
-                'details': {'size': 0 if is_dir else c['size'],
-                            'type': ResourceType.directory if is_dir else ResourceType.file}}
-        if not is_dir:
-            info['rawfs'] = {'firstblock': c['firstblock'], 'dataindexes': c['dataindexes']}
-
-        return Info(info)
-
-    def getinfo(self, path: str, namespaces: 'Optional[Collection[str]]' = ()) -> Info:
-        curr = self._get_raw_info(path)
-        return self._gen_info(curr)
-
     def getmeta(self, namespace: str = 'standard') -> 'dict[str, Union[bool, str, int]]':
         if namespace != 'standard':
             return {}
@@ -170,58 +115,3 @@ class InnerFATBDRI(TypeReaderBase, FS):
                 'network': False,
                 'read_only': True,
                 'supports_rename': False}
-
-    def listdir(self, path: str) -> 'List[str]':
-        file_info_raw = self._get_raw_info(path)
-        if file_info_raw['type'] != 'dir':
-            raise errors.DirectoryExpected
-        return [x['name'] for x in file_info_raw['contents'].values()]
-
-    def makedir(
-        self,
-        path: str,
-        permissions: 'Optional[Permissions]' = None,
-        recreate: bool = False,
-    ) -> 'SubFS[FS]':
-        raise errors.ResourceReadOnly(path)
-
-    def openbin(self, path, mode='r', buffering=-1, **options) -> 'InnerFATOpenFile':
-        file_info = self.getinfo(path)
-        if file_info.is_dir:
-            raise errors.FileExpected(path)
-        if 'w' in mode or '+' in mode or 'a' in mode:
-            raise errors.ResourceReadOnly(path)
-
-        data_indexes = file_info.get('rawfs', 'dataindexes')
-        if not data_indexes:
-            raise InnerFATFileNotInitializedError(path)
-
-        fh = InnerFATOpenFile(self._fs_data_file,
-                              data_indexes,
-                              file_info.size,
-                              self._fs_info.data_region_block_size)
-        self._open_files.add(fh)
-        return fh
-
-    def scandir(
-        self,
-        path: str,
-        namespaces: 'Optional[Collection[str]]' = None,
-        page: 'Optional[Tuple[int, int]]' = None,
-    ) -> 'Iterator[Info]':
-        curr = self._get_raw_info(path)
-        if curr['type'] != 'dir':
-            raise errors.DirectoryExpected(path)
-
-        for c in curr['contents'].values():
-            yield self._gen_info(c)
-
-    def remove(self, path: str):
-        raise errors.ResourceReadOnly(path)
-
-    def removedir(self, path: str):
-        raise errors.ResourceReadOnly(path)
-
-    def setinfo(self, path: str, info: dict):
-        raise errors.ResourceReadOnly(path)
-
