@@ -61,8 +61,11 @@ class PartitionContainerBase(TypeReaderCryptoBase):
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
                  fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
-                 sd_key: bytes = None):
+                 sd_key: bytes = None, ivfc_verify: bool = True, ivfc_deep_verify: bool = True):
         super().__init__(file, fs=fs, closefd=closefd, mode=mode, crypto=crypto, dev=dev)
+
+        self._ivfc_verify = ivfc_verify
+        self._ivfc_deep_verify = ivfc_deep_verify
 
         self.cmac = self._file.read(0x10)
 
@@ -88,7 +91,8 @@ class PartitionContainerBase(TypeReaderCryptoBase):
             return self._update_hashes(index, new_partdesc)
 
         partition = Partition(subfile, difi, ivfc, dpfs, master_hash, update_partdesc_callback=callback,
-                              partdesc_size=len(partdesc))
+                              partdesc_size=len(partdesc), ivfc_verify=self._ivfc_verify,
+                              ivfc_deep_verify=self._ivfc_deep_verify)
 
         self.partitions[index] = partition
 

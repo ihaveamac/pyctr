@@ -40,6 +40,8 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Add `open_save` to `SDRoot`
 * Add experimental Inner FAT reader for title database (BDRI)
   * One new module: `pyctr.type.save.fat.bdri`
+* `Partition` now loads the IVFC Level 4 file and makes it available in `Partition.file`
+  * For example: `DISA('game.sav').partitions[0].file`
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

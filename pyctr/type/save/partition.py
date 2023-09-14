@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ...fileio import SubsectionIO
 from .partdesc.difi import DIFI
 from .partdesc.dpfs import DPFS, DPFSLevel1, DPFSLevel2, DPFSLevel3, DPFSLevel3FileIO
-from .partdesc.ivfc import IVFC, IVFCHashTree
+from .partdesc.ivfc import IVFC, IVFCHashTree, IVFCLevel4Reader
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Callable, List
@@ -58,7 +58,8 @@ class Partition:
     """
 
     def __init__(self, fp: 'BinaryIO', difi: 'DIFI', ivfc: 'IVFC', dpfs: 'DPFS', master_hashes: 'List[bytes]', *,
-                 update_partdesc_callback: 'Callable[[bytes], None]' = None, partdesc_size: int = None):
+                 update_partdesc_callback: 'Callable[[bytes], None]' = None, partdesc_size: int = None,
+                 ivfc_verify: bool = True, ivfc_deep_verify: bool = True):
         self._fp = fp
         self.difi = difi
         self.ivfc = ivfc
@@ -92,6 +93,8 @@ class Partition:
             lv4_fp = None
         self.ivfc_hash_tree = IVFCHashTree(self.dpfs_lv3_file, self.ivfc, self.master_hashes, lv4_fp=lv4_fp,
                                            update_master_hashes_callback=self._update_hashes)
+
+        self.file = IVFCLevel4Reader(self.ivfc_hash_tree, verify=ivfc_verify, deep_verify=ivfc_deep_verify)
 
     def _update_hashes(self, master_hashes: 'List[bytes]'):
         self.master_hashes = master_hashes

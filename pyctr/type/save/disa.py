@@ -50,9 +50,10 @@ class DISA(PartitionContainerBase):
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
                  fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
-                 sd_key: bytes = None):
+                 sd_key: bytes = None, ivfc_verify: bool = True, ivfc_deep_verify: bool = True):
         super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,
-                         sd_key_file=sd_key_file, sd_key=sd_key)
+                         sd_key_file=sd_key_file, sd_key=sd_key, ivfc_verify=ivfc_verify,
+                         ivfc_deep_verify=ivfc_deep_verify)
 
         self._file.seek(0xF0, 1)
         self._header = self._file.read(0x100)
