@@ -7,8 +7,8 @@
 from typing import TYPE_CHECKING
 
 from .base import InnerFATBase
-from .common import (InnerFATError, InnerFATHeader, FSInfo, DirEntrySAVEVSXE,
-                     FileEntrySAVE, DirEntrySAVEVSXEStruct, FileEntrySAVEStruct, FATEntryStruct, iterate_fat)
+from .common import (InnerFATError, InnerFATHeader, FSInfo, DirEntrySAVEVSXE, FileEntrySAVE, DirEntrySAVEVSXEStruct,
+                     FileEntrySAVEStruct, FATEntryStruct, iterate_fat, get_bucket)
 from ....fileio import SubsectionIO
 
 if TYPE_CHECKING:
@@ -35,39 +35,55 @@ class InnerFATSAVE(InnerFATBase):
         if header.magic != b'SAVE':
             raise InnerFATError(f'expected {b"SAVE"!r}, got {header.magic!r}')
 
-        self._file.seek(header.fs_info_offset)
+        self._seek(header.fs_info_offset)
         self._fs_info = FSInfo.load(self._file)
 
+        self._dir_hash_table_io = SubsectionIO(self._file,
+                                               self._fs_info.directory_hash_table_offset + self._start,
+                                               (self._fs_info.directory_hash_table_bucket_count * 4) + self._start)
+
+        self._file_hash_table_io = SubsectionIO(self._file,
+                                                self._fs_info.file_hash_table_offset + self._start,
+                                                (self._fs_info.file_hash_table_bucket_count * 4) + self._start)
+
         self._fat_io = SubsectionIO(self._file,
-                                    self._fs_info.file_allocation_table_offset,
-                                    (self._fs_info.file_allocation_table_entry_count + 1) * FATEntryStruct.size)
+                                    self._fs_info.file_allocation_table_offset + self._start,
+                                    ((self._fs_info.file_allocation_table_entry_count + 1) * FATEntryStruct.size)
+                                    + self._start)
 
         if self._fs_info.data_region_offset:  # savegames with duplicate data = true
             self._fs_data_file = SubsectionIO(self._file,
-                                              self._fs_info.data_region_offset,
+                                              self._fs_info.data_region_offset + self._start,
                                               self._fs_info.data_region_block_count
-                                              * self._fs_info.data_region_block_size)
+                                              * self._fs_info.data_region_block_size
+                                              + self._start)
 
             dir_table_io = SubsectionIO(self._fs_data_file,
                                         self._fs_info.directory_entry_table_starting_block_index
-                                        * self._fs_info.data_region_block_size,
+                                        * self._fs_info.data_region_block_size
+                                        + self._start,
                                         self._fs_info.directory_entry_table_block_count
-                                        * self._fs_info.data_region_block_size)
+                                        * self._fs_info.data_region_block_size
+                                        + self._start)
 
             file_table_io = SubsectionIO(self._fs_data_file,
                                          self._fs_info.file_entry_table_starting_block_index
-                                         * self._fs_info.data_region_block_size,
+                                         * self._fs_info.data_region_block_size
+                                         + self._start,
                                          self._fs_info.file_entry_table_block_count
-                                         * self._fs_info.data_region_block_size)
+                                         * self._fs_info.data_region_block_size
+                                         + self._start)
         else:  # savegames with duplicate data = false
             self._fs_data_file = fs_data_file
 
             dir_table_io = SubsectionIO(self._file,
-                                        self._fs_info.directory_entry_table_offset,
-                                        (self._fs_info.maximum_directory_count + 2) * DirEntrySAVEVSXEStruct.size)
+                                        self._fs_info.directory_entry_table_offset + self._start,
+                                        ((self._fs_info.maximum_directory_count + 2) * DirEntrySAVEVSXEStruct.size)
+                                        + self._start)
             file_table_io = SubsectionIO(self._file,
-                                         self._fs_info.file_entry_table_offset,
-                                         (self._fs_info.maximum_file_count + 1) * FileEntrySAVEStruct.size)
+                                         self._fs_info.file_entry_table_offset + self._start,
+                                         ((self._fs_info.maximum_file_count + 1) * FileEntrySAVEStruct.size)
+                                         + self._start)
 
         def iterate_dir(
                 entry: 'DirEntrySAVEVSXE',
@@ -94,7 +110,8 @@ class InnerFATSAVE(InnerFATBase):
                     dir_table.seek(subdir.next_sibling_directory_index * DirEntrySAVEVSXEStruct.size)
 
             if entry.first_file_index:
-                file_table.seek(entry.first_file_index * FileEntrySAVEStruct.size)
+                idx = entry.first_file_index
+                file_table.seek(idx * FileEntrySAVEStruct.size)
                 while True:
                     file = FileEntrySAVE.load(file_table)
                     if file.first_block_index != 0x80000000:
@@ -110,7 +127,8 @@ class InnerFATSAVE(InnerFATBase):
 
                     if not file.next_sibling_file_index:
                         break
-                    file_table.seek(file.next_sibling_file_index * FileEntrySAVEStruct.size)
+                    idx = file.next_sibling_file_index
+                    file_table.seek(idx * FileEntrySAVEStruct.size)
 
         # first one is always a dummy entry, so we skip ahead the second which is always root
         dir_table_io.seek(DirEntrySAVEVSXEStruct.size)
