@@ -60,3 +60,8 @@ def _raise_if_level_closed(method):
             raise ValueError('I/O operation on closed file')
         return method(self, *args, **kwargs)
     return decorator
+
+
+if TYPE_CHECKING:
+    def _raise_if_level_closed(method):
+        return method
