@@ -146,38 +146,43 @@ class DirEntrySAVEVSXE(NamedTuple):
 
 # only first file index matters here as BDRI only has one root folder
 # all the other 4x values are all zero
-DirEntryBDRIStruct = Struct('<4x 4x 4x I 12x 4x')
+DirEntryBDRIStruct = Struct('<I I I I 12x I')
 
 
 class DirEntryBDRI(NamedTuple):
+    parent_directory_index: int
+    next_sibling_directory_index: int
+    first_subdirectory_index: int
     first_file_index: int
+    next_directory_in_same_hash_table_bucket: int
+    name: str
 
     @classmethod
     def from_bytes(cls, data: bytes):
         unpacked = DirEntryBDRIStruct.unpack(data)
 
-        return cls(*unpacked)
+        return cls(*unpacked, name='')
 
     @classmethod
     def load(cls, fp: 'BinaryIO'):
         return cls.from_bytes(fp.read(DirEntryBDRIStruct.size))
 
 
-DirEntryDummySAVEBDRIStruct = Struct('<I I 28x I')
+DirEntryDummySAVEVSXEStruct = Struct('<I I 28x I')
 
 
-class DirEntryDummy(NamedTuple):
+class DirEntryDummySAVEVSXE(NamedTuple):
     current_total_entry_count: int
     maximum_entry_count: int
     next_dummy_entry: int
 
     @classmethod
     def from_bytes(cls, data: bytes):
-        return cls(*DirEntryDummySAVEBDRIStruct.unpack(data))
+        return cls(*DirEntryDummySAVEVSXEStruct.unpack(data))
 
     @classmethod
     def load(cls, fp: 'BinaryIO'):
-        return cls.from_bytes(fp.read(DirEntryDummySAVEBDRIStruct.size))
+        return cls.from_bytes(fp.read(DirEntryDummySAVEVSXEStruct.size))
 
 
 FileEntrySAVEStruct = Struct('<I 16s I 4x I Q 4x I')
@@ -217,21 +222,52 @@ class FileEntryBDRI(NamedTuple):
     first_block_index: int
     size: int
     next_file_in_same_hash_table_bucket: int
+    name: str
 
     @classmethod
     def from_bytes(cls, data: bytes):
         unpacked = FileEntryBDRIStruct.unpack(data)
 
-        return cls(parent_directory_index=unpacked[0],
-                   title_id=unpacked[1],
-                   next_sibling_file_index=unpacked[2],
-                   first_block_index=unpacked[3],
-                   size=unpacked[4],
-                   next_file_in_same_hash_table_bucket=unpacked[5])
+        return cls(*unpacked,
+                   name=f'{unpacked[1]:016x}')
 
     @classmethod
     def load(cls, fp):
         return cls.from_bytes(fp.read(FileEntryBDRIStruct.size))
+
+
+FileEntryDummySAVEVSXEStruct = Struct('<I I 36x I')
+
+
+class FileEntryDummySAVEVSXE(NamedTuple):
+    current_total_entry_count: int
+    maximum_entry_count: int
+    next_dummy_entry: int
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        return cls(*FileEntryDummySAVEVSXEStruct.unpack(data))
+
+    @classmethod
+    def load(cls, fp: 'BinaryIO'):
+        return cls.from_bytes(fp.read(FileEntryDummySAVEVSXEStruct.size))
+
+
+FileEntryDummyBDRIStruct = Struct('<I I 32x I')
+
+
+class FileEntryDummyBDRI(NamedTuple):
+    current_total_entry_count: int
+    maximum_entry_count: int
+    next_dummy_entry: int
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        return cls(*FileEntryDummyBDRIStruct.unpack(data))
+
+    @classmethod
+    def load(cls, fp: 'BinaryIO'):
+        return cls.from_bytes(fp.read(FileEntryDummyBDRIStruct.size))
 
 
 FATEntryStruct = Struct('<I I')
@@ -258,6 +294,9 @@ class FATEntry(NamedTuple):
 
 
 def iterate_fat(index: int, fat: 'BinaryIO'):
+    if index & 0x80000000:
+        # no actual entries in the fat
+        return []
     data_block_indexes = []
     while True:
         fat.seek(index * 8)
@@ -285,15 +324,29 @@ def get_bucket(name: str, parent_dir_index: int, bucket_count: int) -> int:
     return bhash % bucket_count
 
 
-def get_bucket_tid(title_id: int, parent_dir_index: int, bucket_count: int) -> int:
-    bname = title_id.to_bytes(8, 'big')
+# def get_bucket_tid(title_id: str, parent_dir_index: int, bucket_count: int) -> int:
+#     if title_id == '':
+#         # shortcut for the root directory, the only directory in BDRI
+#         return 0
+#     bname = int(title_id, 16).to_bytes(8, 'little')
+#     bhash = parent_dir_index ^ 0x091A2B3C
+#     for i in range(2):
+#         bhash = ((bhash >> 1) | (bhash << 31)) & 0xFFFFFFFF
+#         bhash ^= bname[i * 4]
+#         bhash ^= bname[i * 4 + 1] << 8
+#         bhash ^= bname[i * 4 + 2] << 16
+#         bhash ^= bname[i * 4 + 3] << 24
+#     return bhash % bucket_count
+
+
+def get_bucket_tid(title_id: str, parent_dir_index: int, bucket_count: int) -> int:
+    bname = int.from_bytes(bytes.fromhex(title_id)[::-1], 'little')
     bhash = parent_dir_index ^ 0x091A2B3C
-    for i in range(2):
-        bhash = ((bhash >> 1) | (bhash << 31)) & 0xFFFFFFFF
-        bhash ^= bname[i * 4]
-        bhash ^= bname[i * 4 + 1] << 8
-        bhash ^= bname[i * 4 + 2] << 16
-        bhash ^= bname[i * 4 + 3] << 24
+    bhash = (bhash >> 1) | (bhash << 31)
+    bhash ^= bname
+    bhash = (bhash >> 1) | (bhash << 31)
+    bhash ^= bname >> 32
+    bhash &= 0xFFFFFFFF
     return bhash % bucket_count
 
 

@@ -42,6 +42,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
   * One new module: `pyctr.type.save.fat.bdri`
 * `Partition` now loads the IVFC Level 4 file and makes it available in `Partition.file`
   * For example: `DISA('game.sav').partitions[0].file`
+* Inner FAT readers now use the hash table for file searching (this will make it easier to implement writing later)
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

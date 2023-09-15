@@ -4,17 +4,16 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
+from struct import iter_unpack
 from typing import TYPE_CHECKING
-
-from fs.base import FS
 
 from .base import InnerFATBase
 from .common import (InnerFATError, InnerFATHeader, FSInfo, DirEntryBDRI, DirEntryBDRIStruct, FileEntryBDRI,
-                     FileEntryBDRIStruct, FATEntryStruct, iterate_fat)
+                     FileEntryBDRIStruct, FileEntryDummyBDRI, FileEntryDummyBDRIStruct, FATEntryStruct, get_bucket_tid)
 from ....fileio import SubsectionIO
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Union
+    from typing import BinaryIO, Union, Dict
 
     from ..common import PartitionContainerBase
 
@@ -25,6 +24,11 @@ class InnerFATBDRI(InnerFATBase):
 
     :param fs_file: File-like object for the Inner FAT.
     """
+
+    _file_type_nt = FileEntryBDRI
+    _file_type_struct = FileEntryBDRIStruct
+    _dir_type_nt = DirEntryBDRI
+    _dir_type_struct = DirEntryBDRIStruct
 
     def __init__(self, fs_file: 'BinaryIO', *, closefd: bool = False, container: 'PartitionContainerBase' = None):
         super().__init__(fs_file, closefd=closefd, container=container, case_insensitive=True)
@@ -39,13 +43,26 @@ class InnerFATBDRI(InnerFATBase):
         else:
             raise InnerFATError(f'unknown title database magic {preheader!r}')
 
-        self._file.seek(bdri_offset + self._start)
+        self._seek(bdri_offset)
         header = InnerFATHeader.load(self._file)
         if header.magic != b'BDRI':
             raise InnerFATError(f'expected {b"BDRI"!r}, got {header.magic!r}')
 
-        self._file.seek(header.fs_info_offset + bdri_offset + self._start)
+        self._seek(header.fs_info_offset + bdri_offset)
         self._fs_info = FSInfo.load(self._file)
+
+        self._dir_hash_table_io = SubsectionIO(self._file,
+                                               self._fs_info.directory_hash_table_offset + bdri_offset + self._start,
+                                               (self._fs_info.directory_hash_table_bucket_count * 4)
+                                               + bdri_offset + self._start)
+
+        self._file_hash_table_io = SubsectionIO(self._file,
+                                                self._fs_info.file_hash_table_offset + bdri_offset + self._start,
+                                                (self._fs_info.file_hash_table_bucket_count * 4)
+                                                + bdri_offset + self._start)
+
+        self._dir_hash_table = [x[0] for x in iter_unpack('<I', self._dir_hash_table_io.read())]
+        self._file_hash_table = [x[0] for x in iter_unpack('<I', self._file_hash_table_io.read())]
 
         self._fat_io = SubsectionIO(self._file,
                                     self._fs_info.file_allocation_table_offset + bdri_offset + self._start,
@@ -55,54 +72,36 @@ class InnerFATBDRI(InnerFATBase):
         self._fs_data_file = SubsectionIO(self._file,
                                           self._fs_info.data_region_offset + bdri_offset + self._start,
                                           (self._fs_info.data_region_block_count
-                                          * self._fs_info.data_region_block_size) + bdri_offset + self._start)
+                                           * self._fs_info.data_region_block_size) + bdri_offset + self._start)
+        self._always_close_data_file = True
 
-        dir_table_io = SubsectionIO(self._fs_data_file,
-                                    self._fs_info.directory_entry_table_starting_block_index
-                                    * self._fs_info.data_region_block_size,
-                                    self._fs_info.directory_entry_table_block_count
-                                    * self._fs_info.data_region_block_size)
+        self._dir_table_io = SubsectionIO(self._fs_data_file,
+                                          self._fs_info.directory_entry_table_starting_block_index
+                                          * self._fs_info.data_region_block_size,
+                                          self._fs_info.directory_entry_table_block_count
+                                          * self._fs_info.data_region_block_size)
 
-        file_table_io = SubsectionIO(self._fs_data_file,
-                                     self._fs_info.file_entry_table_starting_block_index
-                                     * self._fs_info.data_region_block_size,
-                                     self._fs_info.file_entry_table_block_count
-                                     * self._fs_info.data_region_block_size)
+        self._file_table_io = SubsectionIO(self._fs_data_file,
+                                           self._fs_info.file_entry_table_starting_block_index
+                                           * self._fs_info.data_region_block_size,
+                                           self._fs_info.file_entry_table_block_count
+                                           * self._fs_info.data_region_block_size)
 
-        def iterate_dir(
-                entry: 'DirEntryBDRI',
-                out: dict,
-                file_table: 'BinaryIO',
-                fat: 'BinaryIO'
-        ):
-            out['type'] = 'dir'
-            out['contents'] = {}
+        self._dummy_files = {}
+        idx = 0
+        while True:
+            entry = FileEntryDummyBDRI.load(self._file_table_io)
+            self._dummy_files[idx] = entry
+            idx = entry.next_dummy_entry
+            if not idx:
+                break
+            self._file_table_io.seek(idx * FileEntryDummyBDRIStruct.size)
 
-            if entry.first_file_index:
-                file_table.seek(entry.first_file_index * FileEntryBDRIStruct.size)
-                while True:
-                    file = FileEntryBDRI.load(file_table)
-                    if file.first_block_index != 0x80000000:
-                        data_indexes = iterate_fat(file.first_block_index + 1, fat)
-                    else:
-                        data_indexes = []
-                    name = f'{file.title_id:016x}'
-                    file_entry = {'name': name,
-                                  'type': 'file',
-                                  'firstblock': file.first_block_index,
-                                  'dataindexes': data_indexes,
-                                  'size': file.size}
-                    out['contents'][name] = file_entry
+        self._dir_table: 'Dict[int, DirEntryBDRI]' = {}
+        self._file_table: 'Dict[int, FileEntryBDRI]' = {}
+        self._fat_indexes = {}
 
-                    if not file.next_sibling_file_index:
-                        break
-                    file_table.seek(file.next_sibling_file_index * FileEntryBDRIStruct.size)
-
-        # first one is always a dummy entry, so we skip ahead the second which is always root
-        dir_table_io.seek(DirEntryBDRIStruct.size)
-        root_entry = DirEntryBDRI.load(dir_table_io)
-        self._tree_root = {'name': ''}
-        iterate_dir(root_entry, self._tree_root, file_table_io, self._fat_io)
+        self._iterate_dir(1)
 
     def getmeta(self, namespace: str = 'standard') -> 'dict[str, Union[bool, str, int]]':
         if namespace != 'standard':
@@ -115,3 +114,5 @@ class InnerFATBDRI(InnerFATBase):
                 'network': False,
                 'read_only': True,
                 'supports_rename': False}
+
+    _get_bucket = staticmethod(get_bucket_tid)
