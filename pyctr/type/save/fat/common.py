@@ -285,6 +285,18 @@ def get_bucket(name: str, parent_dir_index: int, bucket_count: int) -> int:
     return bhash % bucket_count
 
 
+def get_bucket_tid(title_id: int, parent_dir_index: int, bucket_count: int) -> int:
+    bname = title_id.to_bytes(8, 'big')
+    bhash = parent_dir_index ^ 0x091A2B3C
+    for i in range(2):
+        bhash = ((bhash >> 1) | (bhash << 31)) & 0xFFFFFFFF
+        bhash ^= bname[i * 4]
+        bhash ^= bname[i * 4 + 1] << 8
+        bhash ^= bname[i * 4 + 2] << 16
+        bhash ^= bname[i * 4 + 3] << 24
+    return bhash % bucket_count
+
+
 class InnerFATOpenFile(RawIOBase):
     def __init__(self, reader: 'BinaryIO', data_indexes: 'List[int]', size: int, block_size: int,
                  read_only: bool = True):
