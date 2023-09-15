@@ -1,4 +1,6 @@
-## Next (0.7 branch)
+Note: this is for the 0.7 branch, which split from master once the 0.7.0 release was made. For 0.8 or newer, please look at the other branches.
+
+## v0.7.1 - September 15, 2023
 
 ### Changelog
 * Backport `CryptoEngine._format_state` and `CryptoEngine._print_state` from 0.8
