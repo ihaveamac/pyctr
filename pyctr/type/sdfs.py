@@ -18,7 +18,6 @@ from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
 from .sdtitle import SDTitleReader
 from .save.disa import DISA
-from .save.partdesc.ivfc import IVFCLevel4Reader
 from .save.fat.save import InnerFATSAVE
 
 if TYPE_CHECKING:
@@ -134,9 +133,9 @@ class SDRoot:
         sd_path = f'/title/{title_id[0:8]}/{title_id[8:16]}/data/00000001.sav'
 
         disa = DISA(sd_path, mode, fs=fs, closefd=True)
-        lv4p1 = IVFCLevel4Reader(disa.partitions[0].ivfc_hash_tree)
+        lv4p1 = disa.partitions[0].file
         try:
-            lv4p2 = IVFCLevel4Reader(disa.partitions[1].ivfc_hash_tree)
+            lv4p2 = disa.partitions[1].file
         except IndexError:
             lv4p2 = None
 
