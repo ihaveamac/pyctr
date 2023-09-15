@@ -12,7 +12,7 @@ from fs.enums import ResourceType
 from fs.info import Info
 from fs.subfs import SubFS
 
-from .common import InnerFATFileNotInitializedError, InnerFATOpenFile
+from .common import InnerFATFileNotInitializedError, InnerFATOpenFile, InnerFATError
 from ...base import TypeReaderBase
 
 if TYPE_CHECKING:
@@ -29,6 +29,9 @@ class InnerFATBase(TypeReaderBase, FS):
     _fs_data_file: 'BinaryIO'
     _fs_info: 'FSInfo'
     _tree_root: dict
+    _fat_io: 'BinaryIO'
+    _dir_hash_table_io: 'BinaryIO'
+    _file_hash_table_io: 'BinaryIO'
 
     def __init__(self, fs_file: 'BinaryIO', *, closefd: bool = False, case_insensitive: bool = False,
                  container: 'PartitionContainerBase' = None):
@@ -137,3 +140,14 @@ class InnerFATBase(TypeReaderBase, FS):
 
     def setinfo(self, path: str, info: dict):
         raise errors.ResourceReadOnly(path)
+
+    def _get_bucket(self, dir_or_file: str, bucket: int) -> int:
+        if dir_or_file == 'dir':
+            f = self._dir_hash_table_io
+        elif dir_or_file == 'file':
+            f = self._file_hash_table_io
+        else:
+            raise InnerFATError('internal pyctr error')
+
+        f.seek(bucket * 4)
+        return int.from_bytes(f.read(4), 'little')
