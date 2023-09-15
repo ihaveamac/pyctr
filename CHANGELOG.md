@@ -2,6 +2,7 @@
 
 ### Changelog
 * Backport `CryptoEngine._format_state` and `CryptoEngine._print_state` from 0.8
+* Fix pycryptodomex version specifier (should be >=3.9,<4)
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
