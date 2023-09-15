@@ -185,7 +185,7 @@ class SDFS(FS):
                                           closefd=True)
 
     def getinfo(self, path: str, namespaces: 'Optional[Collection[str]]' = None) -> 'Info':
-        return self._wrap_fs.getinfo(join(self._path, path), namespaces)
+        return self._wrap_fs.getinfo(self._getpath(path), namespaces)
 
     def makedir(
         self,
@@ -193,7 +193,7 @@ class SDFS(FS):
         permissions: 'Optional[Permissions]' = None,
         recreate: bool = False,
     ) -> 'SubFS[FS]':
-        self._wrap_fs.makedir(join(self._path, path), permissions, recreate)
+        self._wrap_fs.makedir(self._getpath(path), permissions, recreate)
         return self.opendir(path)
 
     def listdir(self, path: str) -> 'List[str]':
