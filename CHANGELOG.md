@@ -35,6 +35,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
   * pyfatfs is now a dependency
 * Implement loading from SD in remaining types
 * Add new example for getting version from a NAND backup
+* `NANDNCSDHeader` can be converted back to bytes with `bytes(my_nand_header)`
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

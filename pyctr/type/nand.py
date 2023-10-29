@@ -233,6 +233,30 @@ class NANDNCSDHeader(NamedTuple):
                    unknown=header[7],
                    twl_mbr_encrypted=header[8])
 
+    def __bytes__(self):
+        partition_types = bytearray(8)
+        crypt_types = bytearray(8)
+        offsets_and_lengths = [0] * 16
+        for idx, part in self.partition_table.items():  # type: int, NCSDPartitionInfo
+            # only real partitions
+            if idx < 0:
+                continue
+            partition_types[idx] = part.fs_type
+            crypt_types[idx] = part.encryption_type
+            offsets_and_lengths[idx * 2] = (part.offset // NAND_MEDIA_UNIT)
+            offsets_and_lengths[(idx * 2) + 1] = (part.size // NAND_MEDIA_UNIT)
+        return NANDNCSDHeaderStruct.pack(
+            self.signature,
+            b'NCSD',
+            self.image_size // NAND_MEDIA_UNIT,
+            0,
+            partition_types,
+            crypt_types,
+            b''.join(x.to_bytes(4, 'little') for x in offsets_and_lengths),
+            self.unknown,
+            self.twl_mbr_encrypted
+        )
+
 
 class NANDError(PyCTRError):
     """Generic error for NAND operations."""
