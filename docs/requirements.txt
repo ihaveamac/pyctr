@@ -1,2 +1,4 @@
 pycryptodomex
 Pillow
+fs
+pyfatfs
