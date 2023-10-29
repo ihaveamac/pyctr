@@ -140,7 +140,9 @@ NAND sections
 
         .. note::
 
-            Writes to the first 0x1BE (before the TWL MBR) are silently discarded to avoid writing a corrupted NCSD header.
+            Don't write to the first 0x1BE, this is where the NCSD header is on the raw NAND. Future versions of pyctr may silently discard writes to this region.
+
+            If writing to the TWL MBR region (0x1BE-0x200), the NCSD header signature may be invalidated. Use the sighax signature to keep a "valid" header. Also keep a backup of the original NCSD header (this may already be in the essentials backup).
 
     .. autoattribute:: AGBSAVE
     .. autoattribute:: FIRM0
