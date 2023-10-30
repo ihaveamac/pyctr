@@ -79,6 +79,13 @@ It can be installed with ``pip``:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Encryption
+
+   pyctr.crypto.engine
+   pyctr.crypto.seeddb
+
+.. toctree::
+   :maxdepth: 1
    :caption: Extras
 
    pyctr.util
