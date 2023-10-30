@@ -51,6 +51,7 @@ It can be installed with ``pip``:
 
    pyctr.type.cdn
    pyctr.type.cia
+   pyctr.type.cci
    pyctr.type.ncch
    pyctr.type.sdtitle
 
