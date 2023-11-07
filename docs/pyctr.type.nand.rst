@@ -6,8 +6,6 @@
 
 The :mod:`nand` module enables reading and writing of Nintendo 3DS NAND images.
 
-This module is best combined with `pyfatfs <https://github.com/nathanhi/pyfatfs>`_ for interacting with the FAT filesystems inside TWL NAND and CTR NAND. pyfatfs is not a dependency on pyctr so your application must include it manually.
-
 A basic overview of reading and writing to a NAND image is available here: :doc:`example-nand`.
 
 Getting started
