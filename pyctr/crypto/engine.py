@@ -754,7 +754,15 @@ class CryptoEngine:
 
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
-        twl_cid_lo, twl_cid_hi = readle(self.otp_dec[0x08:0xC]), readle(self.otp_dec[0xC:0x10])
+        if self.dev:
+            # this is untested since i don't have access to a dev nand
+            # from 3dbrew:
+            # On development units (UNITINFO != 0) ARM9 uses the first 8-bytes from 0x10012000 for the TWL Console ID.
+            twl_cid = self.otp_enc[0x0:0x8]
+        else:
+            twl_cid = self.otp_dec[0x8:0x10]
+
+        twl_cid_lo, twl_cid_hi = readle(twl_cid[0x0:0x4]), readle(twl_cid[0x4:0x8])
         twl_cid_lo ^= 0xB358A6AF
         twl_cid_lo |= 0x80000000
         twl_cid_hi ^= 0x08C267B7
