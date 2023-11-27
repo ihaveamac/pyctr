@@ -9,6 +9,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Most types that accept a file path or file-like object now accept an `fs=` argument, which can be an FS URL or a filesystem. For example:
   * `CIAReader('mygame.cia', fs='zip://path/to/mygame.zip')`
   * `CDNReader('tmd', fs=fs.zipfs.ZipFS('mycdngame.zip'))`
+* Fix setting TWLNAND key for dev consoles (thanks to @xprism1 for assistance)
 
 ### Deprecation warnings
 * `RomFSReader` was updated to use PyFilesystem2.

@@ -719,7 +719,10 @@ class CryptoEngine:
         return rol((key_x ^ key_y) + 0xFFFEFB4E295902582A680F5F1A4F3E79, 42, 128).to_bytes(0x10, 'big')
 
     def _set_fixed_keys(self):
-        self.set_keyslot('y', Keyslot.TWLNAND, 0xE1A00005202DDD1DBD4DC4D30AB9DC76)
+        if self.dev:
+            self.set_keyslot('y', Keyslot.TWLNAND, 0xE1A00005266A649766E8B87AF176BFAA)
+        else:
+            self.set_keyslot('y', Keyslot.TWLNAND, 0xE1A00005202DDD1DBD4DC4D30AB9DC76)
         self.set_keyslot('y', Keyslot.CTRNANDNew, 0x4D804F4E9990194613A204AC584460BE)
         self.set_normal_key(Keyslot.ZeroKey, b'\0' * 16)
         self.set_normal_key(Keyslot.FixedSystemKey, bytes.fromhex('527CE630A9CA305F3696F3CDE954194B'))
@@ -839,13 +842,22 @@ class CryptoEngine:
 
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
-        twl_cid_lo, twl_cid_hi = readle(otp_dec[0x08:0xC]), readle(otp_dec[0xC:0x10])
-        twl_cid_lo ^= 0xB358A6AF
-        twl_cid_lo |= 0x80000000
-        twl_cid_hi ^= 0x08C267B7
+        if self.dev:
+            twl_cid = self.otp_enc[0x0:0x8]
+        else:
+            twl_cid = self.otp_dec[0x8:0x10]
+
+        twl_cid_lo, twl_cid_hi = readle(twl_cid[0x0:0x4]), readle(twl_cid[0x4:0x8])
+        if not self.dev:
+            twl_cid_lo ^= 0xB358A6AF
+            twl_cid_lo |= 0x80000000
+            twl_cid_hi ^= 0x08C267B7
         twl_cid_lo = twl_cid_lo.to_bytes(4, 'little')
         twl_cid_hi = twl_cid_hi.to_bytes(4, 'little')
-        self.set_keyslot('x', Keyslot.TWLNAND, twl_cid_lo + b'NINTENDO' + twl_cid_hi, update_normal_key=False)
+        if self.dev:
+            self.set_keyslot('x', Keyslot.TWLNAND, twl_cid_lo + bytes.fromhex('1e4b7aee8bc042af') + twl_cid_hi)
+        else:
+            self.set_keyslot('x', Keyslot.TWLNAND, twl_cid_lo + b'NINTENDO' + twl_cid_hi)
 
         console_key_xy: bytes = sha256(otp_dec[0x90:0xAC] + self._b9_extdata_otp).digest()
         self.set_keyslot('x', Keyslot.Boot9Internal, console_key_xy[0:0x10], update_normal_key=False)
