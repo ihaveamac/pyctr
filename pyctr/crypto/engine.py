@@ -762,8 +762,6 @@ class CryptoEngine:
         else:
             twl_cid = self.otp_dec[0x8:0x10]
 
-        print(twl_cid.hex())
-
         twl_cid_lo, twl_cid_hi = readle(twl_cid[0x0:0x4]), readle(twl_cid[0x4:0x8])
         if not self.dev:
             twl_cid_lo ^= 0xB358A6AF

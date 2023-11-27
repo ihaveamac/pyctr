@@ -11,5 +11,5 @@ __copyright__ = 'Copyright (c) 2017-2023 Ian Burgwin'
 __license__ = 'MIT'
 
 VersionInfo = namedtuple('VersionInfo', 'major minor micro releaselevel serial')
-version_info = VersionInfo(major=0, minor=7, micro=2, releaselevel='alpha', serial=0)
-__version__ = '0.7.2a0'
+version_info = VersionInfo(major=0, minor=7, micro=2, releaselevel='final', serial=0)
+__version__ = '0.7.2'
