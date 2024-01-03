@@ -1,5 +1,9 @@
 Note: this is for the 0.7 branch, which split from master once the 0.7.0 release was made. For 0.8 or newer, please look at the other branches.
 
+## Next
+
+* Always set fixed keys regardless of boot9 (in particular: TWLNAND Y, CTRNANDNew Y, ZeroKey N, FixedSystemKey N)
+
 ## v0.7.2 - November 27, 2023
 
 * Fix setting TWLNAND key for dev consoles (thanks to @xprism1 for assistance)

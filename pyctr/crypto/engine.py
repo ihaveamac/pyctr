@@ -323,6 +323,8 @@ class CryptoEngine:
         for keyslot, keys in base_key_x.items():
             self.key_x[keyslot] = keys[dev]
 
+        self._set_fixed_keys()
+
         if setup_b9_keys:
             self.setup_keys_from_boot9_file(boot9)
 
@@ -611,8 +613,6 @@ class CryptoEngine:
         self._otp_iv = _otp_iv
         self._b9_extdata_otp = _b9_extdata_otp
         self._b9_extdata_keygen = _b9_extdata_keygen
-
-        self._set_fixed_keys()
 
         self.b9_keys_set = True
 
