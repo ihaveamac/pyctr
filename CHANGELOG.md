@@ -38,6 +38,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Add new example for getting version from a NAND backup
 * `NANDNCSDHeader` can be converted back to bytes with `bytes(my_nand_header)`
 * Include NAND sighax signatures as the `SIGHAX_SIGS` constant
+* Always set fixed keys regardless of boot9 (in particular: TWLNAND Y, CTRNANDNew Y, ZeroKey N, FixedSystemKey N)
 
 ## v0.7.0 - September 3, 2023
 ### Highlights

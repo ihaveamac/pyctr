@@ -403,6 +403,8 @@ class CryptoEngine:
 
         self._id0: Optional[bytes] = None
 
+        self._set_fixed_keys()
+
         for keyslot, keys in _base_key_x.items():
             self.key_x[keyslot] = keys[dev]
 
@@ -787,7 +789,6 @@ class CryptoEngine:
         keyblob.seek(-16, 1)
         key_loop_increase('n', 0x3C)
 
-        self._set_fixed_keys()
         self.b9_keys_set = True
 
     def setup_keys_from_boot9(self, b9: bytes):
