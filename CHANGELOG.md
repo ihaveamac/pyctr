@@ -1,6 +1,6 @@
 Note: this is for the 0.7 branch, which split from master once the 0.7.0 release was made. For 0.8 or newer, please look at the other branches.
 
-## Next
+## v0.7.4 - February 16, 2024
 
 * Fix setting CTRNANDNew Y incorrectly (the fixed key was being overwritten by the incorrect key from Boot9)
 
