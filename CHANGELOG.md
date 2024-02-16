@@ -1,5 +1,9 @@
 Note: this is for the 0.7 branch, which split from master once the 0.7.0 release was made. For 0.8 or newer, please look at the other branches.
 
+## Next
+
+* Fix setting CTRNANDNew Y incorrectly (the fixed key was being overwritten by the incorrect key from Boot9)
+
 ## v0.7.3 - January 2, 2024
 
 * Always set fixed keys regardless of boot9 (in particular: TWLNAND Y, CTRNANDNew Y, ZeroKey N, FixedSystemKey N)

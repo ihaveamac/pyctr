@@ -323,10 +323,10 @@ class CryptoEngine:
         for keyslot, keys in base_key_x.items():
             self.key_x[keyslot] = keys[dev]
 
-        self._set_fixed_keys()
-
         if setup_b9_keys:
             self.setup_keys_from_boot9_file(boot9)
+
+        self._set_fixed_keys()
 
     @property
     @_requires_bootrom
