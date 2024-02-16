@@ -403,14 +403,14 @@ class CryptoEngine:
 
         self._id0: Optional[bytes] = None
 
-        self._set_fixed_keys()
-
         for keyslot, keys in _base_key_x.items():
             self.key_x[keyslot] = keys[dev]
 
         if setup_b9_keys:
             if setup_boot9_keys(b9_file=boot9):
                 self._setup_keys_from_keyblob()
+
+        self._set_fixed_keys()
 
     def clone(self):
         """
