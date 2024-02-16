@@ -844,9 +844,9 @@ class CryptoEngine:
         # most otp code from https://github.com/Stary2001/3ds_tools/blob/master/three_ds/aesengine.py
 
         if self.dev:
-            twl_cid = self.otp_enc[0x0:0x8]
+            twl_cid = otp_enc[0x0:0x8]
         else:
-            twl_cid = self.otp_dec[0x8:0x10]
+            twl_cid = otp_dec[0x8:0x10]
 
         twl_cid_lo, twl_cid_hi = readle(twl_cid[0x0:0x4]), readle(twl_cid[0x4:0x8])
         if not self.dev:
