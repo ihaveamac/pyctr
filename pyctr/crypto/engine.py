@@ -24,6 +24,7 @@ except ModuleNotFoundError:
     from Crypto import version_info
     if version_info[0] < 3:
         raise ImportError('Rejecting classic unmaintained PyCrypto. Install pycryptodome or pycryptodomex.')
+    del version_info
     from Crypto.Cipher import AES
     from Crypto.Hash import CMAC
     from Crypto.Util import Counter
