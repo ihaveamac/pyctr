@@ -1,6 +1,6 @@
 Note: this is for the 0.7 branch, which split from master once the 0.7.0 release was made. For 0.8 or newer, please look at the other branches.
 
-## Next
+## v0.7.5 - February 28, 2024
 
 * Attempt to load from "Crypto" module if "Cryptodome" fails. This is for cases where on pycryptodome is available and not pycryptodomex.
 
