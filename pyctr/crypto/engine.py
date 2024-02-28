@@ -16,9 +16,17 @@ from struct import pack, unpack
 from threading import Lock
 from typing import TYPE_CHECKING
 
-from Cryptodome.Cipher import AES
-from Cryptodome.Hash import CMAC
-from Cryptodome.Util import Counter
+try:
+    from Cryptodome.Cipher import AES
+    from Cryptodome.Hash import CMAC
+    from Cryptodome.Util import Counter
+except ModuleNotFoundError:
+    from Crypto import version_info
+    if version_info[0] < 3:
+        raise ImportError('Rejecting classic unmaintained PyCrypto. Install pycryptodome or pycryptodomex.')
+    from Crypto.Cipher import AES
+    from Crypto.Hash import CMAC
+    from Crypto.Util import Counter
 
 from ..common import PyCTRError, _raise_if_file_closed
 from ..util import config_dirs, readbe, readle
