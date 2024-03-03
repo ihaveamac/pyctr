@@ -12,7 +12,8 @@
       let pkgs = nixpkgs.legacyPackages.${system}; in {
 
         packages = rec {
-          pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { };
+          pyfatfs = pkgs.python3Packages.callPackage ./pyfatfs.nix { };
+          pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { pyfatfs = self.packages.${system}.pyfatfs; };
           default = pyctr;
         };
       }

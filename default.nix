@@ -1,5 +1,6 @@
 { pkgs ? import <nixpkgs> {} }:
 
-{
-  pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { };
+rec {
+  pyfatfs = pkgs.python3Packages.callPackage ./pyfatfs.nix { };
+  pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { pyfatfs = pyfatfs; };
 }

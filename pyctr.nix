@@ -1,4 +1,4 @@
-{ buildPythonPackage, pythonOlder, pycryptodomex, pillow }:
+{ buildPythonPackage, pythonOlder, pycryptodomex, pillow, fs, pyfatfs }:
 
 buildPythonPackage {
   pname = "pyctr";
@@ -11,6 +11,8 @@ buildPythonPackage {
 
   propagatedBuildInputs = [
     pycryptodomex
+    fs
+    pyfatfs
     pillow
   ];
 
