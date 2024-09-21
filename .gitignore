@@ -276,3 +276,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Nix
+result
+result-*
