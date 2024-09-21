@@ -116,7 +116,7 @@ def test_get_missing_file_info():
 
 
 def test_open_on_directory():
-    with open_romfs() as reader:
+    with open_romfs(open_compatibility_mode=False) as reader:
         with pytest.raises(romfs.RomFSIsADirectoryError):
             reader.open('/testdir')
 
