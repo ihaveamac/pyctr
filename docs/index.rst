@@ -51,6 +51,7 @@ It can be installed with ``pip``:
 
    pyctr.type.cdn
    pyctr.type.cia
+   pyctr.type.cci
    pyctr.type.ncch
    pyctr.type.sdtitle
 
@@ -75,6 +76,13 @@ It can be installed with ``pip``:
    pyctr.type.nand
    pyctr.type.sdfs
    pyctr.type.sd
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Encryption
+
+   pyctr.crypto.engine
+   pyctr.crypto.seeddb
 
 .. toctree::
    :maxdepth: 1

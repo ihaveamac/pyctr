@@ -50,6 +50,9 @@ You can also use the :class:`SDRoot` to open titles. It also accepts an id1 or w
     with title.contents[0].romfs.open('/file.bin') as f:
         f.read()
 
+.. note::
+    Files cannot be moved or renamed because the encryption depends on the complete filepath from the start of the ID1 folder. If a file must be moved or renamed, it must be copied to the new location.
+
 SDRoot objects
 --------------
 

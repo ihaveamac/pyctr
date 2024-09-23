@@ -9,6 +9,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Most types that accept a file path or file-like object now accept an `fs=` argument, which can be an FS URL or a filesystem. For example:
   * `CIAReader('mygame.cia', fs='zip://path/to/mygame.zip')`
   * `CDNReader('tmd', fs=fs.zipfs.ZipFS('mycdngame.zip'))`
+* Fix setting TWLNAND key for dev consoles (thanks to @xprism1 for assistance)
 
 ### Deprecation warnings
 * `RomFSReader` was updated to use PyFilesystem2.
@@ -35,6 +36,9 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
   * pyfatfs is now a dependency
 * Implement loading from SD in remaining types
 * Add new example for getting version from a NAND backup
+* `NANDNCSDHeader` can be converted back to bytes with `bytes(my_nand_header)`
+* Include NAND sighax signatures as the `SIGHAX_SIGS` constant
+* Always set fixed keys regardless of boot9 (in particular: TWLNAND Y, CTRNANDNew Y, ZeroKey N, FixedSystemKey N)
 * Add experimental Inner FAT reader for savegames (SAVE, not extdata or title database yet)
   * Two new modules: `pyctr.type.save.fat.common`, `pyctr.type.save.fat.save`
 * Add `open_save` to `SDRoot`
