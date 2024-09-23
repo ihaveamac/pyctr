@@ -54,6 +54,7 @@ intersphinx_mapping = {
     'pyfatfs': ('https://pyfatfs.readthedocs.io/en/stable', None),
     'fs': ('https://docs.pyfilesystem.org/en/stable', None),
     'pycryptodome': ('https://www.pycryptodome.org', None),
+    'Pillow': ('https://pillow.readthedocs.io/en/stable', None),
 }
 
 autodoc_typehints = 'description'
