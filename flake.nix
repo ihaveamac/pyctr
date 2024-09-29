@@ -20,6 +20,9 @@
             extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python3Packages; [ pytest ]);
             ignoreCollisions = true;
           };
+          tester = pkgs.writeShellScriptBin "pyctr-tester" (with self.packages.${system}; ''
+            PYTHONPATH=$PWD:$PYTHONPATH ${python-environment}/bin/pytest ./tests
+          '');
         };
 
         devShells.default = pkgs.callPackage ./shell.nix {};
