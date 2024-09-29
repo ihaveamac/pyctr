@@ -104,7 +104,7 @@ def test_nonroot_listdir():
 
 
 def test_missing_file():
-    with open_romfs() as reader:
+    with open_romfs(open_compatibility_mode=False) as reader:
         with pytest.raises(romfs.RomFSFileNotFoundError):
             reader.open('/nonexistant.bin')
 
