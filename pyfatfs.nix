@@ -3,7 +3,7 @@
 buildPythonPackage rec {
   pname = "pyfatfs";
   version = "1.1.0";
-  pyproject = true;
+  format = "pyproject";
 
   disabled = pythonOlder "3.6";
 
