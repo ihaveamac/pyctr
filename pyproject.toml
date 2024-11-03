@@ -37,6 +37,5 @@ pyctrcmd ="pyctr.cmd.__main__:main"
 [tool.setuptools.dynamic]
 version = {attr = "pyctr.__version__"}
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["pyctr.*"]
+[tool.setuptools.packages]
+find = {namespaces = false}
