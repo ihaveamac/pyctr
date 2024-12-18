@@ -12,8 +12,8 @@
       let pkgs = import nixpkgs { inherit system; }; in {
 
         packages = rec {
-          pyfatfs = pkgs.python3Packages.callPackage ./pyfatfs.nix { };
-          pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { pyfatfs = self.packages.${system}.pyfatfs; };
+          pyfatfs = pkgs.python3Packages.callPackage ./nix/pyfatfs.nix { };
+          pyctr = pkgs.python3Packages.callPackage ./package.nix { pyfatfs = self.packages.${system}.pyfatfs; };
           default = pyctr;
           # mainly useful for things like pycharm
           python-environment = pkgs.python3Packages.python.buildEnv.override {

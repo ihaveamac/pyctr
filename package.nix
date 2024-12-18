@@ -3,7 +3,7 @@
 buildPythonPackage {
   pname = "pyctr";
   version = "0.8-beta";
-  format = "pyproject";
+  pyproject = true;
 
   disabled = pythonOlder "3.8";
 
