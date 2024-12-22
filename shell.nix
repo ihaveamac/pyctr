@@ -3,7 +3,7 @@
 let
   pythonPackages = pkgs.python3Packages;
   pyfatfs = pythonPackages.callPackage ./nix/pyfatfs.nix {};
-  pyctr = pythonPackages.callPackage ./default.nix { inherit pyfatfs; };
+  pyctr = pythonPackages.callPackage ./package.nix { inherit pyfatfs; };
 in pkgs.mkShell {
   name = "pyctr-dev-shell";
 
