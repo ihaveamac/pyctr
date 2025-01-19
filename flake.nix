@@ -25,7 +25,10 @@
           '');
         };
 
-        devShells.default = pkgs.callPackage ./shell.nix {};
+        devShells = {
+          default = pkgs.callPackage ./shell.nix {};
+          withPyctr = pkgs.callPackage ./shell.nix { withPyctr = true; };
+        };
       }
     );
 }

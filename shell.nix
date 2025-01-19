@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}, withPyctr ? false }:
 
 let
   pythonPackages = pkgs.python3Packages;
@@ -9,7 +9,7 @@ in pkgs.mkShell {
 
   packages = pyctr.propagatedBuildInputs ++ [
     pythonPackages.pytest
-  ];
+  ] ++ (pkgs.lib.optional withPyctr pyctr);
 
   shellHook = ''
     # pytest seems to have issues without doing this
