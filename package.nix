@@ -1,4 +1,12 @@
-{ buildPythonPackage, pythonOlder, pycryptodomex, pillow, fs, pyfatfs }:
+{
+  lib,
+  buildPythonPackage,
+  pythonOlder,
+  pycryptodomex,
+  pillow,
+  fs,
+  pyfatfs,
+}:
 
 buildPythonPackage {
   pname = "pyctr";
@@ -7,7 +15,22 @@ buildPythonPackage {
 
   disabled = pythonOlder "3.8";
 
-  src = builtins.path { path = ./.; name = "pyctr"; };
+  src = builtins.path {
+    path = ./.;
+    name = "pyctr";
+    filter =
+      path: type:
+      !(builtins.elem (baseNameOf path) [
+        "build"
+        "dist"
+        "localtest"
+        "__pycache__"
+        "v"
+        ".git"
+        "_build"
+        "pyctr.egg-info"
+      ]);
+  };
 
   propagatedBuildInputs = [
     pycryptodomex
