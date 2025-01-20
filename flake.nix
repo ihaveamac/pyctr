@@ -3,32 +3,45 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-utils }: 
+  outputs =
+    inputs@{ self, nixpkgs }:
+    let
+      systems = [
+        "x86_64-linux"
+        "i686-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+        "aarch64-linux"
+        "armv6l-linux"
+        "armv7l-linux"
+      ];
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
+    in
+    {
+      legacyPackages = forAllSystems (
+        system:
+        (import ./default.nix {
+          pkgs = import nixpkgs { inherit system; };
+        })
+        // {
+          default = self.legacyPackages.${system}.pyctr;
+        }
+      );
+      packages = forAllSystems (
+        system: nixpkgs.lib.filterAttrs (_: v: nixpkgs.lib.isDerivation v) self.legacyPackages.${system}
+      );
 
-    flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = import nixpkgs { inherit system; }; in {
-
-        packages = rec {
-          pyfatfs = pkgs.python3Packages.callPackage ./nix/pyfatfs.nix { };
-          pyctr = pkgs.python3Packages.callPackage ./package.nix { pyfatfs = self.packages.${system}.pyfatfs; };
-          default = pyctr;
-          # mainly useful for things like pycharm
-          python-environment = pkgs.python3Packages.python.buildEnv.override {
-            extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python3Packages; [ pytest ]);
-            ignoreCollisions = true;
-          };
-          tester = pkgs.writeShellScriptBin "pyctr-tester" (with self.packages.${system}; ''
-            PYTHONPATH=$PWD:$PYTHONPATH ${python-environment}/bin/pytest ./tests
-          '');
-        };
-
-        devShells = {
-          default = pkgs.callPackage ./shell.nix {};
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          default = pkgs.callPackage ./shell.nix { };
           withPyctr = pkgs.callPackage ./shell.nix { withPyctr = true; };
-        };
-      }
-    );
+        }
+      );
+    };
 }

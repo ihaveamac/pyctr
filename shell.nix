@@ -1,9 +1,9 @@
 { pkgs ? import <nixpkgs> {}, withPyctr ? false }:
 
 let
+  pyctrPkgs = import ./default.nix { inherit pkgs; };
+  pyctr = pyctrPkgs.pyctr;
   pythonPackages = pkgs.python3Packages;
-  pyfatfs = pythonPackages.callPackage ./nix/pyfatfs.nix {};
-  pyctr = pythonPackages.callPackage ./package.nix { inherit pyfatfs; };
 in pkgs.mkShell {
   name = "pyctr-dev-shell";
 
