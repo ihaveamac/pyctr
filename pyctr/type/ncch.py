@@ -426,7 +426,7 @@ class NCCHReader(TypeReaderCryptoBase):
                 for offset in crypto_changes:
                     self._exefs_crypto_ranges.append((previous_offset, offset, previous_keyslot))
                     previous_offset = offset
-                    previous_keyslot = self.main_keyslot if previous_keyslot is self.extra_keyslot else self.extra_keyslot
+                    previous_keyslot = self.main_keyslot if previous_keyslot is Keyslot.NCCHExtraKey else Keyslot.NCCHExtraKey
 
             # This will set up either the special ExeFS encryption from above, or a straightforward decryption
             # passthrough if not.
