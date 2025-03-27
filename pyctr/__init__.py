@@ -12,4 +12,4 @@ __license__ = 'MIT'
 
 VersionInfo = namedtuple('VersionInfo', 'major minor micro releaselevel serial')
 version_info = VersionInfo(major=0, minor=7, micro=5, releaselevel='final', serial=0)
-__version__ = '0.7.5'
+__version__ = '0.7.6'

@@ -1,6 +1,6 @@
 Note: this is for the 0.7 branch, which split from master once the 0.7.0 release was made. For 0.8 or newer, please look at the other branches.
 
-## Next
+## v0.7.6 - March 27, 2025
 
 * Fix NCCH ExeFS decryption with Original NCCH + seeded key
 
