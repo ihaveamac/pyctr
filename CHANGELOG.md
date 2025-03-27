@@ -44,6 +44,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Add Nix derivation and flake
 * Various documentation updates
 * Switch to pyproject-only format
+* Fix NCCH ExeFS decryption with Original NCCH + seeded key
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
