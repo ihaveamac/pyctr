@@ -1,5 +1,7 @@
 ## Next
 ### Highlights
+Python 3.12 or later is now required, up from 3.8.
+
 A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 
 [PyFilesystem2](https://www.pyfilesystem.org/) (fs) is now a dependency.
@@ -45,6 +47,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Various documentation updates
 * Switch to pyproject-only format
 * Fix NCCH ExeFS decryption with Original NCCH + seeded key
+* Require Python 3.12
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
