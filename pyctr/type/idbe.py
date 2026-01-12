@@ -6,17 +6,19 @@
 
 from pathlib import Path
 from struct import Struct
+from sys import getdefaultencoding
 from typing import TYPE_CHECKING
 from warnings import filterwarnings, simplefilter
 
-import ruamel.yaml.constructor
 from Cryptodome.Cipher import AES
 from requests import Session
 from urllib3.exceptions import InsecureRequestWarning
 from fs.appfs import UserCacheFS
 
+from pyctr.type.smdh import AppTitle, SMDHRegionLockout
+
 if TYPE_CHECKING:
-    from typing import Union
+    from typing import Union, Optional
 
 # The SSL certs used here are old and requests/urllib3 really don't like it.
 # The warning is "Unverified HTTPS request is being made to host 'idbe-ctr.cdn.nintendo.net'."
@@ -53,7 +55,8 @@ IDBE_KEYS = (
 idbe_decrypted_struct = Struct(
     '<'
     '32s'    # SHA-256 hash
-    '16s'    # unknown
+    'Q'      # Title ID
+    '8s'    # unknown
     'i'      # region lockout
     '28s'    # unknown
     '512s'   # title structs
@@ -66,8 +69,19 @@ if idbe_cache_fs:
 
 
 class IDBE:
+    def __init__(self) -> None:
+        pass
+
     @classmethod
-    def get(cls, title_id: 'Union[str, int]', version: int = None, /, *, cache: bool = True):
+    def get(cls, title_id: 'Union[str, int]', version: 'Optional[int]' = None, /, *, cache: bool = True):
+        """
+        Get an icon from IDBE.
+
+        :param title_id: Title ID of the application.
+        :param version: Icon version. Leave unset to get the latest.
+        :param cache: Store and retrieve the icon from the local cache.
+        :return: IDBE object with the parsed data.
+        """
         if isinstance(title_id, str):
             title_id = int(title_id, 16)
         if version:
@@ -79,21 +93,18 @@ class IDBE:
 
         print(url)
 
-        if cache and idbe_cache_fs.isfile(idbe_cache_file):
+        if idbe_cache_fs and cache and idbe_cache_fs.isfile(idbe_cache_file):
             with idbe_cache_fs.open(idbe_cache_file, 'rb') as f:
                 data_dec = f.read(IDBE_SIZE)
-                print('returning cached file from', idbe_cache_fs.getospath(idbe_cache_file))
                 return data_dec
 
         with _session.get(url) as r:
-            data = r.content
+            r.raise_for_status()
+            data: bytes = r.content
 
         key = IDBE_KEYS[data[1]]
         cipher = AES.new(key, AES.MODE_CBC, IDBE_IV)
         data_dec = cipher.decrypt(data[2:])
 
-        if cache:
+        if idbe_cache_fs and cache:
             idbe_cache_fs.writebytes(idbe_cache_file, data_dec)
-            print('wrote to cache:', idbe_cache_fs.getospath(idbe_cache_file))
-
-        return data_dec
