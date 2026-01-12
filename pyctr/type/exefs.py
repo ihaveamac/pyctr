@@ -17,7 +17,7 @@ from .base import TypeReaderBase
 from .smdh import SMDH, InvalidSMDHError
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
+    from typing import Dict
 
     from fs.base import FS
 
@@ -203,15 +203,15 @@ class ExeFSReader(TypeReaderBase):
 
     __slots__ = ('_code_dec', '_lock', 'entries', 'icon')
 
-    _code_dec: 'Optional[bytes]'
+    _code_dec: 'bytes | None'
 
     entries: 'Dict[str, ExeFSEntry]'
     """Entries in the ExeFS."""
 
-    icon: 'Optional[SMDH]'
+    icon: 'SMDH | None'
     """The icon info, if one is in the ExeFS."""
 
-    def __init__(self, fp: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = True,
+    def __init__(self, fp: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = True,
                  _load_icon: bool = True):
         super().__init__(fp, fs=fs, closefd=closefd)
 

@@ -19,7 +19,7 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional, Union
+    from typing import Dict, List, Union
 
     from fs.base import FS
 
@@ -129,7 +129,7 @@ class CIAReader(TypeReaderCryptoBase):
     total_size: int
     """Expected size of the CIA file in bytes."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = False,
                  load_contents: bool = True):
         super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev)
@@ -190,7 +190,7 @@ class CIAReader(TypeReaderCryptoBase):
         # lazy method to get the total size
         self.total_size = meta_offset + meta_size
 
-        def add_region(section: 'Union[int, CIASection]', offset: int, size: int, iv: 'Optional[bytes]'):
+        def add_region(section: 'Union[int, CIASection]', offset: int, size: int, iv: 'bytes | None'):
             region = CIARegion(section=section, offset=offset, size=size, iv=iv)
             self.sections[section] = region
 

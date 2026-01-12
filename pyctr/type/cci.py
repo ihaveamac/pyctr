@@ -120,7 +120,7 @@ class CCIReader(TypeReaderBase):
     media_id: str
     """Same as the Title ID of the application."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, dev: bool = False, load_contents: bool = True,
                  assume_decrypted: bool = False):
         super().__init__(file, fs=fs, closefd=closefd)

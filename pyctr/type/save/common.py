@@ -13,7 +13,7 @@ from ..base import TypeReaderCryptoBase
 from .partition import Partition, load_partdesc
 
 if TYPE_CHECKING:
-    from typing import Dict, Literal, Optional
+    from typing import Dict, Literal
 
     from ...common import FilePath, FilePathOrObject
     from ...crypto import CryptoEngine
@@ -59,7 +59,7 @@ class PartitionContainerBase(TypeReaderCryptoBase):
     """Raw header for CMAC generation."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
+                 fs: 'FS | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
                  sd_key: bytes = None):
         super().__init__(file, fs=fs, closefd=closefd, mode=mode, crypto=crypto, dev=dev)

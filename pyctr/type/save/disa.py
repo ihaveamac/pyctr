@@ -11,7 +11,7 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
+    from typing import Dict
 
     from fs.base import FS
 
@@ -48,7 +48,7 @@ class DISA(PartitionContainerBase):
     """Partitions of the file. DISA can have one or two, so there is always `0` but there can be `1` as well."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
+                 fs: 'FS | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
                  sd_key: bytes = None):
         super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,

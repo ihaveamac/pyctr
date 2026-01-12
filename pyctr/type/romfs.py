@@ -23,7 +23,7 @@ from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import IO, BinaryIO, Optional, Tuple, Union, List, Iterator
+    from typing import IO, BinaryIO, Tuple, Union, List, Iterator
     from ..common import FilePathOrObject
     from collections.abc import Collection
 
@@ -137,7 +137,7 @@ class RomFSReader(TypeReaderBase, FS):
     __slots__ = ('_tree_root', 'case_insensitive', 'data_offset', 'lv3_offset', 'total_size')
 
     def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *,
-                 fs: 'Optional[FS]' = None, closefd: bool = None, open_compatibility_mode: bool = True):
+                 fs: 'FS | None' = None, closefd: bool = None, open_compatibility_mode: bool = True):
         super().__init__(file, fs=fs, closefd=closefd)
         self.case_insensitive = case_insensitive
         self.open_compatibility_mode = open_compatibility_mode
@@ -271,7 +271,7 @@ class RomFSReader(TypeReaderBase, FS):
 
         return Info(info)
 
-    def getinfo(self, path: str, namespaces: 'Optional[Collection[str]]' = ()) -> Info:
+    def getinfo(self, path: str, namespaces: 'Collection[str]' = ()) -> Info:
         curr = self._get_raw_info(path)
         return self._gen_info(curr)
 
@@ -296,7 +296,7 @@ class RomFSReader(TypeReaderBase, FS):
     def makedir(
         self,
         path: str,
-        permissions: 'Optional[Permissions]' = None,
+        permissions: 'Permissions | None' = None,
         recreate: bool = False,
     ) -> 'SubFS[FS]':
         raise errors.ResourceReadOnly(path)
@@ -317,8 +317,8 @@ class RomFSReader(TypeReaderBase, FS):
         path,
         mode: str = 'r',
         buffering: int = -1,
-        encoding: 'Optional[str]' = None,
-        errors: 'Optional[str]' = None,
+        encoding: 'str | None' = None,
+        errors: 'str | None' = None,
         newline: str = '',
         **options
     ) -> 'IO':
@@ -377,8 +377,8 @@ class RomFSReader(TypeReaderBase, FS):
     def scandir(
         self,
         path: str,
-        namespaces: 'Optional[Collection[str]]' = None,
-        page: 'Optional[Tuple[int, int]]' = None,
+        namespaces: 'Collection[str] | None' = None,
+        page: 'Tuple[int, int] | None' = None,
     ) -> 'Iterator[Info]':
         curr = self._get_raw_info(path)
         if curr['type'] != 'dir':

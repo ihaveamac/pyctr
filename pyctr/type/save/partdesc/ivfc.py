@@ -15,7 +15,7 @@ from .common import (InvalidHeaderError, InvalidHeaderLengthError, PartitionDesc
                      _raise_if_level_closed, get_block_range)
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Callable, List, Optional, Tuple
+    from typing import BinaryIO, Callable, List, Tuple
 
     # trick type checkers
     RawIOBase = BinaryIO
@@ -195,7 +195,7 @@ class IVFCHashTree:
         ]
 
     def get_block(self, level: int, block: int, *, verify: bool = True,
-                  deep_verify: bool = True) -> 'Tuple[bytes, Optional[bool]]':
+                  deep_verify: bool = True) -> 'Tuple[bytes, bool | None]':
         """
         Get the data from a block. The data is validated using the IVFC levels above the requested one.
 
@@ -226,7 +226,7 @@ class IVFCHashTree:
             return self._get_block_internal(level_index, block, verify=verify, deep_verify=deep_verify)
 
     def _get_block_internal(self, level_index: int, block: int, *, verify: bool = True,
-                            deep_verify: bool = True) -> 'Tuple[bytes, Optional[bool]]':
+                            deep_verify: bool = True) -> 'Tuple[bytes, bool | None]':
         """The actual method that gets the block data and validates it. Cache is handled by :meth:`get_block`."""
 
         with self._rlock:

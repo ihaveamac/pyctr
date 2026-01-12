@@ -16,7 +16,7 @@ from fs.path import dirname as fs_dirname
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from typing import BinaryIO, IO, Union, Optional, Tuple
+    from typing import BinaryIO, IO, Union, Tuple
 
     RawIOBase = BinaryIO
 
@@ -31,7 +31,7 @@ class PyCTRError(Exception):
 
 def get_fs_file_object(
         path: 'FilePathOrObject',
-        fs: 'Optional[FS]' = None,
+        fs: 'FS | None' = None,
         *,
         mode: str = 'rb'
     ) -> 'Tuple[IO, bool]':

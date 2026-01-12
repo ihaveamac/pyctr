@@ -12,7 +12,6 @@ from .. import __version__
 from .checkenv import main as checkenv_main
 
 if TYPE_CHECKING:
-    from typing import Optional
     from argparse import Namespace
 
 
@@ -36,7 +35,7 @@ def create_argparser(prog):
     return p
 
 
-def main(args: 'Optional[list[str]]' = None):
+def main(args: list[str] | None = None):
     if not args:
         args = argv[1:]
 

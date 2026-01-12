@@ -21,7 +21,7 @@ from .exefs import ExeFSReader
 from .romfs import RomFSReader
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+    from typing import BinaryIO, Dict, List, Tuple, Union
 
     from fs.base import FS
 
@@ -187,7 +187,7 @@ class NCCHReader(TypeReaderCryptoBase):
     )
 
     # this is the KeyY when generated using the seed
-    _seeded_key_y: 'Optional[bytes]'
+    _seeded_key_y: 'bytes | None'
 
     sections: 'Dict[NCCHSection, NCCHRegion]'
     """Contains all the sections the NCCH has."""
@@ -200,10 +200,10 @@ class NCCHReader(TypeReaderCryptoBase):
     # the keyslot should alternate between main and extra for each entry, staring with main (for header)
     _exefs_crypto_ranges: 'List[Tuple[int, int, int]]'
 
-    exefs: 'Optional[ExeFSReader]'
+    exefs: 'ExeFSReader | None'
     """The :class:`~.ExeFSReader` of the NCCH, if it has one."""
 
-    romfs: 'Optional[RomFSReader]'
+    romfs: 'RomFSReader | None'
     """The :class:`~.RomFSReader` of the NCCH, if it has one."""
 
     program_id: str
@@ -241,7 +241,7 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
                  load_sections: bool = True, assume_decrypted: bool = False):
 

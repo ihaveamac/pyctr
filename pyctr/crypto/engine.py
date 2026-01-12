@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
-    from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+    from typing import BinaryIO, Dict, List, Tuple, Union
     from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
@@ -201,23 +201,23 @@ _base_key_x = {
     0x25: (0xCEE7D8AB30C00DAE850EF5E382AC5AF3, 0x81907A4B6F1B47323A677974CE4AD71B),
 }
 
-_b9_keyblob: 'Dict[str, Optional[bytes]]' = {
+_b9_keyblob: 'Dict[str, bytes | None]' = {
     'retail': None,
     'dev': None
 }
 # tuples are (key, iv)
-_otp_key_iv: 'Dict[str, Optional[Tuple[bytes, bytes]]]' = {
+_otp_key_iv: 'Dict[str, Tuple[bytes, bytes] | None]' = {
     'retail': None,
     'dev': None
 }
 b9_blobs_loaded = False
 # the path where the info was loaded from
-b9_path: 'Optional[str]' = None
+b9_path: 'str | None' = None
 
 # global values to be copied to new CryptoEngine instances after the first one
 
 
-b9_paths: 'List[str]' = []
+b9_paths: 'list[str]' = []
 for p in config_dirs:
     b9_paths.append(pjoin(p, 'boot9.bin'))
     b9_paths.append(pjoin(p, 'boot9_prot.bin'))
@@ -258,7 +258,7 @@ def _setup_keyblobs(b9: bytes):
     b9_blobs_loaded = True
 
 
-def setup_boot9_keys(*, b9_file: 'FilePathOrObject' = None, b9_data: 'Optional[bytes]' = None) -> bool:
+def setup_boot9_keys(*, b9_file: 'FilePathOrObject' = None, b9_data: 'bytes | None' = None) -> bool:
     """
     Load keys from the ARM9 BootROM. Accepts full and prot-only boot9 dumps.
 
@@ -396,12 +396,12 @@ class CryptoEngine:
 
         self.otp_keys_set = False
 
-        self._otp_device_id: Optional[int] = None
+        self._otp_device_id: int | None = None
 
-        self._otp_enc: Optional[bytes] = None
-        self._otp_dec: Optional[bytes] = None
+        self._otp_enc: bytes | None = None
+        self._otp_dec: bytes | None = None
 
-        self._id0: Optional[bytes] = None
+        self._id0: bytes | None = None
 
         for keyslot, keys in _base_key_x.items():
             self.key_x[keyslot] = keys[dev]
@@ -1117,7 +1117,7 @@ class CTRFileIO(_CryptoFileBase):
         self._current_cipher = None
         return self._reader.seek(seek, whence)
 
-    def truncate(self, size: 'Optional[int]' = None) -> int:
+    def truncate(self, size: 'int | None' = None) -> int:
         return self._reader.truncate(size)
 
 

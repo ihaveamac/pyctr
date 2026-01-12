@@ -22,7 +22,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Optional, Set, Tuple, Union
+    from typing import BinaryIO, Dict, List, Set, Tuple, Union
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -94,7 +94,7 @@ class NCSDPartitionInfo(NamedTuple):
     encryption_type: 'Union[PartitionEncryptionType, int]'
     offset: int
     size: int
-    base_file: 'Optional[str]'
+    base_file: 'str | None'
 
 
 class NANDNCSDHeader(NamedTuple):
@@ -371,12 +371,12 @@ class NAND(TypeReaderCryptoBase):
         'essential', 'header', 'twl_index', 'twl_partitions', '_fat_partitons'
     )
 
-    essential: 'Optional[ExeFSReader]'
+    essential: 'ExeFSReader | None'
 
     ctr_partitions: 'List[Tuple[int, int]]'
     twl_partitions: 'List[Tuple[int, int]]'
 
-    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'FS | None' = None, closefd: bool = None,
                  crypto: CryptoEngine = None, dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None,
                  cid: bytes = None, cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
         super().__init__(file=file, fs=fs, mode=mode, closefd=closefd, crypto=crypto, dev=dev)

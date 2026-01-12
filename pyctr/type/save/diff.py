@@ -11,7 +11,7 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
+    from typing import Dict
 
     from fs.base import FS
 
@@ -41,7 +41,7 @@ class DIFF(PartitionContainerBase):
     """Partitions of the file. DIFF only has one, so there would only be a single `0` key."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
+                 fs: 'FS | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
                  sd_key: bytes = None):
         super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,

@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 from ..common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Mapping, Optional, Tuple, Union
+    from typing import BinaryIO, Dict, List, Mapping, Tuple, Union
 
     from fs.base import FS
 
@@ -248,7 +248,7 @@ class SMDH:
     def __repr__(self):
         return f'<{type(self).__name__} title: {self.get_app_title().short_desc}>'
 
-    def get_app_title(self, language: 'Union[str, Tuple[str, ...]]' = _region_order_check) -> 'Optional[AppTitle]':
+    def get_app_title(self, language: 'Union[str, Tuple[str, ...]]' = _region_order_check) -> 'AppTitle | None':
         if isinstance(language, str):
             language = (language,)
 
@@ -291,6 +291,6 @@ class SMDH:
         return cls(names, icon_small_array, icon_large_array, flags, region_lockout)
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'Optional[FS]' = None) -> 'SMDH':
+    def from_file(cls, fn: 'FilePath', *, fs: 'FS | None' = None) -> 'SMDH':
         with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f)

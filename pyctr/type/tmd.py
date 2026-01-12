@@ -12,7 +12,7 @@ from ..common import PyCTRError, get_fs_file_object
 from ..util import readbe, readle
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Iterable, Optional
+    from typing import BinaryIO, Iterable
 
     from fs.base import FS
 
@@ -334,6 +334,6 @@ class TitleMetadataReader:
                    _u_access_rights=u_access_rights, _u_boot_count=u_boot_count, _u_padding=u_padding)
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'Optional[FS]' = None, verify_hashes: bool = True) -> 'TitleMetadataReader':
+    def from_file(cls, fn: 'FilePath', *, fs: 'FS | None' = None, verify_hashes: bool = True) -> 'TitleMetadataReader':
         with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f, verify_hashes=verify_hashes)
