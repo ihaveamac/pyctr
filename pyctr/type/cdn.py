@@ -24,7 +24,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Dict, List, Optional, Set, Tuple, Union
+    from typing import BinaryIO
     from ..common import FilePath
     from ..crypto import CBCFileIO
     from .tmd import ContentChunkRecord
@@ -54,7 +54,7 @@ class CDNSection(IntEnum):
 
 
 class CDNRegion(NamedTuple):
-    section: 'Union[int, CDNSection]'
+    section: 'int | CDNSection'
     """Index of the section."""
     iv: bytes
     """Initialization vector. Only used for encrypted contents."""
@@ -87,16 +87,16 @@ class CDNReader:
         '_base_files', '_crypto', '_open_files', 'available_sections', 'closed', 'content_info', 'contents', 'tmd', 'fs'
     )
 
-    available_sections: 'List[Union[CDNSection, int]]'
+    available_sections: 'list[CDNSection | int]'
     """A list of sections available, including contents, ticket, and title metadata."""
 
     closed: bool
     """`True` if the reader is closed."""
 
-    contents: 'Dict[int, NCCHReader]'
+    contents: 'dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
-    content_info: 'List[ContentChunkRecord]'
+    content_info: 'list[ContentChunkRecord]'
     """
     A list of :class:`~.ContentChunkRecord` objects for each content found in the directory at the time of object
     initialization.
@@ -105,7 +105,7 @@ class CDNReader:
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
-    def __init__(self, file: 'FilePath', *, fs: 'Optional[FS]' = None, case_insensitive: bool = False,
+    def __init__(self, file: 'FilePath', *, fs: 'FS | None' = None, case_insensitive: bool = False,
                  crypto: 'CryptoEngine' = None, dev: bool = False, seed: bytes = None, titlekey: bytes = None,
                  decrypted_titlekey: bytes = None, common_key_index: int = 0, load_contents: bool = True):
         if crypto:
@@ -129,11 +129,11 @@ class CDNReader:
         self.fs = fs
 
         # {section: (filepath, iv)}
-        self._base_files: Dict[Union[CDNSection, int], Tuple[str, bytes]] = {}
+        self._base_files: dict[CDNSection | int, tuple[str, bytes]] = {}
 
         # opened files to close if the CDNReader is closed
         # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
+        self._open_files: set[BinaryIO] = WeakSet()
 
         # public method to see what sections can be accessed
         self.available_sections = []
@@ -141,7 +141,7 @@ class CDNReader:
         self.contents = {}
         self.content_info = []
 
-        def add_file(section: 'Union[CDNSection, int]', path: 'Union[PathLike, str]', iv: 'Optional[bytes]'):
+        def add_file(section: 'CDNSection | int', path: 'PathLike | str', iv: 'bytes | None'):
             self._base_files[section] = (path, iv)
             self.available_sections.append(section)
 
@@ -221,7 +221,7 @@ class CDNReader:
         info_final = " ".join(x + ": " + str(y) for x, y in info)
         return f'<{type(self).__name__} {info_final}>'
 
-    def open_raw_section(self, section: 'Union[int, CDNSection]') -> 'BinaryIO':
+    def open_raw_section(self, section: 'int | CDNSection') -> 'BinaryIO':
         """
         Open a raw CDN content for reading with on-the-fly decryption.
 

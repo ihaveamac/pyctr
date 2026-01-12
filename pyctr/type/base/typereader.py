@@ -13,7 +13,7 @@ from ...common import PyCTRError, get_fs_file_object
 from ...crypto import CryptoEngine
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Optional, Set
+    from typing import BinaryIO
     from ...common import FilePathOrObject
 
     from fs.base import FS
@@ -62,7 +62,7 @@ class TypeReaderBase:
     closed: bool
     """`True` if the reader is closed."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: 'bool | None' = None,
                  mode: str = 'rb'):
         self.closed = False
 
@@ -72,7 +72,7 @@ class TypeReaderBase:
         # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
         #   even though it's similar.
         # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
+        self._open_files: set[BinaryIO] = WeakSet()
 
         if 'b' not in mode:
             mode += 'b'
@@ -153,7 +153,7 @@ class TypeReaderCryptoBase(TypeReaderBase):
 
     __slots__ = ('_crypto',)
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None, mode: str = 'rb',
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):
         super().__init__(file, fs=fs, closefd=closefd, mode=mode)
 

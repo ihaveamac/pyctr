@@ -16,13 +16,13 @@ from fs.path import dirname as fs_dirname
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from typing import BinaryIO, IO, Union, Optional, Tuple
+    from typing import BinaryIO, IO
 
     RawIOBase = BinaryIO
 
-    FilePath = Union[PathLike, str, bytes]
-    FilePathOrObject = Union[FilePath, BinaryIO]
-    DirPathOrFS = Union[PathLike, str, bytes, FS]
+    FilePath = PathLike | str | bytes
+    FilePathOrObject = FilePath | BinaryIO
+    DirPathOrFS = PathLike | str | bytes | FS
 
 
 class PyCTRError(Exception):
@@ -31,10 +31,10 @@ class PyCTRError(Exception):
 
 def get_fs_file_object(
         path: 'FilePathOrObject',
-        fs: 'Optional[FS]' = None,
+        fs: 'FS | None' = None,
         *,
         mode: str = 'rb'
-    ) -> 'Tuple[IO, bool]':
+    ) -> 'tuple[IO, bool]':
     if isinstance(path, (PathLike, str, bytes)):
         """
         Opens a file on the given filesystem. This can be given a simple OS path, a path and a filesystem, or an

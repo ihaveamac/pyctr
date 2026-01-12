@@ -1,15 +1,22 @@
-{ pkgs ? import <nixpkgs> {} }:
+{
+  pkgs ? import <nixpkgs> { },
+  withPyctr ? false,
+}:
 
 let
+  pyctrPkgs = import ./default.nix { inherit pkgs; };
+  pyctr = pyctrPkgs.pyctr;
   pythonPackages = pkgs.python3Packages;
-  pyfatfs = pythonPackages.callPackage ./pyfatfs.nix {};
-  pyctr = pythonPackages.callPackage ./pyctr.nix { inherit pyfatfs; };
-in pkgs.mkShell {
+in
+pkgs.mkShell {
   name = "pyctr-dev-shell";
 
-  packages = pyctr.propagatedBuildInputs ++ [
-    pythonPackages.pytest
-  ];
+  packages =
+    pyctr.propagatedBuildInputs
+    ++ [
+      pythonPackages.pytest
+    ]
+    ++ (pkgs.lib.optional withPyctr pyctr);
 
   shellHook = ''
     # pytest seems to have issues without doing this

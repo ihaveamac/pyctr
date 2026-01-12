@@ -1,6 +1,15 @@
-{ pkgs ? import <nixpkgs> {} }:
+{
+  pkgs ? import <nixpkgs> { },
+}:
 
 rec {
-  pyfatfs = pkgs.python3Packages.callPackage ./pyfatfs.nix { };
-  pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { pyfatfs = pyfatfs; };
+  pyctr = pkgs.python3Packages.callPackage ./package.nix { };
+  # mainly useful for things like pycharm
+  python-environment = pkgs.python3Packages.python.buildEnv.override {
+    extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python3Packages; [ pytest pip ]);
+    ignoreCollisions = true;
+  };
+  tester = pkgs.writeShellScriptBin "pyctr-tester" ''
+    PYTHONPATH=$PWD:$PYTHONPATH ${python-environment}/bin/pytest ./tests
+  '';
 }

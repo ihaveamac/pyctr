@@ -12,7 +12,7 @@ from .partdesc.dpfs import DPFS, DPFSLevel1, DPFSLevel2, DPFSLevel3, DPFSLevel3F
 from .partdesc.ivfc import IVFC, IVFCHashTree, IVFCLevel4Reader
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Callable, List
+    from typing import BinaryIO, Callable
 
 
 def load_partdesc(partdesc: bytes):
@@ -26,7 +26,7 @@ def load_partdesc(partdesc: bytes):
     ivfc = IVFC.from_bytes(partdesc[difi.ivfc_offset:difi.ivfc_offset + difi.ivfc_size])
     dpfs = DPFS.from_bytes(partdesc[difi.dpfs_offset:difi.dpfs_offset + difi.dpfs_size])
     base_master_hash = partdesc[difi.part_hash_offset:difi.part_hash_offset + difi.part_hash_size]
-    master_hashes: List[bytes] = [base_master_hash[x:x + 0x20] for x in range(0, difi.part_hash_size, 0x20)]
+    master_hashes: list[bytes] = [base_master_hash[x:x + 0x20] for x in range(0, difi.part_hash_size, 0x20)]
     return difi, ivfc, dpfs, master_hashes
 
 
@@ -57,7 +57,7 @@ class Partition:
     :param master_hashes: A list of SHA-256 hashes over IVFC Level 1.
     """
 
-    def __init__(self, fp: 'BinaryIO', difi: 'DIFI', ivfc: 'IVFC', dpfs: 'DPFS', master_hashes: 'List[bytes]', *,
+    def __init__(self, fp: 'BinaryIO', difi: 'DIFI', ivfc: 'IVFC', dpfs: 'DPFS', master_hashes: 'list[bytes]', *,
                  update_partdesc_callback: 'Callable[[bytes], None]' = None, partdesc_size: int = None,
                  ivfc_verify: bool = True, ivfc_deep_verify: bool = True):
         self._fp = fp
@@ -96,7 +96,7 @@ class Partition:
 
         self.file = IVFCLevel4Reader(self.ivfc_hash_tree, verify=ivfc_verify, deep_verify=ivfc_deep_verify)
 
-    def _update_hashes(self, master_hashes: 'List[bytes]'):
+    def _update_hashes(self, master_hashes: 'list[bytes]'):
         self.master_hashes = master_hashes
 
         partdesc = partdesc_to_bytes(self.difi, self.ivfc, self.dpfs, self.master_hashes, self._partdesc_size)

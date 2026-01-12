@@ -13,7 +13,7 @@ from ..base import TypeReaderCryptoBase
 from .partition import Partition, load_partdesc
 
 if TYPE_CHECKING:
-    from typing import Dict, Literal, Optional
+    from typing import Literal
 
     from ...common import FilePath, FilePathOrObject
     from ...crypto import CryptoEngine
@@ -52,14 +52,14 @@ class PartitionContainerBase(TypeReaderCryptoBase):
     :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
     """
 
-    partitions: 'Dict[int, Partition]'
+    partitions: 'dict[int, Partition]'
     """Partitions of the file. Only 0 exists for DIFF, while 0 and 1 can exist with DISA."""
 
     _header: bytes
     """Raw header for CMAC generation."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 fs: 'Optional[FS]' = None, closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None,
+                 fs: 'FS | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
                  sd_key: bytes = None, ivfc_verify: bool = True, ivfc_deep_verify: bool = True):
         super().__init__(file, fs=fs, closefd=closefd, mode=mode, crypto=crypto, dev=dev)

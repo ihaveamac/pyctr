@@ -21,7 +21,7 @@ from .exefs import ExeFSReader
 from .romfs import RomFSReader
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+    from typing import BinaryIO
 
     from fs.base import FS
 
@@ -187,9 +187,9 @@ class NCCHReader(TypeReaderCryptoBase):
     )
 
     # this is the KeyY when generated using the seed
-    _seeded_key_y: 'Optional[bytes]'
+    _seeded_key_y: 'bytes | None'
 
-    sections: 'Dict[NCCHSection, NCCHRegion]'
+    sections: 'dict[NCCHSection, NCCHRegion]'
     """Contains all the sections the NCCH has."""
 
     # this is used in the NCCH's ExeFSReader and in FullDecrypted
@@ -198,12 +198,12 @@ class NCCHReader(TypeReaderCryptoBase):
 
     # this lists the ranges of the exefs (start + end) and the keyslot to use
     # the keyslot should alternate between main and extra for each entry, staring with main (for header)
-    _exefs_crypto_ranges: 'List[Tuple[int, int, int]]'
+    _exefs_crypto_ranges: 'list[tuple[int, int, int]]'
 
-    exefs: 'Optional[ExeFSReader]'
+    exefs: 'ExeFSReader | None'
     """The :class:`~.ExeFSReader` of the NCCH, if it has one."""
 
-    romfs: 'Optional[RomFSReader]'
+    romfs: 'RomFSReader | None'
     """The :class:`~.RomFSReader` of the NCCH, if it has one."""
 
     program_id: str
@@ -241,7 +241,7 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
                  load_sections: bool = True, assume_decrypted: bool = False):
 
@@ -266,6 +266,8 @@ class NCCHReader(TypeReaderCryptoBase):
         self._key_y = header[0x0:0x10]
         # store the ncch version
         self.version = readle(header[0x112:0x114])
+        if self.version == 1:
+            raise NCCHError('NCCH version 1 files are not currently supported')
         # get the total size of the NCCH container, and store it in bytes
         self.content_size = readle(header[0x104:0x108]) * NCCH_MEDIA_UNIT
         # get the Partition ID, which is used in the encryption
@@ -429,7 +431,7 @@ class NCCHReader(TypeReaderCryptoBase):
                 for offset in crypto_changes:
                     self._exefs_crypto_ranges.append((previous_offset, offset, previous_keyslot))
                     previous_offset = offset
-                    previous_keyslot = self.main_keyslot if previous_keyslot is self.extra_keyslot else self.extra_keyslot
+                    previous_keyslot = self.main_keyslot if previous_keyslot is Keyslot.NCCHExtraKey else Keyslot.NCCHExtraKey
 
             # This will set up either the special ExeFS encryption from above, or a straightforward decryption
             # passthrough if not.
@@ -520,7 +522,7 @@ class NCCHReader(TypeReaderCryptoBase):
         self._seeded_key_y = sha256(self._key_y + seed).digest()[0:16]
         self._seed_set_up = True
 
-    def get_data(self, section: 'Union[NCCHRegion, NCCHSection]', offset: int, size: int) -> bytes:
+    def get_data(self, section: 'NCCHRegion | NCCHSection', offset: int, size: int) -> bytes:
         """
         Get data from an NCCH section.
 
@@ -549,7 +551,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
                 # store the sections to read
                 # dict is ordered by default in CPython since 3.6.0, and part of the language spec since 3.7.0
-                to_read: Dict[Tuple[NCCHSection, int], List[int]] = {}
+                to_read: dict[tuple[NCCHSection, int], list[int]] = {}
 
                 # get each section to a local variable for easier access
                 header = self._all_sections[NCCHSection.Header]

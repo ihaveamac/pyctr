@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
-    from typing import BinaryIO, Dict, List, Optional, Tuple, Union
+    from typing import BinaryIO
     from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
@@ -201,23 +201,23 @@ _base_key_x = {
     0x25: (0xCEE7D8AB30C00DAE850EF5E382AC5AF3, 0x81907A4B6F1B47323A677974CE4AD71B),
 }
 
-_b9_keyblob: 'Dict[str, Optional[bytes]]' = {
+_b9_keyblob: 'dict[str, bytes | None]' = {
     'retail': None,
     'dev': None
 }
 # tuples are (key, iv)
-_otp_key_iv: 'Dict[str, Optional[Tuple[bytes, bytes]]]' = {
+_otp_key_iv: 'dict[str, tuple[bytes, bytes] | None]' = {
     'retail': None,
     'dev': None
 }
 b9_blobs_loaded = False
 # the path where the info was loaded from
-b9_path: 'Optional[str]' = None
+b9_path: 'str | None' = None
 
 # global values to be copied to new CryptoEngine instances after the first one
 
 
-b9_paths: 'List[str]' = []
+b9_paths: 'list[str]' = []
 for p in config_dirs:
     b9_paths.append(pjoin(p, 'boot9.bin'))
     b9_paths.append(pjoin(p, 'boot9_prot.bin'))
@@ -258,7 +258,7 @@ def _setup_keyblobs(b9: bytes):
     b9_blobs_loaded = True
 
 
-def setup_boot9_keys(*, b9_file: 'FilePathOrObject' = None, b9_data: 'Optional[bytes]' = None) -> bool:
+def setup_boot9_keys(*, b9_file: 'FilePathOrObject' = None, b9_data: 'bytes | None' = None) -> bool:
     """
     Load keys from the ARM9 BootROM. Accepts full and prot-only boot9 dumps.
 
@@ -385,9 +385,9 @@ class CryptoEngine:
     """Uses devunit keys."""
 
     def __init__(self, boot9: 'FilePathOrObject' = None, dev: bool = False, setup_b9_keys: bool = True):
-        self.key_x: Dict[int, int] = {}
-        self.key_y: Dict[int, int] = {}
-        self.key_normal: Dict[int, bytes] = {}
+        self.key_x: dict[int, int] = {}
+        self.key_y: dict[int, int] = {}
+        self.key_normal: dict[int, bytes] = {}
 
         self.dev = dev
         self._key_set = 'dev' if dev else 'retail'
@@ -396,12 +396,12 @@ class CryptoEngine:
 
         self.otp_keys_set = False
 
-        self._otp_device_id: Optional[int] = None
+        self._otp_device_id: int | None = None
 
-        self._otp_enc: Optional[bytes] = None
-        self._otp_dec: Optional[bytes] = None
+        self._otp_enc: bytes | None = None
+        self._otp_dec: bytes | None = None
 
-        self._id0: Optional[bytes] = None
+        self._id0: bytes | None = None
 
         for keyslot, keys in _base_key_x.items():
             self.key_x[keyslot] = keys[dev]
@@ -500,7 +500,7 @@ class CryptoEngine:
 
         return AES.new(key, AES.MODE_CBC, iv)
 
-    def create_ctr_cipher(self, keyslot: Keyslot, ctr: int) -> 'Union[CtrMode, _TWLCryptoWrapper]':
+    def create_ctr_cipher(self, keyslot: Keyslot, ctr: int) -> 'CtrMode | _TWLCryptoWrapper':
         """
         Create an AES-CTR cipher with the given keyslot.
 
@@ -620,7 +620,7 @@ class CryptoEngine:
         hash_p2 = readbe(path_hash[16:32])
         return hash_p1 ^ hash_p2
 
-    def load_encrypted_titlekey(self, titlekey: bytes, common_key_index: int, title_id: 'Union[str, bytes]'):
+    def load_encrypted_titlekey(self, titlekey: bytes, common_key_index: int, title_id: 'str | bytes'):
         """
         Decrypt an encrypted titlekey and store in keyslot 0x40 (:attr:`Keyslot.DecryptedTitlekey`).
 
@@ -653,7 +653,7 @@ class CryptoEngine:
 
         self.load_encrypted_titlekey(titlekey_enc, common_key_index, title_id)
 
-    def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]', *, update_normal_key: bool = True):
+    def set_keyslot(self, xy: str, keyslot: int, key: 'int | bytes', *, update_normal_key: bool = True):
         """Sets a keyslot to the specified key."""
         to_use = None
         if xy == 'x':
@@ -1117,7 +1117,7 @@ class CTRFileIO(_CryptoFileBase):
         self._current_cipher = None
         return self._reader.seek(seek, whence)
 
-    def truncate(self, size: 'Optional[int]' = None) -> int:
+    def truncate(self, size: 'int | None' = None) -> int:
         return self._reader.truncate(size)
 
 

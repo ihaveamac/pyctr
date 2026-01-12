@@ -3,26 +3,79 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-utils }: 
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      treefmt-nix,
+    }:
+    let
+      systems = [
+        "x86_64-linux"
+        "i686-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+        "aarch64-linux"
+        "armv6l-linux"
+        "armv7l-linux"
+      ];
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
+      treefmtEval = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        treefmt-nix.lib.evalModule pkgs ./treefmt.nix
+      );
+    in
+    {
+      legacyPackages = forAllSystems (
+        system:
+        (import ./default.nix {
+          pkgs = import nixpkgs { inherit system; };
+        })
+        // {
+          default = self.legacyPackages.${system}.pyctr;
+        }
+      );
+      packages = forAllSystems (
+        system: nixpkgs.lib.filterAttrs (_: v: nixpkgs.lib.isDerivation v) self.legacyPackages.${system}
+      );
 
-    flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = import nixpkgs { inherit system; }; in {
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          default = pkgs.callPackage ./shell.nix { };
+          withPyctr = pkgs.callPackage ./shell.nix { withPyctr = true; };
+        }
+      );
 
-        packages = rec {
-          pyfatfs = pkgs.python3Packages.callPackage ./pyfatfs.nix { };
-          pyctr = pkgs.python3Packages.callPackage ./pyctr.nix { pyfatfs = self.packages.${system}.pyfatfs; };
-          default = pyctr;
-          # mainly useful for things like pycharm
-          python-environment = pkgs.python3Packages.python.buildEnv.override {
-            extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python3Packages; [ pytest ]);
-            ignoreCollisions = true;
+      formatter = forAllSystems (system: treefmtEval.${system}.config.build.wrapper);
+      checks = forAllSystems (system: {
+        formatting = treefmtEval.${system}.config.build.check self;
+      });
+
+      apps = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          buildenv = {
+            type = "app";
+            program =
+              (pkgs.writeShellScript "buildenv" ''
+                nix -v -L build .#python-environment --out-link pythonenv.local
+              '').outPath;
           };
-        };
-
-        devShells.default = pkgs.callPackage ./shell.nix {};
-      }
-    );
+        }
+      );
+    };
 }

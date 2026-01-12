@@ -32,7 +32,7 @@ RomFSReader objects
         :param encoding: Encoding for text files (defaults to ``utf-8``)
         :type encoding: str
         :param errors: What to do with unicode decode errors (see ``codecs`` module for more information).
-        :type errors: Optional[str]
+        :type errors: str | None
         :param newline: Newline parameter.
         :type newline: str
         :return: A file-like object.

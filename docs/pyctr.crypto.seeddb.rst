@@ -62,6 +62,6 @@ Data
 ----
 
 .. py:data:: seeddb_paths
-    :type: Dict[int, bytes]
+    :type: dict[int, bytes]
 
     The list of paths that :meth:`load_seeddb` will try to load from automatically. By default this is every path in :attr:`pyctr.util.config_dirs` with ``seeddb.bin``. If the environment variable ``SEEDDB_PATH`` is set, its value is put at the beginning of the list.

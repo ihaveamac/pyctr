@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyctr"
+description = "Python library to parse several Nintendo 3DS files"
+authors = [
+    { name = "Ian Burgwin", email = "ian@ianburgwin.net" },
+]
+readme = "README.md"
+license = {text = "MIT"}
+dynamic = ["version"]
+requires-python = ">= 3.12"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+]
+dependencies = [
+    "pycryptodomex>=3.9,<4",
+    "fs>=2.4.0,<3.0.0",
+    "pyfatfs>=1.0.5,<2",
+]
+
+[project.optional-dependencies]
+images = ["Pillow>=8.2"]
+
+[project.scripts]
+pyctrcmd ="pyctr.cmd.__main__:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "pyctr.__version__"}
+
+[tool.setuptools.packages]
+find = {namespaces = false}

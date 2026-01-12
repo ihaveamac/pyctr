@@ -21,7 +21,8 @@ from .save.disa import DISA
 from .save.fat.save import InnerFATSAVE
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Mapping, Optional, Collection, List
+    from os import PathLike
+    from typing import BinaryIO, Mapping
     from ..common import FilePath, DirPathOrFS
 
     from fs.info import Info, RawInfo
@@ -99,13 +100,13 @@ class SDRoot:
         if len(self.id1s) == 0:
             raise MissingID1Error('could not find any ID1 directories in ' + self._crypto.id0.hex())
 
-    def open_id1(self, /, id1: 'Optional[str]' = None):
+    def open_id1(self, /, id1: 'str | None' = None):
         if not id1:
             id1 = self.id1s[0]
         return self.fs.opendir(self.id0 + '/' + id1, lambda p, f: SDFS(p, f, crypto=self._crypto))
 
     def open_title(self, /, title_id: str, *, case_insensitive: bool = False, seed: bytes = None,
-                   load_contents: bool = True, id1: 'Optional[str]' = None):
+                   load_contents: bool = True, id1: 'str | None' = None):
         fs = self.open_id1(id1)
         title_id = title_id.lower()
         sd_path = f'/title/{title_id[0:8]}/{title_id[8:16]}/content'
@@ -141,26 +142,31 @@ class SDRoot:
 
         return InnerFATSAVE(lv4p1, lv4p2, closefd=True, container=disa)
 
-
-class SDFS(FS):
+class SDFS(SubFS):
     """
     Enables access to an SD card filesystem inside Nintendo 3DS/id0/id1.
+
+    :param path: Path to the Nintendo 3DS folder.
+    :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
+        be created.
+    :param sd_key_file: Path to a movable.sed file to load the SD KeyY from.
+    :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
+    :ivar id1s: A list of ID1 directories found in the ID0 directory.
+    :ivar current_id1: The ID1 directory used as the default when none is specified, initially set to the first value
+        in id1s.
     """
 
     __slots__ = ('_base_path', '_crypto', '_id0_path', 'current_id1', 'id1s')
 
     def __init__(self, parent_fs: 'FS', path: str, *, crypto: CryptoEngine):
-        self._wrap_fs = parent_fs
-        self._path = path
-        super().__init__()
+        super().__init__(parent_fs, path)
         self._crypto = crypto
 
-    def _getpath(self, path: str) -> str:
-        if path[0:2] == './':
-            path = path[2:]
-        elif path[0] == '/':
-            path = path[1:]
-        return join(self._path, path)
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
     def openbin(self, path: str, mode: str = 'r', buffering: int = -1, **options) -> 'BinaryIO':
         """
@@ -180,41 +186,17 @@ class SDFS(FS):
         if 'Nintendo DSiWare' in path:
             raise NotImplementedError('files under "Nintendo DSiWare" currently cannot be opened with this method')
 
-        fh = self._wrap_fs.openbin(self._getpath(path), mode, buffering, **options)
+        fh = super().openbin(path, mode, buffering, **options)
         return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv(normpath(abspath(path))),
                                           closefd=True)
-
-    def getinfo(self, path: str, namespaces: 'Optional[Collection[str]]' = None) -> 'Info':
-        return self._wrap_fs.getinfo(self._getpath(path), namespaces)
-
-    def makedir(
-        self,
-        path: str,
-        permissions: 'Optional[Permissions]' = None,
-        recreate: bool = False,
-    ) -> 'SubFS[FS]':
-        self._wrap_fs.makedir(self._getpath(path), permissions, recreate)
-        return self.opendir(path)
-
-    def listdir(self, path: str) -> 'List[str]':
-        return self._wrap_fs.listdir(self._getpath(path))
-
-    def remove(self, path: str):
-        self._wrap_fs.remove(self._getpath(path))
-
-    def removedir(self, path: str):
-        self._wrap_fs.removedir(self._getpath(path))
-
-    def setinfo(self, path: str, info: 'RawInfo'):
-        self._wrap_fs.setinfo(self._getpath(path), info)
 
     def open(
         self,
         path,
         mode: str = 'rb',
         buffering: int = -1,
-        encoding: 'Optional[str]' = None,
-        errors: 'Optional[str]' = None,
+        encoding: 'str | None' = None,
+        errors: 'str | None' = None,
         newline: str = '',
         **options
     ) -> 'BinaryIO':
@@ -226,6 +208,6 @@ class SDFS(FS):
         return self.openbin(path, mode, buffering, **options)
 
     def getmeta(self, namespace: str = 'standard') -> 'Mapping[str, object]':
-        meta = dict(self._wrap_fs.getmeta(namespace))
+        meta = dict(super().getmeta(namespace))
         meta['supports_rename'] = False
         return meta

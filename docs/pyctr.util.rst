@@ -21,7 +21,7 @@ The :mod:`util` module contains extra useful functions.
     If the current platform is macOS.
 
 .. py:data:: config_dirs
-    :type: List[str]
+    :type: list[str]
 
     Data directories that should contain the ARM9 bootROM (boot9.bin), SeedDB (seeddb.bin), and other files.
 

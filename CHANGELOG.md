@@ -1,5 +1,7 @@
 ## Next
 ### Highlights
+Python 3.12 or later is now required, up from 3.8.
+
 A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 
 [PyFilesystem2](https://www.pyfilesystem.org/) (fs) is now a dependency.
@@ -39,6 +41,13 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * `NANDNCSDHeader` can be converted back to bytes with `bytes(my_nand_header)`
 * Include NAND sighax signatures as the `SIGHAX_SIGS` constant
 * Always set fixed keys regardless of boot9 (in particular: TWLNAND Y, CTRNANDNew Y, ZeroKey N, FixedSystemKey N)
+* Set fixed keys after attempting to load boot9 (fixes #44)
+* Fix OTP crypto setup (PR #45, thanks @ZeroSkill1)
+* Add Nix derivation and flake
+* Various documentation updates
+* Switch to pyproject-only format
+* Fix NCCH ExeFS decryption with Original NCCH + seeded key
+* Require Python 3.12
 * Add experimental Inner FAT reader for savegames (SAVE, not extdata or title database yet)
   * Two new modules: `pyctr.type.save.fat.common`, `pyctr.type.save.fat.save`
 * Add `open_save` to `SDRoot`
