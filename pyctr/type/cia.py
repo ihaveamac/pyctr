@@ -19,8 +19,6 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from typing import Union
-
     from fs.base import FS
 
     from ..common import FilePathOrObject
@@ -64,7 +62,7 @@ class CIASection(IntEnum):
 
 
 class CIARegion(NamedTuple):
-    section: 'Union[int, CIASection]'
+    section: 'int | CIASection'
     """Index of the section."""
     offset: int
     """Offset of the entry, relative to the end of the header."""
@@ -120,7 +118,7 @@ class CIAReader(TypeReaderCryptoBase):
     content_info: 'list[ContentChunkRecord]'
     """A list of :class:`~.ContentChunkRecord` objects for each active content."""
 
-    sections: 'dict[Union[int, CIASection], CIARegion]'
+    sections: 'dict[int | CIASection, CIARegion]'
     """A list of :class:`CIARegion` objects containing the offset and size of each section."""
 
     tmd: TitleMetadataReader
@@ -190,7 +188,7 @@ class CIAReader(TypeReaderCryptoBase):
         # lazy method to get the total size
         self.total_size = meta_offset + meta_size
 
-        def add_region(section: 'Union[int, CIASection]', offset: int, size: int, iv: 'bytes | None'):
+        def add_region(section: 'int | CIASection', offset: int, size: int, iv: 'bytes | None'):
             region = CIARegion(section=section, offset=offset, size=size, iv=iv)
             self.sections[section] = region
 
@@ -251,7 +249,7 @@ class CIAReader(TypeReaderCryptoBase):
         info_final = " ".join(x + ": " + str(y) for x, y in info)
         return f'<{type(self).__name__} {info_final}>'
 
-    def open_raw_section(self, section: 'Union[int, CIASection]'):
+    def open_raw_section(self, section: 'int | CIASection'):
         """
         Open a raw CIA section for reading with on-the-fly decryption.
 

@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 from ..common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Mapping, Union
+    from typing import BinaryIO, Mapping
 
     from fs.base import FS
 
@@ -248,7 +248,7 @@ class SMDH:
     def __repr__(self):
         return f'<{type(self).__name__} title: {self.get_app_title().short_desc}>'
 
-    def get_app_title(self, language: 'Union[str, tuple[str, ...]]' = _region_order_check) -> 'AppTitle | None':
+    def get_app_title(self, language: 'str | tuple[str, ...]' = _region_order_check) -> 'AppTitle | None':
         if isinstance(language, str):
             language = (language,)
 

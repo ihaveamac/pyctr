@@ -13,7 +13,7 @@ from ..common import PyCTRError
 from ..util import config_dirs, readle
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
     from ..common import FilePathOrObject
 
 __all__ = ['SeedDBError', 'InvalidProgramIDError', 'InvalidSeedError', 'MissingSeedError', 'load_seeddb', 'get_seed',
@@ -58,7 +58,7 @@ def _load_seeds_from_file_object(fh: 'BinaryIO'):
         _seeds[title_id] = entry[0x8:0x18]
 
 
-def _normalize_program_id(program_id: 'Union[int, str, bytes]') -> int:
+def _normalize_program_id(program_id: 'int | str | bytes') -> int:
     if not isinstance(program_id, (int, str, bytes)):
         raise InvalidProgramIDError('not an int, str, or bytes')
 
@@ -92,7 +92,7 @@ def load_seeddb(fp: 'FilePathOrObject' = None):
         _loaded_from_default_paths = True
 
 
-def get_seed(program_id: 'Union[int, str, bytes]', *, load_if_required: bool = True):
+def get_seed(program_id: 'int | str | bytes', *, load_if_required: bool = True):
     """
     Get a seed for a Program ID.
 
@@ -113,7 +113,7 @@ def get_seed(program_id: 'Union[int, str, bytes]', *, load_if_required: bool = T
                 return get_seed(program_id, load_if_required=False)
 
 
-def add_seed(program_id: 'Union[int, str, bytes]', seed: 'Union[bytes, str]'):
+def add_seed(program_id: 'int | str | bytes', seed: 'bytes | str'):
     """
     Adds a seed to the database.
 

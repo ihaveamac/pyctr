@@ -16,13 +16,13 @@ from fs.path import dirname as fs_dirname
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from typing import BinaryIO, IO, Union
+    from typing import BinaryIO, IO
 
     RawIOBase = BinaryIO
 
-    FilePath = Union[PathLike, str, bytes]
-    FilePathOrObject = Union[FilePath, BinaryIO]
-    DirPathOrFS = Union[PathLike, str, bytes, FS]
+    FilePath = PathLike | str | bytes
+    FilePathOrObject = FilePath | BinaryIO
+    DirPathOrFS = PathLike | str | bytes | FS
 
 
 class PyCTRError(Exception):

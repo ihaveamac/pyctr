@@ -22,7 +22,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -90,8 +90,8 @@ class NANDSection(IntEnum):
 
 
 class NCSDPartitionInfo(NamedTuple):
-    fs_type: 'Union[PartitionFSType, int]'
-    encryption_type: 'Union[PartitionEncryptionType, int]'
+    fs_type: 'PartitionFSType | int'
+    encryption_type: 'PartitionEncryptionType | int'
     offset: int
     size: int
     base_file: 'str | None'
@@ -110,7 +110,7 @@ class NANDNCSDHeader(NamedTuple):
     of the backup may be larger.
     """
 
-    partition_table: 'dict[Union[int, NANDSection], NCSDPartitionInfo]'
+    partition_table: 'dict[int | NANDSection, NCSDPartitionInfo]'
     """Partition information. Normally includes 5 partitions, but may include up to 8."""
 
     unknown: bytes
@@ -766,7 +766,7 @@ class NAND(TypeReaderCryptoBase):
         self._fat_partitons.add(fat)
         return fat
 
-    def open_raw_section(self, section: 'Union[NANDSection, int]'):
+    def open_raw_section(self, section: 'NANDSection | int'):
         """
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
 

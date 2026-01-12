@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from .save import BlockIDNotFoundError, ConfigSaveReader, KNOWN_BLOCKS
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
 
     from fs.base import FS
 
@@ -86,7 +86,7 @@ class ConfigSaveBlockParser:
         return SystemModel(system_model_raw.data[0])
 
     @system_model.setter
-    def system_model(self, value: 'Union[int, SystemModel]'):
+    def system_model(self, value: 'int | SystemModel'):
         # this field is actually 4 bytes
         # just in case, we'll preserve the next 3 bytes (their use is unknown)
         try:

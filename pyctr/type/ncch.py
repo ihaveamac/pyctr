@@ -21,7 +21,7 @@ from .exefs import ExeFSReader
 from .romfs import RomFSReader
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
 
     from fs.base import FS
 
@@ -522,7 +522,7 @@ class NCCHReader(TypeReaderCryptoBase):
         self._seeded_key_y = sha256(self._key_y + seed).digest()[0:16]
         self._seed_set_up = True
 
-    def get_data(self, section: 'Union[NCCHRegion, NCCHSection]', offset: int, size: int) -> bytes:
+    def get_data(self, section: 'NCCHRegion | NCCHSection', offset: int, size: int) -> bytes:
         """
         Get data from an NCCH section.
 

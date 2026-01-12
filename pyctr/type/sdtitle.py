@@ -22,7 +22,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from pathlib import PurePath
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
 
     from ..common import FilePath
     from .ncch import NCCHReader
@@ -74,7 +74,7 @@ class SDTitleReader:
         'tmd', 'fs'
     )
 
-    available_sections: 'list[Union[SDTitleSection, int]]'
+    available_sections: 'list[SDTitleSection | int]'
     """A list of sections available, including contents, ticket, and title metadata."""
 
     closed: bool
@@ -103,7 +103,7 @@ class SDTitleReader:
         self.content_info = []
 
         # {section: filepath}
-        self._base_files: dict[Union[SDTitleSection, int], PurePath] = {}
+        self._base_files: dict[SDTitleSection | int, PurePath] = {}
 
         # opened files to close if the SDTitleReader is closed
         # noinspection PyTypeChecker
@@ -132,7 +132,7 @@ class SDTitleReader:
                 file = file.name
         self.fs = fs
 
-        def add_file(section: 'Union[SDTitleSection, int]', path: str):
+        def add_file(section: 'SDTitleSection | int', path: str):
             self._base_files[section] = path
             self.available_sections.append(section)
 
@@ -198,7 +198,7 @@ class SDTitleReader:
         info_final = " ".join(x + ": " + str(y) for x, y in info)
         return f'<{type(self).__name__} {info_final}>'
 
-    def open_raw_section(self, section: 'Union[SDTitleSection, int]') -> 'BinaryIO':
+    def open_raw_section(self, section: 'SDTitleSection | int') -> 'BinaryIO':
         """
         Open a raw content for reading.
 

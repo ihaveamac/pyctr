@@ -23,7 +23,7 @@ from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import IO, BinaryIO, Union, Iterator
+    from typing import IO, BinaryIO, Iterator
     from ..common import FilePathOrObject
     from collections.abc import Collection
 
@@ -275,7 +275,7 @@ class RomFSReader(TypeReaderBase, FS):
         curr = self._get_raw_info(path)
         return self._gen_info(curr)
 
-    def getmeta(self, namespace: str = 'standard') -> 'dict[str, Union[bool, str, int]]':
+    def getmeta(self, namespace: str = 'standard') -> 'dict[str, bool | str | int]':
         if namespace != 'standard':
             return {}
 

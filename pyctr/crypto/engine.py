@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
-    from typing import BinaryIO, Union
+    from typing import BinaryIO
     from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
@@ -500,7 +500,7 @@ class CryptoEngine:
 
         return AES.new(key, AES.MODE_CBC, iv)
 
-    def create_ctr_cipher(self, keyslot: Keyslot, ctr: int) -> 'Union[CtrMode, _TWLCryptoWrapper]':
+    def create_ctr_cipher(self, keyslot: Keyslot, ctr: int) -> 'CtrMode | _TWLCryptoWrapper':
         """
         Create an AES-CTR cipher with the given keyslot.
 
@@ -620,7 +620,7 @@ class CryptoEngine:
         hash_p2 = readbe(path_hash[16:32])
         return hash_p1 ^ hash_p2
 
-    def load_encrypted_titlekey(self, titlekey: bytes, common_key_index: int, title_id: 'Union[str, bytes]'):
+    def load_encrypted_titlekey(self, titlekey: bytes, common_key_index: int, title_id: 'str | bytes'):
         """
         Decrypt an encrypted titlekey and store in keyslot 0x40 (:attr:`Keyslot.DecryptedTitlekey`).
 
@@ -653,7 +653,7 @@ class CryptoEngine:
 
         self.load_encrypted_titlekey(titlekey_enc, common_key_index, title_id)
 
-    def set_keyslot(self, xy: str, keyslot: int, key: 'Union[int, bytes]', *, update_normal_key: bool = True):
+    def set_keyslot(self, xy: str, keyslot: int, key: 'int | bytes', *, update_normal_key: bool = True):
         """Sets a keyslot to the specified key."""
         to_use = None
         if xy == 'x':
