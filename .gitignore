@@ -279,3 +279,5 @@ dmypy.json
 # Nix
 result
 result-*
+
+*.local
