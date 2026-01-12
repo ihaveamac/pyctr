@@ -266,6 +266,8 @@ class NCCHReader(TypeReaderCryptoBase):
         self._key_y = header[0x0:0x10]
         # store the ncch version
         self.version = readle(header[0x112:0x114])
+        if self.version == 1:
+            raise NCCHError('NCCH version 1 files are not currently supported')
         # get the total size of the NCCH container, and store it in bytes
         self.content_size = readle(header[0x104:0x108]) * NCCH_MEDIA_UNIT
         # get the Partition ID, which is used in the encryption
@@ -429,7 +431,7 @@ class NCCHReader(TypeReaderCryptoBase):
                 for offset in crypto_changes:
                     self._exefs_crypto_ranges.append((previous_offset, offset, previous_keyslot))
                     previous_offset = offset
-                    previous_keyslot = self.main_keyslot if previous_keyslot is self.extra_keyslot else self.extra_keyslot
+                    previous_keyslot = self.main_keyslot if previous_keyslot is Keyslot.NCCHExtraKey else Keyslot.NCCHExtraKey
 
             # This will set up either the special ExeFS encryption from above, or a straightforward decryption
             # passthrough if not.

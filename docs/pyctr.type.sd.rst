@@ -28,6 +28,9 @@ Directory hierarchy
 
       * Nintendo DSiWare
 
+.. note::
+    Files cannot be moved or renamed because the encryption depends on the complete filepath from the start of the ID1 folder. If a file must be moved or renamed, it must be copied to the new location.
+
 SDFilesystem objects
 --------------------
 
