@@ -22,7 +22,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Set, Union
+    from typing import BinaryIO, Union
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -385,10 +385,10 @@ class NAND(TypeReaderCryptoBase):
 
         # opened files to close if the NAND is closed
         # noinspection PyTypeChecker
-        self._open_files: Set[SubsectionIO] = WeakSet()
+        self._open_files: set[SubsectionIO] = WeakSet()
         # FAT partitions should be closed before the underlying file so it can do some final cleanup
         # noinspection PyTypeChecker
-        self._fat_partitons: Set[PyFatBytesIOFS] = WeakSet()
+        self._fat_partitons: set[PyFatBytesIOFS] = WeakSet()
 
         # these do the actual de/encryption part and are used as the basis for SubsectionIO files
         self._base_files = {}

@@ -22,7 +22,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from pathlib import PurePath
-    from typing import BinaryIO, Set, Union
+    from typing import BinaryIO, Union
 
     from ..common import FilePath
     from .ncch import NCCHReader
@@ -107,7 +107,7 @@ class SDTitleReader:
 
         # opened files to close if the SDTitleReader is closed
         # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
+        self._open_files: set[BinaryIO] = WeakSet()
 
         # public method to see what sections can be accessed
         self.available_sections = []

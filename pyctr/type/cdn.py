@@ -24,7 +24,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Set, Union
+    from typing import BinaryIO, Union
     from ..common import FilePath
     from ..crypto import CBCFileIO
     from .tmd import ContentChunkRecord
@@ -133,7 +133,7 @@ class CDNReader:
 
         # opened files to close if the CDNReader is closed
         # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
+        self._open_files: set[BinaryIO] = WeakSet()
 
         # public method to see what sections can be accessed
         self.available_sections = []

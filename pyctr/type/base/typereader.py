@@ -13,7 +13,7 @@ from ...common import PyCTRError, get_fs_file_object
 from ...crypto import CryptoEngine
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Set
+    from typing import BinaryIO
     from ...common import FilePathOrObject
 
     from fs.base import FS
@@ -72,7 +72,7 @@ class TypeReaderBase:
         # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
         #   even though it's similar.
         # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
+        self._open_files: set[BinaryIO] = WeakSet()
 
         fileobj, newly_opened = get_fs_file_object(file, fs, mode=mode)
 
