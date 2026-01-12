@@ -23,7 +23,7 @@ from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import IO, BinaryIO, Tuple, Union, List, Iterator
+    from typing import IO, BinaryIO, Tuple, Union, Iterator
     from ..common import FilePathOrObject
     from collections.abc import Collection
 
@@ -287,7 +287,7 @@ class RomFSReader(TypeReaderBase, FS):
                 'read_only': True,
                 'supports_rename': False}
 
-    def listdir(self, path: str) -> 'List[str]':
+    def listdir(self, path: str) -> 'list[str]':
         file_info_raw = self._get_raw_info(path)
         if file_info_raw['type'] != 'dir':
             raise errors.DirectoryExpected

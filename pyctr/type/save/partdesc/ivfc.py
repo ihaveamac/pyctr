@@ -15,7 +15,7 @@ from .common import (InvalidHeaderError, InvalidHeaderLengthError, PartitionDesc
                      _raise_if_level_closed, get_block_range)
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Callable, List, Tuple
+    from typing import BinaryIO, Callable, Tuple
 
     # trick type checkers
     RawIOBase = BinaryIO
@@ -159,8 +159,8 @@ class IVFCHashTree:
         DIFF to write the master hashes to the partition descriptor.
     """
 
-    def __init__(self, fp: 'BinaryIO', ivfc: 'IVFC', master_hashes: 'List[bytes]', *, lv4_fp: 'BinaryIO' = None,
-                 update_master_hashes_callback: 'Callable[[List[bytes]], None]' = None):
+    def __init__(self, fp: 'BinaryIO', ivfc: 'IVFC', master_hashes: 'list[bytes]', *, lv4_fp: 'BinaryIO' = None,
+                 update_master_hashes_callback: 'Callable[[list[bytes]], None]' = None):
         self._fp = fp
         self._ivfc = ivfc
         self._lv4_fp = lv4_fp
@@ -187,7 +187,7 @@ class IVFCHashTree:
         real_lv4_fp = lv4_fp if lv4_fp else SubsectionIO(self._fp, ivfc.lv4.offset, ivfc.lv4.size)
 
         # This isn't very good honestly... I think I'll rewrite this at some point.
-        self.levels: List[Tuple[LevelData, BinaryIO]] = [
+        self.levels: list[Tuple[LevelData, BinaryIO]] = [
             (ivfc.lv1, SubsectionIO(self._fp, ivfc.lv1.offset, ivfc.lv1.size)),
             (ivfc.lv2, SubsectionIO(self._fp, ivfc.lv2.offset, ivfc.lv2.size)),
             (ivfc.lv3, SubsectionIO(self._fp, ivfc.lv3.offset, ivfc.lv3.size)),

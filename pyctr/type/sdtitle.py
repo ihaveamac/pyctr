@@ -22,7 +22,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from pathlib import PurePath
-    from typing import BinaryIO, Dict, List, Set, Union
+    from typing import BinaryIO, Dict, Set, Union
 
     from ..common import FilePath
     from .ncch import NCCHReader
@@ -74,7 +74,7 @@ class SDTitleReader:
         'tmd', 'fs'
     )
 
-    available_sections: 'List[Union[SDTitleSection, int]]'
+    available_sections: 'list[Union[SDTitleSection, int]]'
     """A list of sections available, including contents, ticket, and title metadata."""
 
     closed: bool
@@ -83,7 +83,7 @@ class SDTitleReader:
     contents: 'Dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
-    content_info: 'List[ContentChunkRecord]'
+    content_info: 'list[ContentChunkRecord]'
     """
     A list of :class:`~.ContentChunkRecord` objects for each content found in the directory at the time of object
     initialization.

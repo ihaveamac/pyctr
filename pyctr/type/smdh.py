@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 from ..common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Mapping, Tuple, Union
+    from typing import BinaryIO, Dict, Mapping, Tuple, Union
 
     from fs.base import FS
 
@@ -188,7 +188,7 @@ def rgb565_to_rgb888(data: bytes):
 
 # Based on:
 # https://github.com/Steveice10/FBI/blob/c6d92d86b27aaef784d1ecb4103e1346fb0f8a12/source/core/screen.c#L305-L323
-def load_tiled_rgb565_to_array(data: bytes, width: int, height: int) -> 'List[List[RGBTuple]]':
+def load_tiled_rgb565_to_array(data: bytes, width: int, height: int) -> 'list[list[RGBTuple]]':
     pixel_size = len(data) // width // height
 
     pixels = []
@@ -208,7 +208,7 @@ def load_tiled_rgb565_to_array(data: bytes, width: int, height: int) -> 'List[Li
 
 # if Pillow is installed
 if Image:
-    def rgb888_array_to_image(pixel_array: 'List[List[RGBTuple]]', width: int, height: int):
+    def rgb888_array_to_image(pixel_array: 'list[list[RGBTuple]]', width: int, height: int):
         final_data = bytes(chain.from_iterable(chain.from_iterable(pixel_array)))
         img = Image.frombytes('RGB', (width, height), final_data)
         return img
@@ -229,8 +229,8 @@ class SMDH:
 
     # TODO: support other settings
 
-    def __init__(self, names: 'Dict[str, AppTitle]', icon_small_array: 'List[List[RGBTuple]]',
-                 icon_large_array: 'List[List[RGBTuple]]', flags: SMDHFlags, region_lockout: SMDHRegionLockout):
+    def __init__(self, names: 'Dict[str, AppTitle]', icon_small_array: 'list[list[RGBTuple]]',
+                 icon_large_array: 'list[list[RGBTuple]]', flags: SMDHFlags, region_lockout: SMDHRegionLockout):
         self.names: Mapping[str, AppTitle] = MappingProxyType({n: names.get(n, None) for n in region_names})
         self.icon_small_array = icon_small_array
         self.icon_large_array = icon_large_array

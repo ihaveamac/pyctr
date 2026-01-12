@@ -24,7 +24,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Dict, List, Set, Tuple, Union
+    from typing import BinaryIO, Dict, Set, Tuple, Union
     from ..common import FilePath
     from ..crypto import CBCFileIO
     from .tmd import ContentChunkRecord
@@ -87,7 +87,7 @@ class CDNReader:
         '_base_files', '_crypto', '_open_files', 'available_sections', 'closed', 'content_info', 'contents', 'tmd', 'fs'
     )
 
-    available_sections: 'List[Union[CDNSection, int]]'
+    available_sections: 'list[Union[CDNSection, int]]'
     """A list of sections available, including contents, ticket, and title metadata."""
 
     closed: bool
@@ -96,7 +96,7 @@ class CDNReader:
     contents: 'Dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
-    content_info: 'List[ContentChunkRecord]'
+    content_info: 'list[ContentChunkRecord]'
     """
     A list of :class:`~.ContentChunkRecord` objects for each content found in the directory at the time of object
     initialization.

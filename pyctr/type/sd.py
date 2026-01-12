@@ -23,7 +23,7 @@ from .sdtitle import SDTitleReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, List, Union
+    from typing import BinaryIO, Union
     from ..common import FilePath
 
     # noinspection PyProtectedMember
@@ -155,7 +155,7 @@ class SDFilesystem:
         fh: BinaryIO = real_path.open(mode)
         return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv('/' + path))
 
-    def listdir(self, path: 'Union[PathLike, str]', id1: str = None) -> 'List[str]':
+    def listdir(self, path: 'Union[PathLike, str]', id1: str = None) -> 'list[str]':
         """
         Returns a list of files in the directory.
 

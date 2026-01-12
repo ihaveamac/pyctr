@@ -19,7 +19,7 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Union
+    from typing import Dict, Union
 
     from fs.base import FS
 
@@ -117,7 +117,7 @@ class CIAReader(TypeReaderCryptoBase):
     contents: 'Dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
-    content_info: 'List[ContentChunkRecord]'
+    content_info: 'list[ContentChunkRecord]'
     """A list of :class:`~.ContentChunkRecord` objects for each active content."""
 
     sections: 'Dict[Union[int, CIASection], CIARegion]'

@@ -9,9 +9,6 @@ from math import ceil
 from sys import platform
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import List
-
 __all__ = ['windows', 'macos', 'readle', 'readbe', 'roundup', 'config_dirs']
 
 windows = platform == 'win32'
@@ -34,7 +31,7 @@ def roundup(offset: int, alignment: int) -> int:
 
 
 _home = os.path.expanduser('~')
-config_dirs: 'List[str]' = [os.path.join(_home, '.3ds'), os.path.join(_home, '3ds')]
+config_dirs: 'list[str]' = [os.path.join(_home, '.3ds'), os.path.join(_home, '3ds')]
 if windows:
     config_dirs.insert(0, os.path.join(os.environ.get('APPDATA'), '3ds'))
 elif macos:

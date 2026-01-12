@@ -13,7 +13,7 @@ from .common import (PartitionDescriptorError, InvalidHeaderError, InvalidHeader
                      get_block_range, read_le_u32_array, _raise_if_level_closed)
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, List
+    from typing import BinaryIO
 
     # trick type checkers
     RawIOBase = BinaryIO
@@ -65,7 +65,7 @@ class DPFS(NamedTuple):
 
 
 class DPFSLevelChunkBase:
-    u32_list: 'List[int]'
+    u32_list: 'list[int]'
 
     def get_active_bit(self, bit: int):
         # get the index of the list to read, then get the appropriate u32
