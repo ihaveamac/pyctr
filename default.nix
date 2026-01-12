@@ -3,8 +3,7 @@
 }:
 
 rec {
-  pyfatfs = pkgs.python3Packages.callPackage ./nix/pyfatfs.nix { };
-  pyctr = pkgs.python3Packages.callPackage ./package.nix { pyfatfs = pyfatfs; };
+  pyctr = pkgs.python3Packages.callPackage ./package.nix { };
   # mainly useful for things like pycharm
   python-environment = pkgs.python3Packages.python.buildEnv.override {
     extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python3Packages; [ pytest ]);
