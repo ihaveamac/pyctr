@@ -22,7 +22,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from pathlib import PurePath
-    from typing import BinaryIO, Dict, Set, Union
+    from typing import BinaryIO, Set, Union
 
     from ..common import FilePath
     from .ncch import NCCHReader
@@ -80,7 +80,7 @@ class SDTitleReader:
     closed: bool
     """`True` if the reader is closed."""
 
-    contents: 'Dict[int, NCCHReader]'
+    contents: 'dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
     content_info: 'list[ContentChunkRecord]'
@@ -103,7 +103,7 @@ class SDTitleReader:
         self.content_info = []
 
         # {section: filepath}
-        self._base_files: Dict[Union[SDTitleSection, int], PurePath] = {}
+        self._base_files: dict[Union[SDTitleSection, int], PurePath] = {}
 
         # opened files to close if the SDTitleReader is closed
         # noinspection PyTypeChecker

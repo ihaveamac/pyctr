@@ -21,7 +21,7 @@ from .exefs import ExeFSReader
 from .romfs import RomFSReader
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Union
+    from typing import BinaryIO, Union
 
     from fs.base import FS
 
@@ -189,7 +189,7 @@ class NCCHReader(TypeReaderCryptoBase):
     # this is the KeyY when generated using the seed
     _seeded_key_y: 'bytes | None'
 
-    sections: 'Dict[NCCHSection, NCCHRegion]'
+    sections: 'dict[NCCHSection, NCCHRegion]'
     """Contains all the sections the NCCH has."""
 
     # this is used in the NCCH's ExeFSReader and in FullDecrypted
@@ -551,7 +551,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
                 # store the sections to read
                 # dict is ordered by default in CPython since 3.6.0, and part of the language spec since 3.7.0
-                to_read: Dict[tuple[NCCHSection, int], list[int]] = {}
+                to_read: dict[tuple[NCCHSection, int], list[int]] = {}
 
                 # get each section to a local variable for easier access
                 header = self._all_sections[NCCHSection.Header]

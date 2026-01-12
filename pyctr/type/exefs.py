@@ -17,8 +17,6 @@ from .base import TypeReaderBase
 from .smdh import SMDH, InvalidSMDHError
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from fs.base import FS
 
     from ..common import FilePathOrObject
@@ -205,7 +203,7 @@ class ExeFSReader(TypeReaderBase):
 
     _code_dec: 'bytes | None'
 
-    entries: 'Dict[str, ExeFSEntry]'
+    entries: 'dict[str, ExeFSEntry]'
     """Entries in the ExeFS."""
 
     icon: 'SMDH | None'

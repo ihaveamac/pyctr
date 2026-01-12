@@ -24,7 +24,7 @@ from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Dict, Set, Union
+    from typing import BinaryIO, Set, Union
     from ..common import FilePath
     from ..crypto import CBCFileIO
     from .tmd import ContentChunkRecord
@@ -93,7 +93,7 @@ class CDNReader:
     closed: bool
     """`True` if the reader is closed."""
 
-    contents: 'Dict[int, NCCHReader]'
+    contents: 'dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
     content_info: 'list[ContentChunkRecord]'
@@ -129,7 +129,7 @@ class CDNReader:
         self.fs = fs
 
         # {section: (filepath, iv)}
-        self._base_files: Dict[Union[CDNSection, int], tuple[str, bytes]] = {}
+        self._base_files: dict[Union[CDNSection, int], tuple[str, bytes]] = {}
 
         # opened files to close if the CDNReader is closed
         # noinspection PyTypeChecker

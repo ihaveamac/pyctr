@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from ...common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict
+    from typing import BinaryIO
 
     from fs.base import FS
 
@@ -140,7 +140,7 @@ class ConfigSaveReader:
     __slots__ = ('blocks',)
 
     def __init__(self):
-        self.blocks: Dict[int, BlockInfo] = {}
+        self.blocks: dict[int, BlockInfo] = {}
 
     def __bytes__(self):
         return self.to_bytes()

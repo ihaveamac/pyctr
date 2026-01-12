@@ -19,7 +19,7 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from typing import Dict, Union
+    from typing import Union
 
     from fs.base import FS
 
@@ -114,13 +114,13 @@ class CIAReader(TypeReaderCryptoBase):
 
     __slots__ = ('_case_insensitive', '_lock', 'content_info', 'contents', 'sections', 'tmd', 'total_size')
 
-    contents: 'Dict[int, NCCHReader]'
+    contents: 'dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
     content_info: 'list[ContentChunkRecord]'
     """A list of :class:`~.ContentChunkRecord` objects for each active content."""
 
-    sections: 'Dict[Union[int, CIASection], CIARegion]'
+    sections: 'dict[Union[int, CIASection], CIARegion]'
     """A list of :class:`CIARegion` objects containing the offset and size of each section."""
 
     tmd: TitleMetadataReader

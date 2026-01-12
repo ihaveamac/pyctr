@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 from ..common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Mapping, Union
+    from typing import BinaryIO, Mapping, Union
 
     from fs.base import FS
 
@@ -229,7 +229,7 @@ class SMDH:
 
     # TODO: support other settings
 
-    def __init__(self, names: 'Dict[str, AppTitle]', icon_small_array: 'list[list[RGBTuple]]',
+    def __init__(self, names: 'dict[str, AppTitle]', icon_small_array: 'list[list[RGBTuple]]',
                  icon_large_array: 'list[list[RGBTuple]]', flags: SMDHFlags, region_lockout: SMDHRegionLockout):
         self.names: Mapping[str, AppTitle] = MappingProxyType({n: names.get(n, None) for n in region_names})
         self.icon_small_array = icon_small_array
@@ -270,7 +270,7 @@ class SMDH:
             raise InvalidSMDHError('SMDH magic not found')
 
         app_structs = smdh[8:0x2008]
-        names: Dict[str, AppTitle] = {}
+        names: dict[str, AppTitle] = {}
         # due to region_names only being 12 elements, this will only process 12. the other 4 are unused.
         for app_title, region in zip((app_structs[x:x + 0x200] for x in range(0, 0x2000, 0x200)), region_names):
             names[region] = AppTitle.from_bytes(app_title)

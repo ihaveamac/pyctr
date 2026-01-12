@@ -11,8 +11,6 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from fs.base import FS
 
     from ...crypto import CryptoEngine
@@ -44,7 +42,7 @@ class DISA(PartitionContainerBase):
     :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
     """
 
-    partitions: 'Dict[int, Partition]'
+    partitions: 'dict[int, Partition]'
     """Partitions of the file. DISA can have one or two, so there is always `0` but there can be `1` as well."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,

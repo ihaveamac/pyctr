@@ -22,7 +22,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Set, Union
+    from typing import BinaryIO, Set, Union
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -110,7 +110,7 @@ class NANDNCSDHeader(NamedTuple):
     of the backup may be larger.
     """
 
-    partition_table: 'Dict[Union[int, NANDSection], NCSDPartitionInfo]'
+    partition_table: 'dict[Union[int, NANDSection], NCSDPartitionInfo]'
     """Partition information. Normally includes 5 partitions, but may include up to 8."""
 
     unknown: bytes

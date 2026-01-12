@@ -13,7 +13,7 @@ from ..base import TypeReaderCryptoBase
 from .partition import Partition, load_partdesc
 
 if TYPE_CHECKING:
-    from typing import Dict, Literal
+    from typing import Literal
 
     from ...common import FilePath, FilePathOrObject
     from ...crypto import CryptoEngine
@@ -52,7 +52,7 @@ class PartitionContainerBase(TypeReaderCryptoBase):
     :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
     """
 
-    partitions: 'Dict[int, Partition]'
+    partitions: 'dict[int, Partition]'
     """Partitions of the file. Only 0 exists for DIFF, while 0 and 1 can exist with DISA."""
 
     _header: bytes

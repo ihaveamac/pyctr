@@ -11,8 +11,6 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from fs.base import FS
 
     from ...crypto import CryptoEngine
@@ -37,7 +35,7 @@ class DIFF(PartitionContainerBase):
     :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
     """
 
-    partitions: 'Dict[int, Partition]'
+    partitions: 'dict[int, Partition]'
     """Partitions of the file. DIFF only has one, so there would only be a single `0` key."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,

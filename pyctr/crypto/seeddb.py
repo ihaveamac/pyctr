@@ -13,7 +13,7 @@ from ..common import PyCTRError
 from ..util import config_dirs, readle
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Union
+    from typing import BinaryIO, Union
     from ..common import FilePathOrObject
 
 __all__ = ['SeedDBError', 'InvalidProgramIDError', 'InvalidSeedError', 'MissingSeedError', 'load_seeddb', 'get_seed',
@@ -38,7 +38,7 @@ class MissingSeedError(SeedDBError):
     """Seed not found in the database."""
 
 
-_seeds: 'Dict[int, bytes]' = {}
+_seeds: 'dict[int, bytes]' = {}
 _loaded_from_default_paths = False
 
 seeddb_paths = [join(x, 'seeddb.bin') for x in config_dirs]

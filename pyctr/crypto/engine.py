@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
-    from typing import BinaryIO, Dict, Union
+    from typing import BinaryIO, Union
     from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
@@ -201,12 +201,12 @@ _base_key_x = {
     0x25: (0xCEE7D8AB30C00DAE850EF5E382AC5AF3, 0x81907A4B6F1B47323A677974CE4AD71B),
 }
 
-_b9_keyblob: 'Dict[str, bytes | None]' = {
+_b9_keyblob: 'dict[str, bytes | None]' = {
     'retail': None,
     'dev': None
 }
 # tuples are (key, iv)
-_otp_key_iv: 'Dict[str, tuple[bytes, bytes] | None]' = {
+_otp_key_iv: 'dict[str, tuple[bytes, bytes] | None]' = {
     'retail': None,
     'dev': None
 }
@@ -385,9 +385,9 @@ class CryptoEngine:
     """Uses devunit keys."""
 
     def __init__(self, boot9: 'FilePathOrObject' = None, dev: bool = False, setup_b9_keys: bool = True):
-        self.key_x: Dict[int, int] = {}
-        self.key_y: Dict[int, int] = {}
-        self.key_normal: Dict[int, bytes] = {}
+        self.key_x: dict[int, int] = {}
+        self.key_y: dict[int, int] = {}
+        self.key_normal: dict[int, bytes] = {}
 
         self.dev = dev
         self._key_set = 'dev' if dev else 'retail'
