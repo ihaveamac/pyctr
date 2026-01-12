@@ -19,7 +19,8 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional, Union
+    from fs.base import FS
+
     from ..common import FilePathOrObject
     from .tmd import ContentChunkRecord
 
@@ -61,7 +62,7 @@ class CIASection(IntEnum):
 
 
 class CIARegion(NamedTuple):
-    section: 'Union[int, CIASection]'
+    section: 'int | CIASection'
     """Index of the section."""
     offset: int
     """Offset of the entry, relative to the end of the header."""
@@ -111,13 +112,13 @@ class CIAReader(TypeReaderCryptoBase):
 
     __slots__ = ('_case_insensitive', '_lock', 'content_info', 'contents', 'sections', 'tmd', 'total_size')
 
-    contents: 'Dict[int, NCCHReader]'
+    contents: 'dict[int, NCCHReader]'
     """A `dict` of :class:`~.NCCHReader` objects for each active NCCH content."""
 
-    content_info: 'List[ContentChunkRecord]'
+    content_info: 'list[ContentChunkRecord]'
     """A list of :class:`~.ContentChunkRecord` objects for each active content."""
 
-    sections: 'Dict[Union[int, CIASection], CIARegion]'
+    sections: 'dict[int | CIASection, CIARegion]'
     """A list of :class:`CIARegion` objects containing the offset and size of each section."""
 
     tmd: TitleMetadataReader
@@ -126,10 +127,10 @@ class CIAReader(TypeReaderCryptoBase):
     total_size: int
     """Expected size of the CIA file in bytes."""
 
-    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = False,
                  load_contents: bool = True):
-        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
+        super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev)
 
         # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()
@@ -187,7 +188,7 @@ class CIAReader(TypeReaderCryptoBase):
         # lazy method to get the total size
         self.total_size = meta_offset + meta_size
 
-        def add_region(section: 'Union[int, CIASection]', offset: int, size: int, iv: 'Optional[bytes]'):
+        def add_region(section: 'int | CIASection', offset: int, size: int, iv: 'bytes | None'):
             region = CIARegion(section=section, offset=offset, size=size, iv=iv)
             self.sections[section] = region
 
@@ -234,7 +235,7 @@ class CIAReader(TypeReaderCryptoBase):
                 if not is_srl:
                     content_fp = self.open_raw_section(record.cindex)
                     self.contents[record.cindex] = NCCHReader(content_fp, case_insensitive=case_insensitive,
-                                                              dev=dev)
+                                                              dev=dev, crypto=self._crypto.clone())
 
             curr_offset += record.size
 
@@ -248,7 +249,7 @@ class CIAReader(TypeReaderCryptoBase):
         info_final = " ".join(x + ": " + str(y) for x, y in info)
         return f'<{type(self).__name__} {info_final}>'
 
-    def open_raw_section(self, section: 'Union[int, CIASection]'):
+    def open_raw_section(self, section: 'int | CIASection'):
         """
         Open a raw CIA section for reading with on-the-fly decryption.
 

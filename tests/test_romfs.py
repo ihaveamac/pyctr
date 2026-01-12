@@ -12,6 +12,8 @@ from hashlib import sha256
 import pytest
 
 from pyctr.type import romfs
+from fs.info import Info
+from fs.enums import ResourceType
 
 
 def get_file_path(*parts: str):
@@ -28,8 +30,11 @@ def load_romfs_into_bytesio():
     return mem
 
 
-def open_romfs(case_insensitive=False, closefd=None):
-    return romfs.RomFSReader(get_romfs_path(), case_insensitive=case_insensitive, closefd=closefd)
+def open_romfs(case_insensitive=False, closefd=None, open_compatibility_mode=True):
+    return romfs.RomFSReader(get_romfs_path(),
+                             case_insensitive=case_insensitive,
+                             closefd=closefd,
+                             open_compatibility_mode=open_compatibility_mode)
 
 
 def test_no_file():
@@ -39,7 +44,7 @@ def test_no_file():
 
 def test_read_file():
     with open_romfs() as reader:
-        with reader.open('/utf16.txt') as f:
+        with reader.open('/utf16.txt', 'rb') as f:
             data = f.read()
             filehash = sha256(data)
             assert filehash.hexdigest() == '1ac2ddff4940809ea36a3e82e9f28bc2f5733275c1baa6ce9f5e434b3a7eab5b'
@@ -54,7 +59,7 @@ def test_read_text_file():
 
 def test_read_past_file():
     with open_romfs() as reader:
-        with reader.open('/utf16.txt') as f:
+        with reader.open('/utf16.txt', 'rb') as f:
             # This file is 0x34 (52) bytes, this should hopefully not read more than that.
             data = f.read(0x40)
             assert len(data) == 0x34
@@ -62,34 +67,44 @@ def test_read_past_file():
 
 def test_get_file_info():
     with open_romfs() as reader:
-        info = reader.get_info_from_path('/utf16.txt')
-        assert isinstance(info, romfs.RomFSFileEntry)
+        info = reader.getinfo('/utf16.txt')
+        assert isinstance(info, Info)
         assert info.name == 'utf16.txt'
-        assert info.type == 'file'
-        assert info.offset == 0
+        assert info.type == ResourceType.file
         assert info.size == 52
+        assert info.get('rawfs', 'offset') == 0
 
 
 def test_get_dir_info():
     with open_romfs() as reader:
-        info = reader.get_info_from_path('/')
-        assert isinstance(info, romfs.RomFSDirectoryEntry)
+        info = reader.getinfo('/')
+        assert isinstance(info, Info)
         assert info.name == 'ROOT'
-        assert info.type == 'dir'
-        assert info.contents == ('testdir', 'utf16.txt')
+        assert info.type == ResourceType.directory
+
+
+def test_listdir():
+    with open_romfs() as reader:
+        contents = reader.listdir('./')
+        assert contents == ['testdir', 'utf16.txt', 'utf8.txt']
 
 
 def test_get_nonroot_dir_info():
     with open_romfs() as reader:
-        info = reader.get_info_from_path('/testdir')
-        assert isinstance(info, romfs.RomFSDirectoryEntry)
+        info = reader.getinfo('/testdir')
+        assert isinstance(info, Info)
         assert info.name == 'testdir'
-        assert info.type == 'dir'
-        assert info.contents == ('emptyfile.bin',)
+        assert info.type == ResourceType.directory
+
+
+def test_nonroot_listdir():
+    with open_romfs() as reader:
+        contents = reader.listdir('/testdir')
+        assert contents == ['emptyfile.bin']
 
 
 def test_missing_file():
-    with open_romfs() as reader:
+    with open_romfs(open_compatibility_mode=False) as reader:
         with pytest.raises(romfs.RomFSFileNotFoundError):
             reader.open('/nonexistant.bin')
 
@@ -97,18 +112,18 @@ def test_missing_file():
 def test_get_missing_file_info():
     with open_romfs() as reader:
         with pytest.raises(romfs.RomFSFileNotFoundError):
-            reader.get_info_from_path('/nonexistant.bin')
+            reader.getinfo('/nonexistant.bin')
 
 
 def test_open_on_directory():
-    with open_romfs() as reader:
+    with open_romfs(open_compatibility_mode=False) as reader:
         with pytest.raises(romfs.RomFSIsADirectoryError):
             reader.open('/testdir')
 
 
 def test_case_insensitive():
     with open_romfs(case_insensitive=True) as reader:
-        assert reader.get_info_from_path('/TESTDIR/EMPTYFILE.BIN').name == 'emptyfile.bin'
+        assert reader.getinfo('/TESTDIR/EMPTYFILE.BIN').name == 'emptyfile.bin'
 
 
 def test_closefd_false():
@@ -117,6 +132,69 @@ def test_closefd_false():
     reader.close()
     assert reader.closed is True
     assert reader._file.closed is False
+
+
+def test_no_open_compatibility_mode():
+    with open_romfs(open_compatibility_mode=False) as reader:
+        # fs defaults to utf-8 so let's see if this opens and reads at that successfully
+        with reader.open('/utf8.txt') as f:
+            data = f.read()
+            assert data == 'UTF-8 test:\nニンテンドー3DS'
+
+
+def test_deprecated_read_file():
+    with open_romfs() as reader:
+        with pytest.warns(DeprecationWarning):
+            with reader.open('/utf16.txt') as f:
+                data = f.read()
+                filehash = sha256(data)
+                assert filehash.hexdigest() == '1ac2ddff4940809ea36a3e82e9f28bc2f5733275c1baa6ce9f5e434b3a7eab5b'
+
+
+def test_deprecated_read_past_file():
+    with open_romfs() as reader:
+        with pytest.warns(DeprecationWarning):
+            with reader.open('/utf16.txt') as f:
+                # This file is 0x34 (52) bytes, this should hopefully not read more than that.
+                data = f.read(0x40)
+                assert len(data) == 0x34
+
+
+def test_deprecated_get_file_info():
+    with open_romfs() as reader:
+        with pytest.warns(DeprecationWarning):
+            info = reader.get_info_from_path('/utf16.txt')
+            assert isinstance(info, romfs.RomFSFileEntry)
+            assert info.name == 'utf16.txt'
+            assert info.type == 'file'
+            assert info.offset == 0
+            assert info.size == 52
+
+
+def test_deprecated_get_dir_info():
+    with open_romfs() as reader:
+        with pytest.warns(DeprecationWarning):
+            info = reader.get_info_from_path('/')
+            assert isinstance(info, romfs.RomFSDirectoryEntry)
+            assert info.name == 'ROOT'
+            assert info.type == 'dir'
+            assert info.contents == ('testdir', 'utf16.txt', 'utf8.txt')
+
+
+def test_deprecated_get_nonroot_dir_info():
+    with open_romfs() as reader:
+        with pytest.warns(DeprecationWarning):
+            info = reader.get_info_from_path('/testdir')
+            assert isinstance(info, romfs.RomFSDirectoryEntry)
+            assert info.name == 'testdir'
+            assert info.type == 'dir'
+            assert info.contents == ('emptyfile.bin',)
+
+
+def test_deprecated_get_missing_file_info():
+    with open_romfs() as reader:
+        with pytest.warns(DeprecationWarning), pytest.raises(romfs.RomFSFileNotFoundError):
+            reader.get_info_from_path('/nonexistant.bin')
 
 
 romfs_corrupt_params = (

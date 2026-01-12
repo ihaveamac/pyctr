@@ -6,10 +6,13 @@
 
 from typing import TYPE_CHECKING, NamedTuple
 
-from ...common import PyCTRError
+from ...common import PyCTRError, get_fs_file_object
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict
+    from typing import BinaryIO
+
+    from fs.base import FS
+
     from ...common import FilePath
 
 
@@ -137,7 +140,7 @@ class ConfigSaveReader:
     __slots__ = ('blocks',)
 
     def __init__(self):
-        self.blocks: Dict[int, BlockInfo] = {}
+        self.blocks: dict[int, BlockInfo] = {}
 
     def __bytes__(self):
         return self.to_bytes()
@@ -341,6 +344,6 @@ class ConfigSaveReader:
         return cfg_save
 
     @classmethod
-    def from_file(cls, fn: 'FilePath'):
-        with open(fn, 'rb') as f:
+    def from_file(cls, fn: 'FilePath', *, fs: 'FS | None'):
+        with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f)

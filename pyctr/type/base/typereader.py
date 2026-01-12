@@ -9,12 +9,14 @@ from os import PathLike
 from typing import TYPE_CHECKING
 from weakref import WeakSet
 
-from ...common import PyCTRError
+from ...common import PyCTRError, get_fs_file_object
 from ...crypto import CryptoEngine
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Optional, Set
+    from typing import BinaryIO
     from ...common import FilePathOrObject
+
+    from fs.base import FS
 
 __all__ = ['raise_if_closed', 'ReaderError', 'ReaderClosedError', 'TypeReaderBase', 'TypeReaderCryptoBase']
 
@@ -60,9 +62,8 @@ class TypeReaderBase:
     closed: bool
     """`True` if the reader is closed."""
 
-    def __init__(self, file: 'FilePathOrObject', *, closefd: 'Optional[bool]' = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: 'bool | None' = None,
                  mode: str = 'rb'):
-        default_closefd = False
         self.closed = False
 
         # Store a set of opened files based on this reader.
@@ -71,29 +72,32 @@ class TypeReaderBase:
         # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
         #   even though it's similar.
         # noinspection PyTypeChecker
-        self._open_files: Set[BinaryIO] = WeakSet()
+        self._open_files: set[BinaryIO] = WeakSet()
 
-        # Determine whether or not fp is a path or not.
-        if isinstance(file, (PathLike, str, bytes)):
-            default_closefd = True
-            file = open(file, mode)
+        fileobj, newly_opened = get_fs_file_object(file, fs, mode=mode)
 
         if closefd is None:
-            closefd = default_closefd
+            closefd = newly_opened
 
         self._closefd = closefd
 
         # Store the file in a private attribute.
-        self._file: BinaryIO = file
+        # noinspection PyTypeChecker
+        self._file: BinaryIO = fileobj
 
         # Store the starting offset of the file.
-        self._start = file.tell()
+        self._start = fileobj.tell()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    @property
+    def _closed(self):
+        # for PyFilesystem2 which checks _closed
+        return self.closed
 
     def close(self):
         """Close the reader. If closefd is `True`, the underlying file is also closed."""
@@ -141,9 +145,9 @@ class TypeReaderCryptoBase(TypeReaderBase):
 
     __slots__ = ('_crypto',)
 
-    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, mode: str = 'rb',
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):
-        super().__init__(file, closefd=closefd, mode=mode)
+        super().__init__(file, fs=fs, closefd=closefd, mode=mode)
 
         if crypto:
             self._crypto = crypto

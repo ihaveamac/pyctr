@@ -4,12 +4,18 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
-"""Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory."""
+"""
+Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory.
+
+.. deprecated:: 0.8.0
+    Replaced with :mod:`~pyctr.type.sdfs`.
+"""
 
 from os import fsdecode
 from os.path import isfile, isdir
 from pathlib import Path
 from typing import TYPE_CHECKING
+from warnings import warn
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
@@ -17,11 +23,15 @@ from .sdtitle import SDTitleReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, List, Union
+    from typing import BinaryIO
     from ..common import FilePath
 
     # noinspection PyProtectedMember
     from ..crypto import CTRFileIO
+
+
+warn('pyctr.type.sd is deprecated, use pyctr.type.sdfs instead',
+     DeprecationWarning)
 
 
 class SDFilesystemError(PyCTRError):
@@ -44,7 +54,7 @@ class MissingTitleError(SDFilesystemError):
     """The requested Title ID could not be found."""
 
 
-def normalize_sd_path(path: 'Union[PathLike, str]'):
+def normalize_sd_path(path: 'PathLike | str'):
     return str(path).lstrip('/').lstrip('\\')
 
 
@@ -113,7 +123,7 @@ class SDFilesystem:
             id1 = self.current_id1
         return self._id0_path / id1 / path
 
-    def open(self, path: 'Union[PathLike, str]', mode: str = 'rb', *, id1: str = None) -> 'CTRFileIO':
+    def open(self, path: 'PathLike | str', mode: str = 'rb', *, id1: str = None) -> 'CTRFileIO':
         """
         Opens a file in the SD filesystem, allowing decrypted access.
 
@@ -145,7 +155,7 @@ class SDFilesystem:
         fh: BinaryIO = real_path.open(mode)
         return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv('/' + path))
 
-    def listdir(self, path: 'Union[PathLike, str]', id1: str = None) -> 'List[str]':
+    def listdir(self, path: 'PathLike | str', id1: str = None) -> 'list[str]':
         """
         Returns a list of files in the directory.
 
@@ -157,7 +167,7 @@ class SDFilesystem:
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return list(x.name for x in real_path.iterdir())
 
-    def isfile(self, path: 'Union[PathLike, str]', id1: str = None) -> bool:
+    def isfile(self, path: 'PathLike | str', id1: str = None) -> bool:
         """
         Checks if the path points to a file.
 
@@ -169,7 +179,7 @@ class SDFilesystem:
         real_path = self._get_real_path(normalize_sd_path(path), id1)
         return isfile(real_path)
 
-    def isdir(self, path: 'Union[PathLike, str]', id1: str = None) -> bool:
+    def isdir(self, path: 'PathLike | str', id1: str = None) -> bool:
         """
         Checks if the path points to a directory.
 

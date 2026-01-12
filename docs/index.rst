@@ -30,7 +30,7 @@ It can emulate cryptography features of the 3DS:
 Install
 =======
 
-PyCTR requires Python 3.8 or later.
+PyCTR requires Python 3.12 or later.
 
 It can be installed with ``pip``:
 
@@ -51,6 +51,7 @@ It can be installed with ``pip``:
 
    pyctr.type.cdn
    pyctr.type.cia
+   pyctr.type.cci
    pyctr.type.ncch
    pyctr.type.sdtitle
 
@@ -73,7 +74,15 @@ It can be installed with ``pip``:
    :caption: Console data
 
    pyctr.type.nand
+   pyctr.type.sdfs
    pyctr.type.sd
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Encryption
+
+   pyctr.crypto.engine
+   pyctr.crypto.seeddb
 
 .. toctree::
    :maxdepth: 1

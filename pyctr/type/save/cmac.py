@@ -11,8 +11,6 @@ from ...common import PyCTRError
 from ...crypto import Keyslot
 
 if TYPE_CHECKING:
-    from typing import List
-
     from ...crypto import CryptoEngine
 
 
@@ -52,7 +50,7 @@ class CMACTypeBase:
     def generate_cmac(self, header: bytes):
         raise NotImplementedError
 
-    def _gen_cmac_internal(self, data: 'List[bytes]'):
+    def _gen_cmac_internal(self, data: 'list[bytes]'):
         all_data = [self.magic] + data
         cipher = self.crypto.create_cmac_object(self.keyslot)
         cipher.update(sha256(b''.join(all_data)).digest())

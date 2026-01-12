@@ -6,6 +6,9 @@
 
 The :mod:`sd` module enables reading and writing of Nintendo 3DS SD card encrypted digital content. This is the "Nintendo 3DS" folder on an SD card and includes application data, save data, and extdata.
 
+.. deprecated:: 0.8.0
+    Replaced with :mod:`~pyctr.type.sdfs`.
+
 Directory hierarchy
 -------------------
 
@@ -24,6 +27,9 @@ Directory hierarchy
       * title
 
       * Nintendo DSiWare
+
+.. note::
+    Files cannot be moved or renamed because the encryption depends on the complete filepath from the start of the ID1 folder. If a file must be moved or renamed, it must be copied to the new location.
 
 SDFilesystem objects
 --------------------
@@ -81,7 +87,7 @@ SDFilesystem objects
 
         :param path: Directory path.
         :type path: :term:`path-like object`
-        :rtype: List[str]
+        :rtype: list[str]
 
     .. py:method:: isfile(path, id1=None)
 
@@ -100,7 +106,7 @@ SDFilesystem objects
         :rtype: bool
 
     .. py:attribute:: id1s
-        :type: List[str]
+        :type: list[str]
 
         A list of ID1 directories found in the ID0 directory.
 

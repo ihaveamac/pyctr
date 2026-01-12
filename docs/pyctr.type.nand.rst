@@ -6,8 +6,6 @@
 
 The :mod:`nand` module enables reading and writing of Nintendo 3DS NAND images.
 
-This module is best combined with `pyfatfs <https://github.com/nathanhi/pyfatfs>`_ for interacting with the FAT filesystems inside TWL NAND and CTR NAND. pyfatfs is not a dependency on pyctr so your application must include it manually.
-
 A basic overview of reading and writing to a NAND image is available here: :doc:`example-nand`.
 
 Getting started
@@ -68,7 +66,9 @@ NAND objects
 .. autoclass:: NAND
 
     .. automethod:: open_ctr_partition
+    .. automethod:: open_ctr_fat
     .. automethod:: open_twl_partition
+    .. automethod:: open_twl_fat
     .. py:method:: open_raw_section(section)
 
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
@@ -78,15 +78,17 @@ NAND objects
         .. note::
 
             If you are looking to read from TWL NAND or CTR NAND, you may be looking for :meth:`open_twl_partition`
-            or :meth:`open_ctr_partition` instead.
+            or :meth:`open_ctr_partition` instead to open the raw MBR partition. This will return NCSD partitions,
+            which for TWL NAND and CTR NAND, include the MBR.
 
         :param section: The section to open. Numbers 0 to 7 are specific NCSD partitions. Negative numbers are special
             sections defined by PyCTR.
-        :type section: Union[NANDSection, int]
+        :type section: NANDSection | int
         :return: A file-like object.
         :rtype: SubsectionIO
 
     .. automethod:: open_bonus_partition
+    .. automethod:: open_bonus_fat
     .. automethod:: raise_if_ctr_failed
     .. automethod:: raise_if_twl_failed
 
@@ -111,13 +113,13 @@ NAND objects
 
         The list of partitions in the CTR MBR. Always only one in practice, referred to as CTR NAND.
 
-        :type: List[Tuple[int, int]]
+        :type: list[tuple[int, int]]
 
     .. py:attribute:: twl_partitions
 
         The list of partitions in the TWL MBR. First one is TWL NAND and second is TWL Photo.
 
-        :type: List[Tuple[int, int]]
+        :type: list[tuple[int, int]]
 
     .. automethod:: close
 
@@ -136,7 +138,9 @@ NAND sections
 
         .. note::
 
-            Writes to the first 0x1BE (before the TWL MBR) are silently discarded to avoid writing a corrupted NCSD header.
+            Don't write to the first 0x1BE, this is where the NCSD header is on the raw NAND. Future versions of pyctr may silently discard writes to this region.
+
+            If writing to the TWL MBR region (0x1BE-0x200), the NCSD header signature may be invalidated. Use the sighax signature to keep a "valid" header. Also keep a backup of the original NCSD header (this may already be in the essentials backup).
 
     .. autoattribute:: AGBSAVE
     .. autoattribute:: FIRM0
@@ -181,7 +185,7 @@ These are for those who want to manually interact with the NCSD information.
 
     .. autoattribute:: actual_image_size
     .. py:attribute:: partition_table
-        :type: Dict[Union[int, NANDSection], NCSDPartitionInfo]
+        :type: dict[int | NANDSection, NCSDPartitionInfo]
 
         Partition information. :class:`NANDSection` keys (negative ints) are for partition and section types, while positive int keys are for physical locations. This means that, for example, :attr:`NANDSection.TWLMBR` and ``0`` contain the same partition info.
 
@@ -202,12 +206,12 @@ These are for those who want to manually interact with the NCSD information.
     Information for a single partition.
 
     .. py:attribute:: fs_type
-        :type: Union[PartitionFSType, int]
+        :type: PartitionFSType | int
 
         Type of filesystem.
 
     .. py:attribute:: encryption_type
-        :type: Union[PartitionEncryptionType, int]
+        :type: PartitionEncryptionType | int
 
         Type of encryption used for the partition.
 

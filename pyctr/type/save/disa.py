@@ -11,7 +11,7 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
+    from fs.base import FS
 
     from ...crypto import CryptoEngine
     from .cmac import CMACTypeBase
@@ -42,13 +42,14 @@ class DISA(PartitionContainerBase):
     :param sd_key: SD KeyY to use. Has priority over `sd_key_file` if both are specified.
     """
 
-    partitions: 'Dict[int, Partition]'
+    partitions: 'dict[int, Partition]'
     """Partitions of the file. DISA can have one or two, so there is always `0` but there can be `1` as well."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 closefd: 'Optional[bool]' = None, crypto: 'CryptoEngine' = None, dev: bool = False,
-                 cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None, sd_key: bytes = None):
-        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,
+                 fs: 'FS | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
+                 dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
+                 sd_key: bytes = None):
+        super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,
                          sd_key_file=sd_key_file, sd_key=sd_key)
 
         self._file.seek(0xF0, 1)
