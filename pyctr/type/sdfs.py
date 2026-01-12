@@ -20,7 +20,7 @@ from .sdtitle import SDTitleReader
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import BinaryIO, Mapping, Optional
+    from typing import BinaryIO, Mapping
     from ..common import FilePath, DirPathOrFS
 
     # noinspection PyProtectedMember
@@ -95,13 +95,13 @@ class SDRoot:
         if len(self.id1s) == 0:
             raise MissingID1Error('could not find any ID1 directories in ' + self._crypto.id0.hex())
 
-    def open_id1(self, /, id1: 'Optional[str]' = None):
+    def open_id1(self, /, id1: 'str | None' = None):
         if not id1:
             id1 = self.id1s[0]
         return self.fs.opendir(self.id0 + '/' + id1, lambda p, f: SDFS(p, f, crypto=self._crypto))
 
     def open_title(self, /, title_id: str, *, case_insensitive: bool = False, seed: bytes = None,
-                   load_contents: bool = True, id1: 'Optional[str]' = None):
+                   load_contents: bool = True, id1: 'str | None' = None):
         fs = self.open_id1(id1)
         title_id = title_id.lower()
         sd_path = f'/title/{title_id[0:8]}/{title_id[8:16]}/content'
@@ -175,8 +175,8 @@ class SDFS(SubFS):
         path,
         mode: str = 'rb',
         buffering: int = -1,
-        encoding: 'Optional[str]' = None,
-        errors: 'Optional[str]' = None,
+        encoding: 'str | None' = None,
+        errors: 'str | None' = None,
         newline: str = '',
         **options
     ) -> 'BinaryIO':

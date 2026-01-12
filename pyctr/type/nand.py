@@ -22,7 +22,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, List, Optional, Set, Tuple, Union
+    from typing import BinaryIO
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -90,11 +90,11 @@ class NANDSection(IntEnum):
 
 
 class NCSDPartitionInfo(NamedTuple):
-    fs_type: 'Union[PartitionFSType, int]'
-    encryption_type: 'Union[PartitionEncryptionType, int]'
+    fs_type: 'PartitionFSType | int'
+    encryption_type: 'PartitionEncryptionType | int'
     offset: int
     size: int
-    base_file: 'Optional[str]'
+    base_file: 'str | None'
 
 
 class NANDNCSDHeader(NamedTuple):
@@ -110,7 +110,7 @@ class NANDNCSDHeader(NamedTuple):
     of the backup may be larger.
     """
 
-    partition_table: 'Dict[Union[int, NANDSection], NCSDPartitionInfo]'
+    partition_table: 'dict[int | NANDSection, NCSDPartitionInfo]'
     """Partition information. Normally includes 5 partitions, but may include up to 8."""
 
     unknown: bytes
@@ -371,12 +371,12 @@ class NAND(TypeReaderCryptoBase):
         'essential', 'header', 'twl_index', 'twl_partitions', '_fat_partitons'
     )
 
-    essential: 'Optional[ExeFSReader]'
+    essential: 'ExeFSReader | None'
 
-    ctr_partitions: 'List[Tuple[int, int]]'
-    twl_partitions: 'List[Tuple[int, int]]'
+    ctr_partitions: 'list[tuple[int, int]]'
+    twl_partitions: 'list[tuple[int, int]]'
 
-    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'FS | None' = None, closefd: bool = None,
                  crypto: CryptoEngine = None, dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None,
                  cid: bytes = None, cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
         super().__init__(file=file, fs=fs, mode=mode, closefd=closefd, crypto=crypto, dev=dev)
@@ -385,10 +385,10 @@ class NAND(TypeReaderCryptoBase):
 
         # opened files to close if the NAND is closed
         # noinspection PyTypeChecker
-        self._open_files: Set[SubsectionIO] = WeakSet()
+        self._open_files: set[SubsectionIO] = WeakSet()
         # FAT partitions should be closed before the underlying file so it can do some final cleanup
         # noinspection PyTypeChecker
-        self._fat_partitons: Set[PyFatBytesIOFS] = WeakSet()
+        self._fat_partitons: set[PyFatBytesIOFS] = WeakSet()
 
         # these do the actual de/encryption part and are used as the basis for SubsectionIO files
         self._base_files = {}
@@ -766,7 +766,7 @@ class NAND(TypeReaderCryptoBase):
         self._fat_partitons.add(fat)
         return fat
 
-    def open_raw_section(self, section: 'Union[NANDSection, int]'):
+    def open_raw_section(self, section: 'NANDSection | int'):
         """
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
 

@@ -83,7 +83,7 @@ NAND objects
 
         :param section: The section to open. Numbers 0 to 7 are specific NCSD partitions. Negative numbers are special
             sections defined by PyCTR.
-        :type section: Union[NANDSection, int]
+        :type section: NANDSection | int
         :return: A file-like object.
         :rtype: SubsectionIO
 
@@ -113,13 +113,13 @@ NAND objects
 
         The list of partitions in the CTR MBR. Always only one in practice, referred to as CTR NAND.
 
-        :type: List[Tuple[int, int]]
+        :type: list[tuple[int, int]]
 
     .. py:attribute:: twl_partitions
 
         The list of partitions in the TWL MBR. First one is TWL NAND and second is TWL Photo.
 
-        :type: List[Tuple[int, int]]
+        :type: list[tuple[int, int]]
 
     .. automethod:: close
 
@@ -185,7 +185,7 @@ These are for those who want to manually interact with the NCSD information.
 
     .. autoattribute:: actual_image_size
     .. py:attribute:: partition_table
-        :type: Dict[Union[int, NANDSection], NCSDPartitionInfo]
+        :type: dict[int | NANDSection, NCSDPartitionInfo]
 
         Partition information. :class:`NANDSection` keys (negative ints) are for partition and section types, while positive int keys are for physical locations. This means that, for example, :attr:`NANDSection.TWLMBR` and ``0`` contain the same partition info.
 
@@ -206,12 +206,12 @@ These are for those who want to manually interact with the NCSD information.
     Information for a single partition.
 
     .. py:attribute:: fs_type
-        :type: Union[PartitionFSType, int]
+        :type: PartitionFSType | int
 
         Type of filesystem.
 
     .. py:attribute:: encryption_type
-        :type: Union[PartitionEncryptionType, int]
+        :type: PartitionEncryptionType | int
 
         Type of encryption used for the partition.
 

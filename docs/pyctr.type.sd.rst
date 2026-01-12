@@ -87,7 +87,7 @@ SDFilesystem objects
 
         :param path: Directory path.
         :type path: :term:`path-like object`
-        :rtype: List[str]
+        :rtype: list[str]
 
     .. py:method:: isfile(path, id1=None)
 
@@ -106,7 +106,7 @@ SDFilesystem objects
         :rtype: bool
 
     .. py:attribute:: id1s
-        :type: List[str]
+        :type: list[str]
 
         A list of ID1 directories found in the ID0 directory.
 

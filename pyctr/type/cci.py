@@ -16,7 +16,6 @@ from ..util import readle
 from .base import TypeReaderBase
 
 if TYPE_CHECKING:
-    from typing import Dict
     from ..common import FilePathOrObject
 
 CCI_MEDIA_UNIT = 0x200
@@ -111,16 +110,16 @@ class CCIReader(TypeReaderBase):
     image_size: int
     """Image size in bytes. This does not always match the file size on disk."""
 
-    sections: 'Dict[CCISection, CCIRegion]'
+    sections: 'dict[CCISection, CCIRegion]'
     """A list of :class:`CCIRegion` objects containing the offset and size of each partition."""
 
-    contents: 'Dict[CCISection, NCCHReader]'
+    contents: 'dict[CCISection, NCCHReader]'
     """A list of :class:`~.NCCHReader` objects for each partition."""
 
     media_id: str
     """Same as the Title ID of the application."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'Optional[FS]' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, dev: bool = False, load_contents: bool = True,
                  assume_decrypted: bool = False):
         super().__init__(file, fs=fs, closefd=closefd)

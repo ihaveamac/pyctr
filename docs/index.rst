@@ -30,7 +30,7 @@ It can emulate cryptography features of the 3DS:
 Install
 =======
 
-PyCTR requires Python 3.8 or later.
+PyCTR requires Python 3.12 or later.
 
 It can be installed with ``pip``:
 
