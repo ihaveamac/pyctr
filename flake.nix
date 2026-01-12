@@ -3,10 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
-    inputs@{ self, nixpkgs }:
+    inputs@{ self, nixpkgs, treefmt-nix }:
     let
       systems = [
         "x86_64-linux"
@@ -18,6 +20,13 @@
         "armv7l-linux"
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
+      treefmtEval = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        treefmt-nix.lib.evalModule pkgs ./treefmt.nix
+      );
     in
     {
       legacyPackages = forAllSystems (
@@ -43,5 +52,10 @@
           withPyctr = pkgs.callPackage ./shell.nix { withPyctr = true; };
         }
       );
+
+      formatter = forAllSystems (system: treefmtEval.${system}.config.build.wrapper);
+      checks = forAllSystems (system: {
+        formatting = treefmtEval.${system}.config.build.check self;
+      });
     };
 }
