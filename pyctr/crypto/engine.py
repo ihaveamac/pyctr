@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from Cryptodome.Cipher._mode_ecb import EcbMode
     from Cryptodome.Hash.CMAC import CMAC as CMAC_CLASS
-    from typing import BinaryIO, Dict, Tuple, Union
+    from typing import BinaryIO, Dict, Union
     from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
@@ -206,7 +206,7 @@ _b9_keyblob: 'Dict[str, bytes | None]' = {
     'dev': None
 }
 # tuples are (key, iv)
-_otp_key_iv: 'Dict[str, Tuple[bytes, bytes] | None]' = {
+_otp_key_iv: 'Dict[str, tuple[bytes, bytes] | None]' = {
     'retail': None,
     'dev': None
 }

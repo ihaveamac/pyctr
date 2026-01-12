@@ -21,7 +21,7 @@ from .exefs import ExeFSReader
 from .romfs import RomFSReader
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Tuple, Union
+    from typing import BinaryIO, Dict, Union
 
     from fs.base import FS
 
@@ -198,7 +198,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
     # this lists the ranges of the exefs (start + end) and the keyslot to use
     # the keyslot should alternate between main and extra for each entry, staring with main (for header)
-    _exefs_crypto_ranges: 'list[Tuple[int, int, int]]'
+    _exefs_crypto_ranges: 'list[tuple[int, int, int]]'
 
     exefs: 'ExeFSReader | None'
     """The :class:`~.ExeFSReader` of the NCCH, if it has one."""
@@ -551,7 +551,7 @@ class NCCHReader(TypeReaderCryptoBase):
 
                 # store the sections to read
                 # dict is ordered by default in CPython since 3.6.0, and part of the language spec since 3.7.0
-                to_read: Dict[Tuple[NCCHSection, int], list[int]] = {}
+                to_read: Dict[tuple[NCCHSection, int], list[int]] = {}
 
                 # get each section to a local variable for easier access
                 header = self._all_sections[NCCHSection.Header]

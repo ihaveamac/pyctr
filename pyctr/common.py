@@ -16,7 +16,7 @@ from fs.path import dirname as fs_dirname
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
-    from typing import BinaryIO, IO, Union, Tuple
+    from typing import BinaryIO, IO, Union
 
     RawIOBase = BinaryIO
 
@@ -34,7 +34,7 @@ def get_fs_file_object(
         fs: 'FS | None' = None,
         *,
         mode: str = 'rb'
-    ) -> 'Tuple[IO, bool]':
+    ) -> 'tuple[IO, bool]':
     if isinstance(path, (PathLike, str, bytes)):
         """
         Opens a file on the given filesystem. This can be given a simple OS path, a path and a filesystem, or an

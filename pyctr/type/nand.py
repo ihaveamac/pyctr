@@ -22,7 +22,7 @@ from .base.typereader import TypeReaderCryptoBase
 from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Dict, Set, Tuple, Union
+    from typing import BinaryIO, Dict, Set, Union
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -373,8 +373,8 @@ class NAND(TypeReaderCryptoBase):
 
     essential: 'ExeFSReader | None'
 
-    ctr_partitions: 'list[Tuple[int, int]]'
-    twl_partitions: 'list[Tuple[int, int]]'
+    ctr_partitions: 'list[tuple[int, int]]'
+    twl_partitions: 'list[tuple[int, int]]'
 
     def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'FS | None' = None, closefd: bool = None,
                  crypto: CryptoEngine = None, dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None,

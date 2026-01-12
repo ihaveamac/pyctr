@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from .common import _raise_if_file_closed, _raise_if_file_closed_generic
 
 if TYPE_CHECKING:
-    from typing import BinaryIO, Iterable, Tuple
+    from typing import BinaryIO, Iterable
     # this is to trick type checkers into accepting SubsectionIO as a BinaryIO object
     # if you know a better way, let me know
     RawIOBase = BinaryIO
@@ -143,7 +143,7 @@ class SplitFileMerger(RawIOBase):
 
     __slots__ = ('_closefds', '_fake_seek', '_files', '_read_only', '_seek_info', '_total_size', 'closed')
 
-    def __init__(self, files: 'Iterable[Tuple[BinaryIO, int]]', read_only: bool = True, closefds: bool = False):
+    def __init__(self, files: 'Iterable[tuple[BinaryIO, int]]', read_only: bool = True, closefds: bool = False):
         if not read_only:
             raise NotImplementedError('writing is not yet supported')
 

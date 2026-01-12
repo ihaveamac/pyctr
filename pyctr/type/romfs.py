@@ -23,7 +23,7 @@ from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import IO, BinaryIO, Tuple, Union, Iterator
+    from typing import IO, BinaryIO, Union, Iterator
     from ..common import FilePathOrObject
     from collections.abc import Collection
 
@@ -88,7 +88,7 @@ class RomFSRegion(NamedTuple):
 class RomFSDirectoryEntry(NamedTuple):
     name: str
     type: str
-    contents: 'Tuple[str, ...]'
+    contents: 'tuple[str, ...]'
 
 
 class RomFSFileEntry(NamedTuple):
@@ -378,7 +378,7 @@ class RomFSReader(TypeReaderBase, FS):
         self,
         path: str,
         namespaces: 'Collection[str] | None' = None,
-        page: 'Tuple[int, int] | None' = None,
+        page: 'tuple[int, int] | None' = None,
     ) -> 'Iterator[Info]':
         curr = self._get_raw_info(path)
         if curr['type'] != 'dir':
