@@ -1,4 +1,13 @@
-{ lib, buildPythonPackage, pythonOlder, fetchPypi, fs, pip, setuptools, setuptools-scm }:
+{
+  lib,
+  buildPythonPackage,
+  pythonOlder,
+  fetchPypi,
+  fs,
+  pip,
+  setuptools,
+  setuptools-scm,
+}:
 
 buildPythonPackage rec {
   pname = "pyfatfs";
@@ -16,7 +25,10 @@ buildPythonPackage rec {
 
   patches = [ ./pyfatfs-fix-deps.patch ];
 
-  buildInputs = [ setuptools setuptools-scm ];
+  buildInputs = [
+    setuptools
+    setuptools-scm
+  ];
 
   propagatedBuildInputs = [
     fs

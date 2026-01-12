@@ -8,7 +8,11 @@
   };
 
   outputs =
-    inputs@{ self, nixpkgs, treefmt-nix }:
+    inputs@{
+      self,
+      nixpkgs,
+      treefmt-nix,
+    }:
     let
       systems = [
         "x86_64-linux"

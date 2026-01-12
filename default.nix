@@ -1,4 +1,6 @@
-{ pkgs ? import <nixpkgs> {} }:
+{
+  pkgs ? import <nixpkgs> { },
+}:
 
 rec {
   pyfatfs = pkgs.python3Packages.callPackage ./nix/pyfatfs.nix { };
