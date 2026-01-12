@@ -61,5 +61,21 @@
       checks = forAllSystems (system: {
         formatting = treefmtEval.${system}.config.build.check self;
       });
+
+      apps = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          buildenv = {
+            type = "app";
+            program =
+              (pkgs.writeShellScript "buildenv" ''
+                nix -v -L build .#python-environment --out-link pythonenv.local
+              '').outPath;
+          };
+        }
+      );
     };
 }
