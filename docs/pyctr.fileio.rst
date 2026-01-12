@@ -39,7 +39,7 @@ Classes
     Available methods: ``close``, ``read``, ``seek``, ``tell``, ``write``, ``readable``, ``writable``, ``seekable``.
 
     :param files: A list of tuples with binary files and size.
-    :type files: Iterable[Tuple[(:term:`binary file`), int]]
+    :type files: Iterable[tuple[(:term:`binary file`), int]]
     :param read_only: Disable writing.
     :type read_only: bool
     :param closefds: Close all file objects when this is closed.

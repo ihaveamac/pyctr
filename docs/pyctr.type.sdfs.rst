@@ -74,7 +74,7 @@ SDRoot objects
         if no ID1 is specified, the first one in :attr:`id1s` is used.
 
         :param id1: ID1 directory to use.
-        :type id1: Optional[str]
+        :type id1: str | None
         :return: SD filesystem.
         :rtype: SDFS
         :raises fs.errors.ResourceNotFound: If the ID1 directory doesn't exist.
