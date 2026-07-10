@@ -3,10 +3,10 @@
 }:
 
 rec {
-  pyctr = pkgs.python3Packages.callPackage ./package.nix { };
+  pyctr = pkgs.python313Packages.callPackage ./package.nix { };
   # mainly useful for things like pycharm
-  python-environment = pkgs.python3Packages.python.buildEnv.override {
-    extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python3Packages; [ pytest pip ]);
+  python-environment = pkgs.python313Packages.python.buildEnv.override {
+    extraLibs = pyctr.propagatedBuildInputs ++ (with pkgs.python313Packages; [ pytest pip ]);
     ignoreCollisions = true;
   };
   tester = pkgs.writeShellScriptBin "pyctr-tester" ''
