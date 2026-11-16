@@ -6,7 +6,7 @@
 let
   pyctrPkgs = import ./default.nix { inherit pkgs; };
   pyctr = pyctrPkgs.pyctr;
-  pythonPackages = pkgs.python3Packages;
+  pythonPackages = pkgs.python313Packages;
 in
 pkgs.mkShell {
   name = "pyctr-dev-shell";
@@ -15,6 +15,8 @@ pkgs.mkShell {
     pyctr.propagatedBuildInputs
     ++ [
       pythonPackages.pytest
+      pythonPackages.pip
+      pythonPackages.build
     ]
     ++ (pkgs.lib.optional withPyctr pyctr);
 
