@@ -71,7 +71,7 @@
             type = "app";
             program =
               (pkgs.writeShellScript "buildenv" ''
-                nix -v -L build .#python-environment --out-link pythonenv.local
+                nix -v -L build .#pyvenv --out-link venv-nix.local
               '').outPath;
           };
         }
