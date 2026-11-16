@@ -10,9 +10,10 @@ from os import PathLike, fsdecode
 from os.path import dirname as os_dirname
 from typing import TYPE_CHECKING
 
-from fs import open_fs
-from fs.base import FS
-from fs.path import dirname as fs_dirname
+# from fs import open_fs
+# from fs.base import FS
+# from fs.path import dirname as fs_dirname
+from fsspec import AbstractFileSystem, filesystem
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
     FilePath = PathLike | str | bytes
     FilePathOrObject = FilePath | BinaryIO
-    DirPathOrFS = PathLike | str | bytes | FS
+    DirPathOrFS = PathLike | str | bytes | AbstractFileSystem
 
 
 class PyCTRError(Exception):
@@ -33,7 +34,8 @@ def get_fs_file_object(
         path: 'FilePathOrObject',
         fs: 'FS | None' = None,
         *,
-        mode: str = 'rb'
+        mode: str = 'rb',
+        fs_kwargs: dict = None
     ) -> 'tuple[IO, bool]':
     if isinstance(path, (PathLike, str, bytes)):
         """
@@ -44,13 +46,15 @@ def get_fs_file_object(
         :param fs: A filesystem or an FS URL.
         :return: A file-like object and True if the file is newly opened.
         """
+        if fs_kwargs is None:
+            fs_kwargs = {}
         if fs:
             # fs can be an FS object or an FS URL
-            if not isinstance(fs, FS):
-                fs = open_fs(fs)
+            if not isinstance(fs, AbstractFileSystem):
+                fs = filesystem(fs, **fs_kwargs)
             return fs.open(path, mode), True
         else:
-            # no fs means assuming OS, and no real need to bother going through OSFS for this one
+            # no fs means assuming local FS, and no real need to bother going through LocalFileSystem for this one
             return open(path, mode), True
     else:
         # it's already an opened file object, so just return that

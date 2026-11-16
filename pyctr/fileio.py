@@ -9,6 +9,8 @@ from threading import Lock
 from weakref import WeakValueDictionary
 from typing import TYPE_CHECKING
 
+from fsspec.spec import AbstractBufferedFile
+
 from .common import _raise_if_file_closed, _raise_if_file_closed_generic
 
 if TYPE_CHECKING:
@@ -21,7 +23,8 @@ if TYPE_CHECKING:
 _lock_objects = WeakValueDictionary()
 
 
-class SubsectionIO(RawIOBase):
+# TODO: needs updating for AbstractBufferedFile
+class SubsectionIO(AbstractBufferedFile):
     """
     Provides read-write access to a subsection of a file.
 
@@ -132,7 +135,7 @@ class SubsectionIO(RawIOBase):
             self._reader.flush()
 
 
-class SplitFileMerger(RawIOBase):
+class SplitFileMerger(AbstractBufferedFile):
     """
     Provides access to multiple file-like handles as one large file.
 

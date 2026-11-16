@@ -34,6 +34,7 @@ A command line tool was added, `pyctr.cmd` with entrypoint `pyctrcmd`.
 * Require Python 3.12
 * Start migration away from PyFilesystem2 and towards fsspec
   * This means previous changes related to it will be converted or undone. This also means pyfatfs and related features are removed. They may be re-added if an fsspec-compatible module appears.
+* Initial work on `RomFSReader` and certain common classes it depends on
 
 ## v0.7.0 - September 3, 2023
 ### Highlights
