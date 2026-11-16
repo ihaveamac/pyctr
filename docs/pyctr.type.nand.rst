@@ -66,9 +66,7 @@ NAND objects
 .. autoclass:: NAND
 
     .. automethod:: open_ctr_partition
-    .. automethod:: open_ctr_fat
     .. automethod:: open_twl_partition
-    .. automethod:: open_twl_fat
     .. py:method:: open_raw_section(section)
 
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
@@ -88,7 +86,6 @@ NAND objects
         :rtype: SubsectionIO
 
     .. automethod:: open_bonus_partition
-    .. automethod:: open_bonus_fat
     .. automethod:: raise_if_ctr_failed
     .. automethod:: raise_if_twl_failed
 

@@ -22,8 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "pycryptodomex>=3.9,<4",
-    "fs>=2.4.0,<3.0.0",
-    "pyfatfs>=1.0.5,<2",
+    "fsspec>=2026.9.0",
 ]
 
 [project.optional-dependencies]

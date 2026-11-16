@@ -12,7 +12,6 @@ from threading import Lock
 from typing import NamedTuple, TYPE_CHECKING
 from weakref import WeakSet
 
-from pyfatfs.PyFatFS import PyFatBytesIOFS
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, Keyslot
@@ -368,7 +367,7 @@ class NAND(TypeReaderCryptoBase):
 
     __slots__ = (
         '_base_files', '_lock', '_subfile', 'bonus_partitions', 'counter', 'counter_twl', 'ctr_index', 'ctr_partitions',
-        'essential', 'header', 'twl_index', 'twl_partitions', '_fat_partitons'
+        'essential', 'header', 'twl_index', 'twl_partitions'
     )
 
     essential: 'ExeFSReader | None'
@@ -386,9 +385,6 @@ class NAND(TypeReaderCryptoBase):
         # opened files to close if the NAND is closed
         # noinspection PyTypeChecker
         self._open_files: set[SubsectionIO] = WeakSet()
-        # FAT partitions should be closed before the underlying file so it can do some final cleanup
-        # noinspection PyTypeChecker
-        self._fat_partitons: set[PyFatBytesIOFS] = WeakSet()
 
         # these do the actual de/encryption part and are used as the basis for SubsectionIO files
         self._base_files = {}
@@ -632,8 +628,6 @@ class NAND(TypeReaderCryptoBase):
 
     def close(self):
         if not self.closed:
-            for f in self._fat_partitons:
-                f.close()
             for c in self._base_files.values():
                 c.close()
             for s in self._open_files:
@@ -642,7 +636,6 @@ class NAND(TypeReaderCryptoBase):
             if self.essential:
                 self.essential.close()
 
-            self._fat_partitons = frozenset()
             self._open_files = frozenset()
             self._base_files = {}
 
@@ -692,21 +685,6 @@ class NAND(TypeReaderCryptoBase):
         self._open_files.add(fh)
         return fh
 
-    def open_ctr_fat(self, partition_index: int = 0) -> 'PyFatBytesIOFS':
-        """
-        Opens a FAT filesystem inside a CTR partition for reading and writing.
-
-        In practice there is only ever one, so this opens it by default.
-
-        :param partition_index: Partition index number.
-        :return: A FAT filesystem.
-        :rtype: PyFatBytesIOFS
-        """
-        fh = self.open_ctr_partition(partition_index)
-        fat = PyFatBytesIOFS(fp=fh)
-        self._fat_partitons.add(fat)
-        return fat
-
     def open_twl_partition(self, partition_index: int):
         """
         Opens a raw partition in TWLNAND for reading and writing.
@@ -725,21 +703,6 @@ class NAND(TypeReaderCryptoBase):
         self._open_files.add(fh)
         return fh
 
-    def open_twl_fat(self, partition_index) -> 'PyFatBytesIOFS':
-        """
-        Opens a FAT filesystem inside a TWL partition for reading and writing.
-
-        0 is TWL NAND and 1 is TWL Photo.
-
-        :param partition_index: Partition index number.
-        :return: A FAT filesystem.
-        :rtype: PyFatBytesIOFS
-        """
-        fh = self.open_twl_partition(partition_index)
-        fat = PyFatBytesIOFS(fp=fh)
-        self._fat_partitons.add(fat)
-        return fat
-
     def open_bonus_partition(self):
         """
         Opens the GodMode9 bonus partition.
@@ -753,18 +716,6 @@ class NAND(TypeReaderCryptoBase):
         fh = SubsectionIO(self._subfile, bonus_info.offset + bonus_mbr_info[0], bonus_mbr_info[1])
         self._open_files.add(fh)
         return fh
-
-    def open_bonus_fat(self) -> 'PyFatBytesIOFS':
-        """
-        Opens the GodMode9 bonus FAT partition.
-
-        :return: A FAT filesystem.
-        :rtype: PyFatBytesIOFS
-        """
-        fh = self.open_bonus_partition()
-        fat = PyFatBytesIOFS(fp=fh)
-        self._fat_partitons.add(fat)
-        return fat
 
     def open_raw_section(self, section: 'NANDSection | int'):
         """
