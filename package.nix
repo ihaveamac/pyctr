@@ -8,9 +8,12 @@
   pyfatfs,
 }:
 
+let
+    version = (builtins.fromJSON(builtins.readFile ./pyctr/version.json)).version;
+in
 buildPythonPackage {
+  inherit version;
   pname = "pyctr";
-  version = "0.8-beta";
   pyproject = true;
 
   disabled = pythonOlder "3.12";
