@@ -6,7 +6,7 @@
 let
   pyctrPkgs = import ./default.nix { inherit pkgs; };
   pyctr = pyctrPkgs.pyctr;
-  pythonPackages = pkgs.python313Packages;
+  pythonPackages = pkgs.python3Packages;
 in
 pkgs.mkShell {
   name = "pyctr-dev-shell";
