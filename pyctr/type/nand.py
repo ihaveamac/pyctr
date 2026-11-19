@@ -12,7 +12,6 @@ from threading import Lock
 from typing import NamedTuple, TYPE_CHECKING
 from weakref import WeakSet
 
-
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, Keyslot
 from ..fileio import SubsectionIO
@@ -22,6 +21,9 @@ from .exefs import ExeFSReader, InvalidExeFSError, ExeFSFileNotFoundError
 
 if TYPE_CHECKING:
     from typing import BinaryIO
+
+    from fsspec.spec import AbstractFileSystem
+
     from ..common import FilePath, FilePathOrObject
 
 logger = getLogger(__name__)
@@ -375,7 +377,7 @@ class NAND(TypeReaderCryptoBase):
     ctr_partitions: 'list[tuple[int, int]]'
     twl_partitions: 'list[tuple[int, int]]'
 
-    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'FS | None' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', mode: str = 'rb', *, fs: 'AbstractFileSystem | None' = None, closefd: bool = None,
                  crypto: CryptoEngine = None, dev: bool = False, otp: bytes = None, otp_file: 'FilePath' = None,
                  cid: bytes = None, cid_file: 'FilePath' = None, auto_raise_exceptions: bool = True):
         super().__init__(file=file, fs=fs, mode=mode, closefd=closefd, crypto=crypto, dev=dev)

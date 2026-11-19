@@ -12,10 +12,11 @@ from weakref import WeakSet
 from ...common import PyCTRError, get_fs_file_object
 from ...crypto import CryptoEngine
 
-from fsspec.spec import AbstractFileSystem, AbstractBufferedFile
-
 if TYPE_CHECKING:
     from typing import BinaryIO
+
+    from fsspec.spec import AbstractFileSystem
+
     from ...fileio import SubsectionIO
     from ...common import FilePathOrObject
 
@@ -146,7 +147,7 @@ class TypeReaderCryptoBase(TypeReaderBase):
 
     __slots__ = ('_crypto',)
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None, mode: str = 'rb',
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'AbstractFileSystem | None' = None, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):
         super().__init__(file, fs=fs, closefd=closefd, mode=mode)
 

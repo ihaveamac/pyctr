@@ -23,7 +23,7 @@ from .romfs import RomFSReader
 if TYPE_CHECKING:
     from typing import BinaryIO
 
-    from fs.base import FS
+    from fsspec.spec import AbstractFileSystem
 
     from ..common import FilePathOrObject
 
@@ -241,7 +241,7 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
+    def __init__(self, file: 'FilePathOrObject', *, fs: 'AbstractFileSystem | None' = None, closefd: bool = None,
                  case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
                  load_sections: bool = True, assume_decrypted: bool = False):
 

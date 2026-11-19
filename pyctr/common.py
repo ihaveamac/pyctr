@@ -5,21 +5,18 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from functools import wraps
-from io import RawIOBase
+from io import IOBase
 from os import PathLike, fsdecode
 from os.path import dirname as os_dirname
 from typing import TYPE_CHECKING
 
-# from fs import open_fs
-# from fs.base import FS
-# from fs.path import dirname as fs_dirname
 from fsspec import AbstractFileSystem, filesystem
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
     from typing import BinaryIO, IO
 
-    RawIOBase = BinaryIO
+    IOBase = BinaryIO
 
     FilePath = PathLike | str | bytes
     FilePathOrObject = FilePath | BinaryIO
@@ -103,7 +100,7 @@ if TYPE_CHECKING:
         return method
 
 
-class _ReaderOpenFileBase(RawIOBase):
+class _ReaderOpenFileBase(IOBase):
     """Base class for all open files for Reader classes."""
 
     _seek = 0
