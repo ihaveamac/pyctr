@@ -6,14 +6,12 @@
 
 from enum import IntEnum
 from os import fsdecode
+from os.path import split, join
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 from weakref import WeakSet
 
-from fs import open_fs
-from fs.base import FS
-from fs.osfs import OSFS
-from fs.path import dirname as fs_dirname, join as fs_join, basename as fs_basename
+from fsspec.implementations.dirfs import DirFileSystem
 
 from ..common import PyCTRError
 from ..crypto import add_seed
@@ -23,6 +21,8 @@ from .tmd import TitleMetadataReader
 if TYPE_CHECKING:
     from pathlib import PurePath
     from typing import BinaryIO
+
+    from fsspec import AbstractFileSystem
 
     from ..common import FilePath
     from .ncch import NCCHReader
@@ -92,7 +92,7 @@ class SDTitleReader:
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
-    def __init__(self, file: 'FilePath', *, fs: 'FS' = None, case_insensitive: bool = False, dev: bool = False,
+    def __init__(self, file: 'FilePath', *, fs: 'AbstractFileSystem | None' = None, case_insensitive: bool = False, dev: bool = False,
                  seed: bytes = None, load_contents: bool = True, sdfs: 'SDFilesystem' = None, sd_id1: str = None):
         self.closed = False
 
@@ -116,18 +116,15 @@ class SDTitleReader:
             # custom FS is not supported here (this section is deprecated anyway)
             file = PurePosixPath(file)
             title_root = fsdecode(file.parent)
-            fs = OSFS(title_root)
+            fs = DirFileSystem(title_root)
             file = file.name
         else:
             if fs:
-                if not isinstance(fs, FS):
-                    fs = open_fs(fs)
-                title_root = fs_dirname(file)
-                file = fs_basename(file)
+                title_root, file = split(file)
             else:
                 # the path being absolute makes Path.parent work reliably
                 file = Path(file).absolute()
-                fs = OSFS(fsdecode(file.parent))
+                fs = DirFileSystem(path=fsdecode(file.parent))
                 title_root = '/'
                 file = file.name
         self.fs = fs
@@ -136,7 +133,7 @@ class SDTitleReader:
             self._base_files[section] = path
             self.available_sections.append(section)
 
-        add_file(SDTitleSection.TitleMetadata, fs_join(title_root, file))
+        add_file(SDTitleSection.TitleMetadata, join(title_root, file))
 
         with self.open_raw_section(SDTitleSection.TitleMetadata) as tmd:
             self.tmd = TitleMetadataReader.load(tmd)
@@ -150,7 +147,7 @@ class SDTitleReader:
 
             # this should ideally never be uppercase in practice
             # since the console stores these as lowercase
-            content_file = fs_join(title_root, record.id + '.app')
+            content_file = join(title_root, record.id + '.app')
             if self.sdfs:
                 if not self.sdfs.isfile(str(content_file), id1=self.sd_id1):
                     # can't find the file, so continue to the next record
