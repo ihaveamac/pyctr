@@ -8,16 +8,11 @@
 import logging
 from io import BytesIO
 from struct import Struct
-from typing import TYPE_CHECKING, NamedTuple, overload
+from typing import TYPE_CHECKING, NamedTuple
 from warnings import warn
 from posixpath import basename
 
-#from fs.base import FS
-#from fs.subfs import SubFS
-#from fs.info import Info
-#from fs.enums import ResourceType
-#from fs import errors
-from fsspec.spec import AbstractFileSystem, AbstractBufferedFile
+from fsspec.spec import AbstractFileSystem
 
 from .base import TypeReaderBase
 from ..common import PyCTRError
@@ -191,7 +186,7 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
                     child_dir_name_meta = child_dir_name.lower() if case_insensitive else child_dir_name
                     if child_dir_name_meta in out['contents']:
                         logger.warning(f'Dirname collision: {current_path}{child_dir_name}')
-                    out['contents'][child_dir_name_meta] = {'name': current_path + '/' + child_dir_name}
+                    out['contents'][child_dir_name_meta] = {'name': current_path + child_dir_name}
 
                     iterate_dir(out['contents'][child_dir_name_meta], child_dir_meta,
                                 f'{current_path}{child_dir_name}/', dirmeta, filemeta)
@@ -210,7 +205,7 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
                     child_file_name_meta = child_file_name.lower() if self.case_insensitive else child_file_name
                     if child_file_name_meta in out['contents']:
                         logger.warning(f'Filename collision! {current_path}{child_file_name}')
-                    out['contents'][child_file_name_meta] = {'name': current_path + '/' + child_file_name,
+                    out['contents'][child_file_name_meta] = {'name': current_path + child_file_name,
                                                              'type': 'file', 'offset': child_file_offset,
                                                              'size': child_file_size}
 
@@ -219,7 +214,7 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
                         break
                     filemeta.seek(next_sibling_file)
 
-        self._tree_root = {'name': ''}
+        self._tree_root = {'name': '/'}
         self.total_size = 0
 
         self._file.seek(self._start + lv3_offset + lv3.dirmeta.offset)
@@ -229,8 +224,8 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
 
         iterate_dir(self._tree_root, dirmeta.read(0x18), '/', dirmeta, filemeta)
 
-    def info(self, path: str, **kwargs) -> 'dict[str, str | dict]':
-        curr = self._tree_root
+    def info(self, path: str, **kwargs) -> 'dict[str, str | dict | int]':
+        curr: dict = self._tree_root
         if path == '.':
             return curr
         if self.case_insensitive:
@@ -250,7 +245,7 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
 
         return curr
 
-    def ls(self, path: str, detail: bool = True, **kwargs) -> 'list[dict[str, str | dict]]':
+    def ls(self, path: str, detail = False, **kwargs) -> list[dict[str, str | dict]] | list[str]:
         file_info_raw = self.info(path)
         if file_info_raw['type'] != 'directory':
             if detail:
@@ -262,7 +257,7 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
         else:
             return [x['name'] for x in file_info_raw['contents'].values()]
 
-    def _open_file(self, path, mode='rb', buffering=-1, **kwargs):
+    def _open_file(self, path: str, mode='rb', buffering=-1, **kwargs):
         file_info = self.info(path)
         if file_info['type'] == 'directory':
             raise RomFSIsADirectoryError(path)
@@ -275,8 +270,12 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
     # this needs to support the other arguments of _open
     def _open(
         self,
-        path,
+        path: str,
         mode: str = 'rb',
+        # unused
+        block_size = None,
+        autocommit = None,
+        cache_options = None,
         **kwargs
     ) -> 'SubsectionIO':
         return self._open_file(path, mode)

@@ -16,6 +16,7 @@ from fsspec.spec import AbstractFileSystem, AbstractBufferedFile
 
 if TYPE_CHECKING:
     from typing import BinaryIO
+    from ...fileio import SubsectionIO
     from ...common import FilePathOrObject
 
 __all__ = ['raise_if_closed', 'ReaderError', 'ReaderClosedError', 'TypeReaderBase', 'TypeReaderCryptoBase']
@@ -72,7 +73,7 @@ class TypeReaderBase:
         # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
         #   even though it's similar.
         # noinspection PyTypeChecker
-        self._open_files: set[AbstractBufferedFile] = WeakSet()
+        self._open_files: set[SubsectionIO] = WeakSet()
 
         fileobj, newly_opened = get_fs_file_object(file, fs, mode=mode)
 
