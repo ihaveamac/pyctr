@@ -245,7 +245,7 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
 
         return curr
 
-    def ls(self, path: str, detail = False, **kwargs) -> list[dict[str, str | dict]] | list[str]:
+    def ls(self, path: str, detail = True, **kwargs) -> list[dict[str, str | dict]] | list[str]:
         file_info_raw = self.info(path)
         if file_info_raw['type'] != 'directory':
             if detail:
