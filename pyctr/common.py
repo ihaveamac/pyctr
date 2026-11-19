@@ -10,7 +10,7 @@ from os import PathLike, fsdecode
 from os.path import dirname as os_dirname
 from typing import TYPE_CHECKING
 
-from fsspec import AbstractFileSystem, filesystem
+from fsspec import AbstractFileSystem
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
@@ -27,12 +27,12 @@ class PyCTRError(Exception):
     """Common base class for all PyCTR errors."""
 
 
+# TODO: maybe use fsspec.open?
 def get_fs_file_object(
         path: 'FilePathOrObject',
-        fs: 'FS | None' = None,
+        fs: 'AbstractFileSystem | None' = None,
         *,
-        mode: str = 'rb',
-        fs_kwargs: dict = None
+        mode: str = 'rb'
     ) -> 'tuple[IO, bool]':
     if isinstance(path, (PathLike, str, bytes)):
         """
@@ -43,12 +43,7 @@ def get_fs_file_object(
         :param fs: A filesystem or an FS URL.
         :return: A file-like object and True if the file is newly opened.
         """
-        if fs_kwargs is None:
-            fs_kwargs = {}
         if fs:
-            # fs can be an FS object or an FS URL
-            if not isinstance(fs, AbstractFileSystem):
-                fs = filesystem(fs, **fs_kwargs)
             return fs.open(path, mode), True
         else:
             # no fs means assuming local FS, and no real need to bother going through LocalFileSystem for this one
