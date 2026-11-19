@@ -11,7 +11,7 @@ from ...common import PyCTRError, get_fs_file_object
 if TYPE_CHECKING:
     from typing import BinaryIO
 
-    from fs.base import FS
+    from fsspec import AbstractFileSystem
 
     from ...common import FilePath
 
@@ -344,6 +344,6 @@ class ConfigSaveReader:
         return cfg_save
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'FS | None'):
+    def from_file(cls, fn: 'FilePath', *, fs: 'AbstractFileSystem | None'):
         with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f)

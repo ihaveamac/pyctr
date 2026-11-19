@@ -20,7 +20,7 @@ from ..common import PyCTRError, get_fs_file_object
 if TYPE_CHECKING:
     from typing import BinaryIO, Mapping
 
-    from fs.base import FS
+    from fsspec import AbstractFileSystem
 
     from ..common import FilePath
 
@@ -291,6 +291,6 @@ class SMDH:
         return cls(names, icon_small_array, icon_large_array, flags, region_lockout)
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'FS | None' = None) -> 'SMDH':
+    def from_file(cls, fn: 'FilePath', *, fs: 'AbstractFileSystem | None' = None) -> 'SMDH':
         with get_fs_file_object(fn, fs)[0] as f:
             return cls.load(f)
