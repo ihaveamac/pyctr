@@ -17,6 +17,9 @@ pkgs.mkShell {
       pythonPackages.pytest
       pythonPackages.pip
       pythonPackages.build
+      pythonPackages.sphinx
+      pythonPackages.sphinx-rtd-theme
+      pkgs.gnumake
     ]
     ++ (pkgs.lib.optional withPyctr pyctr);
 
