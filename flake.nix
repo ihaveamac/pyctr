@@ -17,7 +17,6 @@
       systems = [
         "x86_64-linux"
         "i686-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
         "aarch64-linux"
         "armv6l-linux"
@@ -72,7 +71,7 @@
             type = "app";
             program =
               (pkgs.writeShellScript "buildenv" ''
-                nix -v -L build .#python-environment --out-link pythonenv.local
+                nix -v -L build .#pyvenv --out-link venv-nix.local
               '').outPath;
           };
         }

@@ -52,7 +52,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'pyfatfs': ('https://pyfatfs.readthedocs.io/en/stable', None),
-    'fs': ('https://docs.pyfilesystem.org/en/stable', None),
+    #'fs': ('https://docs.pyfilesystem.org/en/stable', None),
+    'fsspec': ('https://filesystem-spec.readthedocs.io/en/latest', None),
     'pycryptodome': ('https://www.pycryptodome.org', None),
     'Pillow': ('https://pillow.readthedocs.io/en/stable', None),
 }
