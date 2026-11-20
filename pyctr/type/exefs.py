@@ -208,9 +208,8 @@ class ExeFSReader(TypeReaderBase):
     icon: 'SMDH | None'
     """The icon info, if one is in the ExeFS."""
 
-    def __init__(self, fp: 'FilePathOrObject', *, fs: 'AbstractFileSystem | None' = None, closefd: bool = True,
-                 _load_icon: bool = True):
-        super().__init__(fp, fs=fs, closefd=closefd)
+    def __init__(self, fp: 'FilePathOrObject', *, closefd: bool = True, _load_icon: bool = True):
+        super().__init__(fp, closefd=closefd)
 
         self.icon = None
         self._code_dec = None

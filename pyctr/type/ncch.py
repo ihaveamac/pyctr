@@ -241,11 +241,11 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'AbstractFileSystem | None' = None, closefd: bool = None,
-                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
-                 load_sections: bool = True, assume_decrypted: bool = False):
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, case_insensitive: bool = True,
+                 crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None, load_sections: bool = True,
+                 assume_decrypted: bool = False):
 
-        super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev)
+        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
 
         self.closed = False
         self.exefs = None

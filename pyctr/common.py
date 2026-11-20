@@ -27,29 +27,21 @@ class PyCTRError(Exception):
     """Common base class for all PyCTR errors."""
 
 
-# TODO: maybe use fsspec.open?
-def get_fs_file_object(
+def get_file_object(
         path: 'FilePathOrObject',
-        fs: 'AbstractFileSystem | None' = None,
         *,
         mode: str = 'rb'
     ) -> 'tuple[IO, bool]':
     if isinstance(path, (PathLike, str, bytes)):
         """
-        Opens a file on the given filesystem. This can be given a simple OS path, a path and a filesystem, or an
-        olready opened file object.
+        Opens a file on the given filesystem. This can be given a simple OS path, or an already opened file object.
         
         :param path: A path to a file.
-        :param fs: A filesystem or an FS URL.
         :return: A file-like object and True if the file is newly opened.
         """
-        if fs:
-            return fs.open(path, mode), True
-        else:
-            # no fs means assuming local FS, and no real need to bother going through LocalFileSystem for this one
-            return open(path, mode), True
+        return open(path, mode), True
     else:
-        # it's already an opened file object, so just return that
+        # it's probably already an opened file object, so just return that
         return path, False
 
 

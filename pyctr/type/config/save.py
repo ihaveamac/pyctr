@@ -6,7 +6,7 @@
 
 from typing import TYPE_CHECKING, NamedTuple
 
-from ...common import PyCTRError, get_fs_file_object
+from ...common import PyCTRError, get_file_object
 
 if TYPE_CHECKING:
     from typing import BinaryIO
@@ -344,6 +344,6 @@ class ConfigSaveReader:
         return cfg_save
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'AbstractFileSystem | None'):
-        with get_fs_file_object(fn, fs)[0] as f:
+    def from_file(cls, fn: 'FilePath'):
+        with get_file_object(fn)[0] as f:
             return cls.load(f)

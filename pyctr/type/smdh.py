@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     # Pillow not installed
     Image = None
 
-from ..common import PyCTRError, get_fs_file_object
+from ..common import PyCTRError, get_file_object
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Mapping
@@ -291,6 +291,6 @@ class SMDH:
         return cls(names, icon_small_array, icon_large_array, flags, region_lockout)
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'AbstractFileSystem | None' = None) -> 'SMDH':
-        with get_fs_file_object(fn, fs)[0] as f:
+    def from_file(cls, fn: 'FilePath') -> 'SMDH':
+        with get_file_object(fn)[0] as f:
             return cls.load(f)

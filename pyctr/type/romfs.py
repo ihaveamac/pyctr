@@ -120,9 +120,8 @@ class RomFSReader(TypeReaderBase, AbstractFileSystem):
     def fsid(self):
         return 'pyctr-romfs'
 
-    def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *,
-                 fs: 'AbstractFileSystem | None' = None, closefd: bool = None):
-        super().__init__(file, fs=fs, closefd=closefd)
+    def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *, closefd: bool = None):
+        super().__init__(file, closefd=closefd)
         self.case_insensitive = case_insensitive
         self._intrans = False
 
