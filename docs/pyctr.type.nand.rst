@@ -8,38 +8,6 @@ The :mod:`nand` module enables reading and writing of Nintendo 3DS NAND images.
 
 A basic overview of reading and writing to a NAND image is available here: :doc:`example-nand`.
 
-Getting started
----------------
-
-Here's a quick example to get inside CTRNAND and read files from within it using :mod:`~pyfatfs.PyFatBytesIOFS`:
-
-.. code-block:: python
-
-    from pyctr.type.nand import NAND
-    from pyfatfs.PyFatFS import PyFatBytesIOFS
-
-    with NAND('nand.bin') as nand:
-        with PyFatBytesIOFS(fp=nand.open_ctr_partition()) as ctrfat:
-            with ctrfat.open('/private/movable.sed', 'rb') as msed:
-                msed.read()
-
-A second example trying to load SecureInfo. This one is tricky because some consoles use ``SecureInfo_A`` and some use ``SecureInfo_B``, so we have to try both.
-
-.. code-block:: python
-
-    from pyctr.type.nand import NAND
-    from pyfatfs.PyFatFS import PyFatBytesIOFS
-    from fs.errors import ResourceNotFound
-
-    with NAND('nand.bin') as nand:
-        with PyFatBytesIOFS(fp=nand.open_ctr_partition()) as ctrfat:
-            for l in 'AB':
-                path = '/rw/sys/SecureInfo_' + l
-                if ctrfat.exists(path):
-                    with ctrfat.open(path, 'rb') as f:
-                        f.read()
-                        break
-
 Required files
 --------------
 
@@ -66,9 +34,7 @@ NAND objects
 .. autoclass:: NAND
 
     .. automethod:: open_ctr_partition
-    .. automethod:: open_ctr_fat
     .. automethod:: open_twl_partition
-    .. automethod:: open_twl_fat
     .. py:method:: open_raw_section(section)
 
         Opens a raw NCSD section for reading and writing with on-the-fly decryption.
@@ -88,7 +54,6 @@ NAND objects
         :rtype: SubsectionIO
 
     .. automethod:: open_bonus_partition
-    .. automethod:: open_bonus_fat
     .. automethod:: raise_if_ctr_failed
     .. automethod:: raise_if_twl_failed
 

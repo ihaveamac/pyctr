@@ -18,6 +18,8 @@ from .base import TypeReaderBase
 if TYPE_CHECKING:
     from ..common import FilePathOrObject
 
+    from fsspec.spec import AbstractFileSystem
+
 CCI_MEDIA_UNIT = 0x200
 
 
@@ -119,10 +121,9 @@ class CCIReader(TypeReaderBase):
     media_id: str
     """Same as the Title ID of the application."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
-                 case_insensitive: bool = True, dev: bool = False, load_contents: bool = True,
-                 assume_decrypted: bool = False):
-        super().__init__(file, fs=fs, closefd=closefd)
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, case_insensitive: bool = True,
+                 dev: bool = False, load_contents: bool = True, assume_decrypted: bool = False):
+        super().__init__(file, closefd=closefd)
 
         # store case-insensitivity for RomFSReader
         self._case_insensitive = case_insensitive

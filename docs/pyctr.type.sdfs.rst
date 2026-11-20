@@ -60,7 +60,7 @@ SDRoot objects
 
     Opens an ID0 folder inside a "Nintendo 3DS" folder.
 
-    :param path: Path to the Nintendo 3DS folder.
+    :param path: Path to the Nintendo 3DS folder, or an fsspec filesystem containing the contents of one.
     :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created.
     :param dev: Use devunit keys.

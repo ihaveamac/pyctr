@@ -4,8 +4,7 @@
   pythonOlder,
   pycryptodomex,
   pillow,
-  fs,
-  pyfatfs,
+  fsspec,
 }:
 
 let
@@ -37,8 +36,7 @@ buildPythonPackage {
 
   propagatedBuildInputs = [
     pycryptodomex
-    fs
-    pyfatfs
+    fsspec
     pillow
   ];
 

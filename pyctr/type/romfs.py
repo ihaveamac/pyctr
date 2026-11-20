@@ -8,14 +8,11 @@
 import logging
 from io import BytesIO
 from struct import Struct
-from typing import TYPE_CHECKING, NamedTuple, overload
+from typing import TYPE_CHECKING, NamedTuple
 from warnings import warn
+from posixpath import basename
 
-from fs.base import FS
-from fs.subfs import SubFS
-from fs.info import Info
-from fs.enums import ResourceType
-from fs import errors
+from fsspec.spec import AbstractFileSystem
 
 from .base import TypeReaderBase
 from ..common import PyCTRError
@@ -23,9 +20,8 @@ from ..fileio import SubsectionIO
 from ..util import readle, roundup
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import IO, BinaryIO, Iterator
+    from typing import BinaryIO
     from ..common import FilePathOrObject
-    from collections.abc import Collection
 
 __all__ = ['IVFC_HEADER_SIZE', 'IVFC_ROMFS_MAGIC_NUM', 'ROMFS_LV3_HEADER_SIZE', 'RomFSError', 'InvalidIVFCError',
            'InvalidRomFSHeaderError', 'RomFSEntryError', 'RomFSFileNotFoundError', 'RomFSReader']
@@ -40,20 +36,6 @@ Lv3HeaderStruct = Struct('<IIIIIIIIII')
 # these do not include the filename
 DirectoryEntryStruct = Struct('<IIIIII')
 FileEntryStruct = Struct('<IIQQII')
-
-# used in RomFSReader.open compatibility
-_encodings = ['ascii', 'big5', 'big5hkscs', 'cp037', 'cp273', 'cp424', 'cp437', 'cp500', 'cp720', 'cp737', 'cp775',
-              'cp850', 'cp852', 'cp855', 'cp856', 'cp857', 'cp858', 'cp860', 'cp861', 'cp862', 'cp863', 'cp864',
-              'cp865', 'cp866', 'cp869', 'cp874', 'cp875', 'cp932', 'cp949', 'cp950', 'cp1006', 'cp1026', 'cp1125',
-              'cp1140', 'cp1250', 'cp1251', 'cp1252', 'cp1253', 'cp1254', 'cp1255', 'cp1256', 'cp1257', 'cp1258',
-              'euc_jp', 'euc_jis_2004', 'euc_jisx0213', 'euc_kr', 'gb2312', 'gbk', 'gb18030', 'hz', 'iso2022_jp',
-              'iso2022_jp_1', 'iso2022_jp_2', 'iso2022_jp_2004', 'iso2022_jp_3', 'iso2022_jp_ext', 'iso2022_kr',
-              'latin_1', 'iso8859_2', 'iso8859_3', 'iso8859_4', 'iso8859_5', 'iso8859_6', 'iso8859_7', 'iso8859_8',
-              'iso8859_9', 'iso8859_10', 'iso8859_11', 'iso8859_13', 'iso8859_14', 'iso8859_15', 'iso8859_16', 'johab',
-              'koi8_r', 'koi8_t', 'koi8_u', 'kz1048', 'mac_cyrillic', 'mac_greek', 'mac_iceland', 'mac_latin2',
-              'mac_roman', 'mac_turkish', 'ptcp154', 'shift_jis', 'shift_jis_2004', 'shift_jisx0213', 'utf_32',
-              'utf_32_be', 'utf_32_le', 'utf_16', 'utf_16_be', 'utf_16_le', 'utf_7', 'utf_8', 'utf_8_sig']
-
 
 
 class RomFSError(PyCTRError):
@@ -72,11 +54,11 @@ class RomFSEntryError(RomFSError):
     """Error with RomFS Directory or File entry."""
 
 
-class RomFSFileNotFoundError(RomFSEntryError, errors.ResourceNotFound):
+class RomFSFileNotFoundError(RomFSEntryError):
     """Invalid file path in RomFS Level 3."""
 
 
-class RomFSIsADirectoryError(RomFSEntryError, errors.FileExpected):
+class RomFSIsADirectoryError(RomFSEntryError):
     """Attempted to open a directory as a file."""
 
 
@@ -119,7 +101,7 @@ class RomFSLv3Header(NamedTuple):
                    filedata_offset=header_raw[9])
 
 
-class RomFSReader(TypeReaderBase, FS):
+class RomFSReader(TypeReaderBase, AbstractFileSystem):
     """
     Reads the contents of the RomFS, found inside NCCH containers.
 
@@ -130,17 +112,18 @@ class RomFSReader(TypeReaderBase, FS):
     :param case_insensitive: Use case-insensitive paths.
     :param closefd: Close the underlying file object when closed. Defaults to `True` for file paths, and `False` for
         file-like objects.
-    :param open_compatibility_mode: Changes the behavior of :meth:`open` to behave as it did before pyctr 0.8.0.
-        Read its documentation for details.
     """
 
     __slots__ = ('_tree_root', 'case_insensitive', 'data_offset', 'lv3_offset', 'total_size')
 
-    def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *,
-                 fs: 'FS | None' = None, closefd: bool = None, open_compatibility_mode: bool = True):
-        super().__init__(file, fs=fs, closefd=closefd)
+    @property
+    def fsid(self):
+        return 'pyctr-romfs'
+
+    def __init__(self, file: 'FilePathOrObject', case_insensitive: bool = False, *, closefd: bool = None):
+        super().__init__(file, closefd=closefd)
         self.case_insensitive = case_insensitive
-        self.open_compatibility_mode = open_compatibility_mode
+        self._intrans = False
 
         lv3_offset = self._file.tell()
         # this reads the full amount that an ivfc header might be,
@@ -189,7 +172,7 @@ class RomFSReader(TypeReaderBase, FS):
             first_child_dir = readle(raw[0x8:0xC])
             first_file = readle(raw[0xC:0x10])
 
-            out['type'] = 'dir'
+            out['type'] = 'directory'
             out['contents'] = {}
 
             # iterate through all child directories
@@ -202,7 +185,7 @@ class RomFSReader(TypeReaderBase, FS):
                     child_dir_name_meta = child_dir_name.lower() if case_insensitive else child_dir_name
                     if child_dir_name_meta in out['contents']:
                         logger.warning(f'Dirname collision: {current_path}{child_dir_name}')
-                    out['contents'][child_dir_name_meta] = {'name': child_dir_name}
+                    out['contents'][child_dir_name_meta] = {'name': current_path + child_dir_name}
 
                     iterate_dir(out['contents'][child_dir_name_meta], child_dir_meta,
                                 f'{current_path}{child_dir_name}/', dirmeta, filemeta)
@@ -221,15 +204,16 @@ class RomFSReader(TypeReaderBase, FS):
                     child_file_name_meta = child_file_name.lower() if self.case_insensitive else child_file_name
                     if child_file_name_meta in out['contents']:
                         logger.warning(f'Filename collision! {current_path}{child_file_name}')
-                    out['contents'][child_file_name_meta] = {'name': child_file_name, 'type': 'file',
-                                                             'offset': child_file_offset, 'size': child_file_size}
+                    out['contents'][child_file_name_meta] = {'name': current_path + child_file_name,
+                                                             'type': 'file', 'offset': child_file_offset,
+                                                             'size': child_file_size}
 
                     self.total_size += child_file_size
                     if next_sibling_file == 0xFFFFFFFF:
                         break
                     filemeta.seek(next_sibling_file)
 
-        self._tree_root = {'name': 'ROOT'}
+        self._tree_root = {'name': '/'}
         self.total_size = 0
 
         self._file.seek(self._start + lv3_offset + lv3.dirmeta.offset)
@@ -239,8 +223,8 @@ class RomFSReader(TypeReaderBase, FS):
 
         iterate_dir(self._tree_root, dirmeta.read(0x18), '/', dirmeta, filemeta)
 
-    def _get_raw_info(self, path: str):
-        curr = self._tree_root
+    def info(self, path: str, **kwargs) -> 'dict[str, str | dict | int]':
+        curr: dict = self._tree_root
         if path == '.':
             return curr
         if self.case_insensitive:
@@ -260,154 +244,53 @@ class RomFSReader(TypeReaderBase, FS):
 
         return curr
 
-    def _gen_info(self, c: dict) -> Info:
-        is_dir = c['type'] == 'dir'
-        info = {'basic': {'name': c['name'],
-                          'is_dir': is_dir},
-                'details': {'size': 0 if is_dir else c['size'],
-                            'type': ResourceType.directory if is_dir else ResourceType.file}}
-        if not is_dir:
-            info['rawfs'] = {'offset': c['offset']}
+    def ls(self, path: str, detail = True, **kwargs) -> list[dict[str, str | dict]] | list[str]:
+        file_info_raw = self.info(path)
+        if file_info_raw['type'] != 'directory':
+            if detail:
+                return [file_info_raw]
+            else:
+                return [path]
+        if detail:
+            return [x for x in file_info_raw['contents'].values()]
+        else:
+            return [x['name'] for x in file_info_raw['contents'].values()]
 
-        return Info(info)
-
-    def getinfo(self, path: str, namespaces: 'Collection[str]' = ()) -> Info:
-        curr = self._get_raw_info(path)
-        return self._gen_info(curr)
-
-    def getmeta(self, namespace: str = 'standard') -> 'dict[str, bool | str | int]':
-        if namespace != 'standard':
-            return {}
-
-        return {'case_insensitive': self.case_insensitive,
-                'invalid_path_chars': '\0',
-                'max_path_length': None,
-                'max_sys_path_length': None,
-                'network': False,
-                'read_only': True,
-                'supports_rename': False}
-
-    def listdir(self, path: str) -> 'list[str]':
-        file_info_raw = self._get_raw_info(path)
-        if file_info_raw['type'] != 'dir':
-            raise errors.DirectoryExpected
-        return [x['name'] for x in file_info_raw['contents'].values()]
-
-    def makedir(
-        self,
-        path: str,
-        permissions: 'Permissions | None' = None,
-        recreate: bool = False,
-    ) -> 'SubFS[FS]':
-        raise errors.ResourceReadOnly(path)
-
-    def openbin(self, path, mode='r', buffering=-1, **options):
-        file_info = self.getinfo(path)
-        if file_info.is_dir:
+    def _open_file(self, path: str, mode='rb', buffering=-1, **kwargs):
+        file_info = self.info(path)
+        if file_info['type'] == 'directory':
             raise RomFSIsADirectoryError(path)
         if 'w' in mode or '+' in mode or 'a' in mode:
-            raise errors.ResourceReadOnly(path)
-        f = SubsectionIO(self._file, self._start + self.data_offset + file_info.get('rawfs', 'offset'), file_info.size)
+            raise ValueError("Read-only filesystem implementation")
+        f = SubsectionIO(self._file, self._start + self.data_offset + file_info['offset'], file_info['size'])
         self._open_files.add(f)
         return f
 
-    @overload
-    def open(
-        self,
-        path,
-        mode: str = 'r',
-        buffering: int = -1,
-        encoding: 'str | None' = None,
-        errors: 'str | None' = None,
-        newline: str = '',
-        **options
-    ) -> 'IO':
-        ...
-
-    # compatibility function
-    def open(
+    # this needs to support the other arguments of _open
+    def _open(
         self,
         path: str,
-        mode: str = '__unset__',
-        *compat_args,
-        **options
-    ) -> 'IO':
-        """
-        .. warning::
-
-            By default, for compatibility reasons, this function works differently than the normal FS open method.
-            Files are opened in binary mode by default and ``mode`` accepts an encoding.
-            This can be toggled off when creating the RomFSReader by passing ``open_compatibility_mode=False``.
-            This compatibility layer will be removed in a future release.
-        """
-        if self.open_compatibility_mode:
-            if mode.replace('-', '_') in _encodings:
-                warn('RomFSReader.open function signature has changed to match that of fs.base.FS.open, '
-                     'please change to open(path, encoding="your-encoding")', DeprecationWarning)
-                # this needs to be compatible with older code that didn't expect a mode argumemnt here
-                # noinspection PyTypeChecker
-                real_errors = options.get('errors', None)
-                if not real_errors and len(compat_args) >= 1:
-                    real_errors = compat_args[0]
-                real_newline = options.get('newline', '')
-                if not real_newline and len(compat_args) >= 2:
-                    real_newline = compat_args[1]
-                return super().open(path,
-                                    mode='rt',
-                                    buffering=-1,
-                                    encoding=mode,
-                                    errors=real_errors,
-                                    newline=real_newline)
-            elif mode == '__unset__':
-                real_encoding = options.get('encoding', None)
-                if not real_encoding:
-                    warn('no mode or encoding specified so opening in binary mode, future versions will open '
-                         'in text mode by default to match function signature of fs.base.FS.open; '
-                         'either specify mode="rb", use openbin, or specify an encoding', DeprecationWarning)
-                    return super().open(path, 'rb', buffering=-1, *compat_args, **options)
-                else:
-                    # no problem here since this will continue to work
-                    return super().open(path, mode='rt', *compat_args, **options)
-        else:
-            if mode == '__unset__':
-                # the real default
-                mode = 'r'
-        return super().open(path, mode, *compat_args, **options)
-
-    def scandir(
-        self,
-        path: str,
-        namespaces: 'Collection[str] | None' = None,
-        page: 'tuple[int, int] | None' = None,
-    ) -> 'Iterator[Info]':
-        curr = self._get_raw_info(path)
-        if curr['type'] != 'dir':
-            raise errors.DirectoryExpected(path)
-
-        for c in curr['contents'].values():
-            yield self._gen_info(c)
-
-    def remove(self, path: str):
-        raise errors.ResourceReadOnly(path)
-
-    def removedir(self, path: str):
-        raise errors.ResourceReadOnly(path)
-
-    def setinfo(self, path: str, info: dict):
-        raise errors.ResourceReadOnly(path)
+        mode: str = 'rb',
+        # unused
+        block_size = None,
+        autocommit = None,
+        cache_options = None,
+        **kwargs
+    ) -> 'SubsectionIO':
+        return self._open_file(path, mode)
 
     def get_info_from_path(self, path: str):
         """
         .. deprecated:: 0.8.0
-            Use :meth:`getinfo`, :meth:`listdir`, or :meth:`scandir` instead.
+            Use :meth:`info` or :meth:`ls`.
 
         :param path:
         :return:
         """
-        warn('RomFSReader.get_info_from_path should be replaced with getinfo, listdir, or scandir',
+        warn('RomFSReader.get_info_from_path should be replaced with info or ls',
              DeprecationWarning)
-        file_info = self.getinfo(path)
-        if file_info.is_dir:
-            return RomFSDirectoryEntry(file_info.name, 'dir', tuple(self.listdir(path)))
+        file_info = self.info(path)
+        if file_info['type'] == 'directory':
+            return RomFSDirectoryEntry(basename(file_info['name']), 'directory', tuple(self.listdir(path)))
         else:
-            return RomFSFileEntry(file_info.name, 'file', file_info.get('rawfs', 'offset'), file_info.size)
+            return RomFSFileEntry(basename(file_info['name']), 'file', file_info['offset'], file_info['size'])

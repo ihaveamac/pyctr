@@ -4,24 +4,23 @@
 # This file is licensed under The MIT License (MIT).
 # You can find the full license text in LICENSE in the root of this project.
 
-from io import RawIOBase
+from io import IOBase
 from threading import Lock
 from weakref import WeakValueDictionary
 from typing import TYPE_CHECKING
+
+from fsspec.spec import AbstractBufferedFile
 
 from .common import _raise_if_file_closed, _raise_if_file_closed_generic
 
 if TYPE_CHECKING:
     from typing import BinaryIO, Iterable
-    # this is to trick type checkers into accepting SubsectionIO as a BinaryIO object
-    # if you know a better way, let me know
-    RawIOBase = BinaryIO
 
 # this prevents two SubsectionIO instances on the same file object from interfering with eachother
 _lock_objects = WeakValueDictionary()
 
 
-class SubsectionIO(RawIOBase):
+class SubsectionIO(IOBase):
     """
     Provides read-write access to a subsection of a file.
 
@@ -132,7 +131,7 @@ class SubsectionIO(RawIOBase):
             self._reader.flush()
 
 
-class SplitFileMerger(RawIOBase):
+class SplitFileMerger(IOBase):
     """
     Provides access to multiple file-like handles as one large file.
 
@@ -257,7 +256,7 @@ class SplitFileMerger(RawIOBase):
         return True
 
 
-class CloseWrapper(RawIOBase):
+class CloseWrapper(IOBase):
     """
     Wrapper around a file object that prevents closing the original object.
 

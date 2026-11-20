@@ -25,7 +25,7 @@ We can now check the Title ID by accessing it through the :attr:`tmd <pyctr.type
     >>> print('Title ID:', cia.tmd.title_id)
     Title ID: 000400000bcfff00
 
-Let's also print the Title Version, using the :attr:`title_version <pyctr.type.tmd.TitleMetadataReader.title_version>` attribute.
+Let's also print the Title Version, using the :attr:`title_version <pyctr.type.tmd.TitleMetadataReader.title_version>` attribute. This is an instance of :class:`~.TitleVersion`.
 
 .. code-block:: python
 
@@ -58,18 +58,18 @@ Let's get the application's SMDH, which will give us access to the name and publ
 
 Next, we will list the contents of the RomFS. The :class:`~.NCCHReader` has a :attr:`romfs <pyctr.type.ncch.NCCHReader.romfs>` attribute that will give us a :class:`RomFSReader <pyctr.type.romfs.RomFSReader>` object.
 
-Using :func:`get_info_from_path <pyctr.type.romfs.RomFSReader.get_info_from_path>` we will list the contents at the root.
+Using :func:`ls <pyctr.type.romfs.RomFSReader.ls>` we will list the contents at the root.
 
 .. code-block:: python
 
-    >>> print('Contents in the root:', ', '.join(app.romfs.get_info_from_path('/').contents))
-    Contents in the root: gfx, cheats, config.json, PKSM.smdh
+    >>> print('Contents in the root:', ', '.join(app.romfs.ls('/', detail=False)))
+    Contents in the root: /gfx, /cheats, /config.json, /PKSM.smdh
 
-Using the same method, we can get information about a specific file.
+Using :func:`info <pyctr.type.romfs.RomFSReader.info>`, we can get information about a specific file.
 
 .. code-block:: python
 
-    >>> print('Size of /config.json in bytes:', app.romfs.get_info_from_path('/config.json').size)
+    >>> print('Size of /config.json in bytes:', app.romfs.info('/config.json')['size'])
     Size of /config.json in bytes: 183
 
 Finally, we can open the file and parse the JSON inside. We'll pass an ``encoding`` argument so that we get an :py:class:`io.TextIOWrapper` object. Then we use :py:func:`json.load` and print a value from it.

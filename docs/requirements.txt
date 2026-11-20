@@ -1,5 +1,4 @@
 pycryptodomex
 Pillow
-fs
-pyfatfs
+fsspec
 sphinx-rtd-theme

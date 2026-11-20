@@ -8,14 +8,13 @@
 
 from enum import IntEnum
 from os import fsdecode
+from os.path import split, join
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 from weakref import WeakSet
 
-from fs import open_fs
-from fs.base import FS
-from fs.osfs import OSFS
-from fs.path import dirname as fs_dirname, join as fs_join, basename as fs_basename
+from fsspec import AbstractFileSystem
+from fsspec.implementations.dirfs import DirFileSystem
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, Keyslot, add_seed
@@ -71,6 +70,7 @@ class CDNReader:
     use a custom one, set `load_contents` to `False`, then load each section manually with `open_raw_section`.
 
     :param file: A path to a tmd file. All the contents should be in the same directory.
+    :param fs: An fsspec filesystem to read from. If none is provided, the local file system is used.
     :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
     :param crypto: A custom :class:`~.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created. This is only used to decrypt the CIA, not the NCCH contents.
@@ -105,7 +105,7 @@ class CDNReader:
     tmd: TitleMetadataReader
     """The :class:`~.TitleMetadataReader` object with information from the TMD section."""
 
-    def __init__(self, file: 'FilePath', *, fs: 'FS | None' = None, case_insensitive: bool = False,
+    def __init__(self, file: 'FilePath', *, fs: 'AbstractFileSystem | None' = None, case_insensitive: bool = False,
                  crypto: 'CryptoEngine' = None, dev: bool = False, seed: bytes = None, titlekey: bytes = None,
                  decrypted_titlekey: bytes = None, common_key_index: int = 0, load_contents: bool = True):
         if crypto:
@@ -116,20 +116,17 @@ class CDNReader:
         self.closed = False
 
         if fs:
-            if not isinstance(fs, FS):
-                fs = open_fs(fs)
-            title_root = fs_dirname(file)
-            file = fs_basename(file)
+            title_root, file = split(file)
         else:
             # the path being absolute makes Path.parent work reliably
             file = Path(file).absolute()
-            fs = OSFS(fsdecode(file.parent))
+            fs = DirFileSystem(path=fsdecode(file.parent))
             title_root = '/'
             file = file.name
         self.fs = fs
 
         # {section: (filepath, iv)}
-        self._base_files: dict[CDNSection | int, tuple[str, bytes]] = {}
+        self._base_files: dict[CDNSection | int, tuple[PathLike | str, bytes]] = {}
 
         # opened files to close if the CDNReader is closed
         # noinspection PyTypeChecker
@@ -145,7 +142,7 @@ class CDNReader:
             self._base_files[section] = (path, iv)
             self.available_sections.append(section)
 
-        add_file(CDNSection.TitleMetadata, fs_join(title_root, file), None)
+        add_file(CDNSection.TitleMetadata, join(title_root, file), None)
 
         with self.open_raw_section(CDNSection.TitleMetadata) as tmd:
             self.tmd = TitleMetadataReader.load(tmd)
@@ -158,7 +155,7 @@ class CDNReader:
         elif titlekey:
             self._crypto.load_encrypted_titlekey(titlekey, common_key_index, self.tmd.title_id)
         else:
-            ticket_file = fs_join(title_root, 'cetk')
+            ticket_file = join(title_root, 'cetk')
             add_file(CDNSection.Ticket, ticket_file, None)
             with self.open_raw_section(CDNSection.Ticket) as ticket:
                 self._crypto.load_from_ticket(ticket.read(0x2AC))
@@ -171,8 +168,8 @@ class CDNReader:
             is_srl = record.cindex == 0 and self.tmd.title_id[3:5] == '48'
 
             # allow both lowercase and uppercase contents
-            content_lower = fs_join(title_root, record.id)
-            content_upper = fs_join(title_root, record.id.upper())
+            content_lower = join(title_root, record.id)
+            content_upper = join(title_root, record.id.upper())
             if fs.isfile(content_lower):
                 content_file = content_lower
             elif fs.isfile(content_upper):
