@@ -70,6 +70,7 @@ class CDNReader:
     use a custom one, set `load_contents` to `False`, then load each section manually with `open_raw_section`.
 
     :param file: A path to a tmd file. All the contents should be in the same directory.
+    :param fs: An fsspec filesystem to read from. If none is provided, the local file system is used.
     :param case_insensitive: Use case-insensitive paths for the RomFS of each NCCH container.
     :param crypto: A custom :class:`~.CryptoEngine` object to be used. Defaults to None, which causes a new one to
         be created. This is only used to decrypt the CIA, not the NCCH contents.
