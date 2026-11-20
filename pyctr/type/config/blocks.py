@@ -12,7 +12,7 @@ from .save import BlockIDNotFoundError, ConfigSaveReader, KNOWN_BLOCKS
 if TYPE_CHECKING:
     from typing import BinaryIO
 
-    from fs.base import FS
+    from fsspec import AbstractFileSystem
 
     from ...common import FilePath
 
@@ -101,5 +101,5 @@ class ConfigSaveBlockParser:
         return cls(ConfigSaveReader.load(fp))
 
     @classmethod
-    def from_file(cls, fn: 'FilePath', *, fs: 'FS | None'):
+    def from_file(cls, fn: 'FilePath', *, fs: 'AbstractFileSystem | None'):
         return cls(ConfigSaveReader.from_file(fn, fs=fs))

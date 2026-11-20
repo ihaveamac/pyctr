@@ -9,7 +9,7 @@ import logging
 from enum import IntEnum
 from functools import wraps
 from hashlib import sha256
-from io import RawIOBase, BytesIO
+from io import IOBase, BytesIO
 from os import environ, fsdecode, PathLike
 from os.path import join as pjoin
 from struct import pack, unpack
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from ..common import FilePath, FilePathOrObject
 
     # trick type checkers
-    RawIOBase = BinaryIO
+    IOBase = BinaryIO
 
 __all__ = ['MIN_TICKET_SIZE', 'CryptoError', 'OTPLengthError', 'CorruptBootromError', 'KeyslotMissingError',
            'TicketLengthError', 'BootromNotFoundError', 'CorruptOTPError', 'Keyslot', 'CryptoEngine', 'CTRFileIO',
@@ -1022,7 +1022,7 @@ class CryptoEngine:
         print(self._format_state())
 
 
-class _CryptoFileBase(RawIOBase):
+class _CryptoFileBase(IOBase):
     """Base class for CTR and CBC IO classes."""
 
     closed = False

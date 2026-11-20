@@ -60,12 +60,12 @@ with CIAReader('Checkpoint.cia') as cia:
     # This will get information about the path '/' which is a directory.
     # This would return a RomFSDirectoryEntry.
     # In this example the directory contents are printed out, which will be "gfx, cheats, config.json, PKSM.smdh".
-    print('Contents in the root:', ', '.join(app.romfs.get_info_from_path('/').contents))
+    print('Contents in the root:', ', '.join(app.romfs.ls('/', detail=False)))
 
     # This will get information about the path '/config.json' which is a file.
     # This would return a RomFSFileEntry.
     # In this example the size is shown, which is 183 bytes.
-    print('Size of /config.json in bytes:', app.romfs.get_info_from_path('/config.json').size)
+    print('Size of /config.json in bytes:', app.romfs.info('/config.json')['size'])
 
     # This will parse the json file and print a value from it.
     # This demonstrates how to open files in the RomFS. The result is either a SubsectionIO object for binary, or
