@@ -11,7 +11,7 @@ from ...util import readle
 from .common import PartitionContainerBase, CorruptPartitionError, InvalidPartitionContainerError
 
 if TYPE_CHECKING:
-    from fs.base import FS
+    from fsspec import AbstractFileSystem
 
     from ...crypto import CryptoEngine
     from .cmac import CMACTypeBase
@@ -39,7 +39,7 @@ class DIFF(PartitionContainerBase):
     """Partitions of the file. DIFF only has one, so there would only be a single `0` key."""
 
     def __init__(self, file: 'FilePathOrObject', mode: 'ReadWriteBinaryFileModes' = 'rb', *,
-                 fs: 'FS | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
+                 fs: 'AbstractFileSystem | None' = None, closefd: 'bool | None' = None, crypto: 'CryptoEngine' = None,
                  dev: bool = False, cmac_base: 'CMACTypeBase' = None, sd_key_file: 'FilePath' = None,
                  sd_key: bytes = None, ivfc_verify: bool = True, ivfc_deep_verify: bool = True):
         super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev, mode=mode, cmac_base=cmac_base,

@@ -5,55 +5,43 @@
 # You can find the full license text in LICENSE in the root of this project.
 
 from functools import wraps
-from io import RawIOBase
+from io import IOBase
 from os import PathLike, fsdecode
 from os.path import dirname as os_dirname
 from typing import TYPE_CHECKING
 
-from fs import open_fs
-from fs.base import FS
-from fs.path import dirname as fs_dirname
+from fsspec import AbstractFileSystem
 
 if TYPE_CHECKING:
     # this is a lazy way to make type checkers stop complaining
     from typing import BinaryIO, IO
 
-    RawIOBase = BinaryIO
+    IOBase = BinaryIO
 
     FilePath = PathLike | str | bytes
     FilePathOrObject = FilePath | BinaryIO
-    DirPathOrFS = PathLike | str | bytes | FS
+    DirPathOrFS = PathLike | str | bytes | AbstractFileSystem
 
 
 class PyCTRError(Exception):
     """Common base class for all PyCTR errors."""
 
 
-def get_fs_file_object(
+def get_file_object(
         path: 'FilePathOrObject',
-        fs: 'FS | None' = None,
         *,
         mode: str = 'rb'
     ) -> 'tuple[IO, bool]':
     if isinstance(path, (PathLike, str, bytes)):
         """
-        Opens a file on the given filesystem. This can be given a simple OS path, a path and a filesystem, or an
-        olready opened file object.
+        Opens a file on the given filesystem. This can be given a simple OS path, or an already opened file object.
         
         :param path: A path to a file.
-        :param fs: A filesystem or an FS URL.
         :return: A file-like object and True if the file is newly opened.
         """
-        if fs:
-            # fs can be an FS object or an FS URL
-            if not isinstance(fs, FS):
-                fs = open_fs(fs)
-            return fs.open(path, mode), True
-        else:
-            # no fs means assuming OS, and no real need to bother going through OSFS for this one
-            return open(path, mode), True
+        return open(path, mode), True
     else:
-        # it's already an opened file object, so just return that
+        # it's probably already an opened file object, so just return that
         return path, False
 
 
@@ -99,7 +87,7 @@ if TYPE_CHECKING:
         return method
 
 
-class _ReaderOpenFileBase(RawIOBase):
+class _ReaderOpenFileBase(IOBase):
     """Base class for all open files for Reader classes."""
 
     _seek = 0

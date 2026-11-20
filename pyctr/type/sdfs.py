@@ -7,12 +7,12 @@
 """Module for interacting with encrypted SD card contents under the "Nintendo 3DS" directory."""
 
 from os import fsdecode
+from os.path import join, basename
+
 from typing import TYPE_CHECKING
 
-from fs import open_fs
-from fs.base import FS
-from fs.subfs import SubFS
-from fs.path import abspath, normpath, join
+from fsspec import AbstractFileSystem
+from fsspec.implementations.dirfs import DirFileSystem
 
 from ..common import PyCTRError
 from ..crypto import CryptoEngine, KeyslotMissingError, Keyslot
@@ -21,15 +21,8 @@ from .save.disa import DISA
 from .save.fat.save import InnerFATSAVE
 
 if TYPE_CHECKING:
-    from os import PathLike
-    from typing import BinaryIO, Mapping
+    from typing import BinaryIO
     from ..common import FilePath, DirPathOrFS
-
-    from fs.info import Info, RawInfo
-    from fs.permissions import Permissions
-
-    # noinspection PyProtectedMember
-    from ..crypto import CTRFileIO
 
 
 class SDFilesystemError(PyCTRError):
@@ -64,8 +57,8 @@ class SDRoot:
     :ivar id1s: A list of ID1 directories found in the ID0 directory.
     """
 
-    def __init__(self, path: 'DirPathOrFS', *, crypto: CryptoEngine = None, dev: bool = False,
-                 sd_key_file: 'FilePath' = None, sd_key: bytes = None):
+    def __init__(self, path: 'DirPathOrFS', *, crypto: CryptoEngine = None,
+                 dev: bool = False, sd_key_file: 'FilePath' = None, sd_key: bytes = None):
         if crypto:
             self._crypto = crypto
         else:
@@ -81,21 +74,22 @@ class SDRoot:
         except KeyslotMissingError:
             raise MissingMovableSedError('set up key with sd_key_file or sd_key')
 
-        if isinstance(path, FS):
+        if isinstance(path, AbstractFileSystem):
             self.fs = path
         else:
-            self.fs = open_fs(fsdecode(path))
+            self.fs = DirFileSystem(fsdecode(path))
 
         self.id1s = []
-        for id1 in self.fs.scandir(self.id0):
+        for id1 in self.fs.ls(self.id0, detail=False):
+            id1 = basename(id1)
             try:
                 # check if it decodes to hex
-                bytes.fromhex(id1.name)
+                bytes.fromhex(id1)
             except ValueError:
                 pass
             else:
-                if len(id1.name) == 32:
-                    self.id1s.append(id1.name)
+                if len(id1) == 32:
+                    self.id1s.append(id1)
 
         if len(self.id1s) == 0:
             raise MissingID1Error('could not find any ID1 directories in ' + self._crypto.id0.hex())
@@ -103,7 +97,7 @@ class SDRoot:
     def open_id1(self, /, id1: 'str | None' = None):
         if not id1:
             id1 = self.id1s[0]
-        return self.fs.opendir(self.id0 + '/' + id1, lambda p, f: SDFS(p, f, crypto=self._crypto))
+        return SDFS(self.id0 + '/' + id1, self.fs, crypto=self._crypto)
 
     def open_title(self, /, title_id: str, *, case_insensitive: bool = False, seed: bytes = None,
                    load_contents: bool = True, id1: 'str | None' = None):
@@ -112,7 +106,7 @@ class SDRoot:
         sd_path = f'/title/{title_id[0:8]}/{title_id[8:16]}/content'
 
         tmds = []
-        for f in fs.listdir(sd_path):
+        for f in fs.ls(sd_path, detail=False):
             if f.endswith('.tmd'):
                 tmds.append(f)
 
@@ -121,7 +115,7 @@ class SDRoot:
 
         # In case there is an in-progress download here, we choose the tmd with the smaller number,
         # so we can get the active title
-        tmds.sort(key=lambda x: int(x[0:8]))
+        tmds.sort(key=lambda x: int(basename(x)[0:8]))
 
         return SDTitleReader(join(sd_path, tmds[0]), case_insensitive=case_insensitive, fs=fs,
                              dev=self._crypto.dev, seed=seed, load_contents=load_contents)
@@ -142,9 +136,11 @@ class SDRoot:
 
         return InnerFATSAVE(lv4p1, lv4p2, closefd=True, container=disa)
 
-class SDFS(SubFS):
+class SDFS(DirFileSystem):
     """
     Enables access to an SD card filesystem inside Nintendo 3DS/id0/id1.
+
+    Currently, files under "Nintendo DSiWare" cannot be opened.
 
     :param path: Path to the Nintendo 3DS folder.
     :param crypto: A custom :class:`crypto.CryptoEngine` object to be used. Defaults to None, which causes a new one to
@@ -158,8 +154,8 @@ class SDFS(SubFS):
 
     __slots__ = ('_base_path', '_crypto', '_id0_path', 'current_id1', 'id1s')
 
-    def __init__(self, parent_fs: 'FS', path: str, *, crypto: CryptoEngine):
-        super().__init__(parent_fs, path)
+    def __init__(self, path: str, fs: 'AbstractFileSystem', *, crypto: CryptoEngine):
+        super().__init__(path, fs)
         self._crypto = crypto
 
     def __enter__(self):
@@ -168,46 +164,23 @@ class SDFS(SubFS):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def openbin(self, path: str, mode: str = 'r', buffering: int = -1, **options) -> 'BinaryIO':
-        """
-        Opens a file in the SD filesystem, allowing decrypted access.
-
-        Currently, files under "Nintendo DSiWare" cannot be opened.
-
-        :param path: Path relative to the ID1 directory.
-        :param mode: Mode to open the file with.
-        :param buffering: Buffering policy (-1 to use default buffering, 0 to disable buffering,
-            1 to select line buffering, of any positive integer to indicate a buffer size).
-        :return: A file-like object which decrypts and encrypts on the fly.
-        :rtype: CTRFileIO
-        """
-        # The way DSiWare exports are encrypted makes it annoying to do crypto on the fly.
-        # A different method would have to be used to support them.
-        if 'Nintendo DSiWare' in path:
-            raise NotImplementedError('files under "Nintendo DSiWare" currently cannot be opened with this method')
-
-        fh = super().openbin(path, mode, buffering, **options)
-        return self._crypto.create_ctr_io(Keyslot.SD, fh, self._crypto.sd_path_to_iv(normpath(abspath(path))),
-                                          closefd=True)
-
     def open(
         self,
         path,
-        mode: str = 'rb',
-        buffering: int = -1,
-        encoding: 'str | None' = None,
-        errors: 'str | None' = None,
-        newline: str = '',
-        **options
+        mode="rb",
+        *args,
+        **kwargs,
     ) -> 'BinaryIO':
-        if 'b' not in mode:
-            mode += 'b'
         if 't' in mode:
             raise NotImplementedError('text mode is not supported')
-        # noinspection PyTypeChecker
-        return self.openbin(path, mode, buffering, **options)
+        if 'Nintendo DSiWare' in path:
+            raise NotImplementedError('files under "Nintendo DSiWare" currently cannot be opened with this method')
+        base_file = super()._open(path, mode, *args, **kwargs)
+        if path[0] != '/':
+            path = '/' + path
+        # the previous version using pyfilesystem2 used normpath and abspath
+        # I don't remember why exactly
+        return self._crypto.create_ctr_io(Keyslot.SD, base_file, self._crypto.sd_path_to_iv(path), closefd=True)
 
-    def getmeta(self, namespace: str = 'standard') -> 'Mapping[str, object]':
-        meta = dict(super().getmeta(namespace))
-        meta['supports_rename'] = False
-        return meta
+    def mv(self, path1, path2, **kwargs):
+        raise NotImplementedError('renaming files is not allowed in SDFS')

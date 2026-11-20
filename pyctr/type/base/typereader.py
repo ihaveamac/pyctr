@@ -9,14 +9,16 @@ from os import PathLike
 from typing import TYPE_CHECKING
 from weakref import WeakSet
 
-from ...common import PyCTRError, get_fs_file_object
+from ...common import PyCTRError, get_file_object
 from ...crypto import CryptoEngine
 
 if TYPE_CHECKING:
     from typing import BinaryIO
-    from ...common import FilePathOrObject
 
-    from fs.base import FS
+    from fsspec.spec import AbstractFileSystem
+
+    from ...fileio import SubsectionIO
+    from ...common import FilePathOrObject
 
 __all__ = ['raise_if_closed', 'ReaderError', 'ReaderClosedError', 'TypeReaderBase', 'TypeReaderCryptoBase']
 
@@ -62,8 +64,7 @@ class TypeReaderBase:
     closed: bool
     """`True` if the reader is closed."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: 'bool | None' = None,
-                 mode: str = 'rb'):
+    def __init__(self, file: 'FilePathOrObject', *, closefd: 'bool | None' = None, mode: str = 'rb'):
         self.closed = False
 
         # Store a set of opened files based on this reader.
@@ -72,12 +73,9 @@ class TypeReaderBase:
         # The noinspection line is because some type checkers (PyCharm at least) don't recognize WeakSet as being a set,
         #   even though it's similar.
         # noinspection PyTypeChecker
-        self._open_files: set[BinaryIO] = WeakSet()
+        self._open_files: set[SubsectionIO] = WeakSet()
 
-        if 'b' not in mode:
-            mode += 'b'
-
-        fileobj, newly_opened = get_fs_file_object(file, fs, mode=mode)
+        fileobj, newly_opened = get_file_object(file, mode=mode)
 
         if closefd is None:
             closefd = newly_opened
@@ -153,9 +151,9 @@ class TypeReaderCryptoBase(TypeReaderBase):
 
     __slots__ = ('_crypto',)
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None, mode: str = 'rb',
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, mode: str = 'rb',
                  crypto: 'CryptoEngine' = None, dev: bool = False):
-        super().__init__(file, fs=fs, closefd=closefd, mode=mode)
+        super().__init__(file, closefd=closefd, mode=mode)
 
         if crypto:
             self._crypto = crypto

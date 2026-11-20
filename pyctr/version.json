@@ -1,0 +1,10 @@
+{
+    "version": "0.8.0.dev0",
+    "tuple": {
+        "major": 0,
+        "minor": 8,
+        "micro": 0,
+        "releaselevel": "dev",
+        "serial": 0
+    }
+}

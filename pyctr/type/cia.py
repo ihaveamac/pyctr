@@ -19,7 +19,7 @@ from .ncch import NCCHReader
 from .tmd import TitleMetadataReader
 
 if TYPE_CHECKING:
-    from fs.base import FS
+    from fsspec.spec import AbstractFileSystem
 
     from ..common import FilePathOrObject
     from .tmd import ContentChunkRecord
@@ -127,10 +127,9 @@ class CIAReader(TypeReaderCryptoBase):
     total_size: int
     """Expected size of the CIA file in bytes."""
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
-                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = False,
-                 load_contents: bool = True):
-        super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev)
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, case_insensitive: bool = True,
+                 crypto: CryptoEngine = None, dev: bool = False, seed: bytes = False, load_contents: bool = True):
+        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
 
         # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()

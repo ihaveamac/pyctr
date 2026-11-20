@@ -43,7 +43,6 @@ It can be installed with ``pip``:
    :caption: Getting started
 
    example-cia
-   example-nand
 
 .. toctree::
    :maxdepth: 1

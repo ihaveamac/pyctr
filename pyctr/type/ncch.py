@@ -23,7 +23,7 @@ from .romfs import RomFSReader
 if TYPE_CHECKING:
     from typing import BinaryIO
 
-    from fs.base import FS
+    from fsspec.spec import AbstractFileSystem
 
     from ..common import FilePathOrObject
 
@@ -174,7 +174,7 @@ class NCCHReader(TypeReaderCryptoBase):
     :param dev: Use devunit keys.
     :param seed: Seed to use. This is a quick way to add a seed using :func:`~.seeddb.add_seed`.
     :param load_sections: Load the ExeFS and RomFS as :class:`~.ExeFSReader` and
-        :class:`~.RomFSReader` objects.
+        :class:`~.RomFSReader` objects. Also loads the plain region.
     :param assume_decrypted: Assume each NCCH content is decrypted. Needed if the image was decrypted without fixing
         the NCCH flags.
     """
@@ -183,7 +183,7 @@ class NCCHReader(TypeReaderCryptoBase):
         '_all_sections', '_assume_decrypted', '_case_insensitive', '_exefs_crypto_ranges', '_exefs_fp',
         '_exefs_special_handling', '_key_y', '_lock', '_seed_set_up', '_seed_verify', '_seeded_key_y', 'closed',
         'content_size', 'exefs', 'extra_keyslot', 'flags', 'main_keyslot', 'partition_id', 'product_code', 'program_id',
-        'romfs', 'sections', 'version'
+        'romfs', 'plain', 'sections', 'version'
     )
 
     # this is the KeyY when generated using the seed
@@ -206,6 +206,9 @@ class NCCHReader(TypeReaderCryptoBase):
     romfs: 'RomFSReader | None'
     """The :class:`~.RomFSReader` of the NCCH, if it has one."""
 
+    plain: 'list[str]'
+    """The plain region of the NCCH. This often includes info about the SDK software used to build the application."""
+
     program_id: str
     """Title ID of the application."""
 
@@ -226,7 +229,9 @@ class NCCHReader(TypeReaderCryptoBase):
     """NCCH flags of the container."""
 
     version: int
-    """NCCH version. Not to be confused with the title version."""
+    """
+    NCCH format version. Not to be confused with the title version.
+    """
 
     main_keyslot: Keyslot
     """
@@ -241,15 +246,16 @@ class NCCHReader(TypeReaderCryptoBase):
     This is set to the same as main_keyslot for titles without an extra crypto method, or with a fixed crypto key.
     """
 
-    def __init__(self, file: 'FilePathOrObject', *, fs: 'FS | None' = None, closefd: bool = None,
-                 case_insensitive: bool = True, crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None,
-                 load_sections: bool = True, assume_decrypted: bool = False):
+    def __init__(self, file: 'FilePathOrObject', *, closefd: bool = None, case_insensitive: bool = True,
+                 crypto: CryptoEngine = None, dev: bool = False, seed: bytes = None, load_sections: bool = True,
+                 assume_decrypted: bool = False):
 
-        super().__init__(file, fs=fs, closefd=closefd, crypto=crypto, dev=dev)
+        super().__init__(file, closefd=closefd, crypto=crypto, dev=dev)
 
         self.closed = False
         self.exefs = None
         self.romfs = None
+        self.plain = []
 
         # Threading lock to prevent two operations on one class instance from interfering with eachother.
         self._lock = Lock()
@@ -278,7 +284,7 @@ class NCCHReader(TypeReaderCryptoBase):
         # load the seed verify field, which is part of a sha256 hash to verify if
         #   a seed is correct for this title
         self._seed_verify = header[0x114:0x118]
-        # load the Product Code store it as a unicode string
+        # load the Product Code store it as a Unicode string
         self.product_code = header[0x150:0x160].decode('ascii').strip('\0')
         # load the Program ID
         # this is the Title ID, and is usually the same for each section
@@ -448,6 +454,13 @@ class NCCHReader(TypeReaderCryptoBase):
                 romfs_fp = self.open_raw_section(NCCHSection.RomFS)
                 # load the RomFS reader
                 self.romfs = RomFSReader(romfs_fp, case_insensitive=self._case_insensitive)
+
+        # load plain region
+        try:
+            plain_data = self.get_data(NCCHSection.Plain, 0, self.sections[NCCHSection.Plain].size).decode('utf-8').strip('\0')
+            self.plain = plain_data.split('\0')
+        except KeyError:
+            pass  # who needs plain data anyway?
 
     def open_raw_section(self, section: 'NCCHSection'):
         """
